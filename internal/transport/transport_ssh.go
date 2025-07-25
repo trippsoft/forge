@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/pkg/sftp"
@@ -378,6 +379,12 @@ func newSFTPFileSystem(transport *sshTransport) FileSystem {
 	return &sftpFileSystem{transport: transport}
 }
 
+// IsNull implements FileSystem.
+func (s *sftpFileSystem) IsNull() bool {
+	return false // SFTP file system is always available
+}
+
+// Stat implements FileSystem.
 func (s *sftpFileSystem) Stat(path string) (os.FileInfo, error) {
 
 	err := s.transport.Connect() // Ensure we are connected
@@ -394,6 +401,7 @@ func (s *sftpFileSystem) Stat(path string) (os.FileInfo, error) {
 	return session.Stat(path)
 }
 
+// Open implements FileSystem.
 func (s *sftpFileSystem) Open(path string) (File, error) {
 
 	err := s.transport.Connect() // Ensure we are connected
@@ -413,7 +421,7 @@ func (s *sftpFileSystem) Open(path string) (File, error) {
 func newHostKeyAddingCallback(path string) (ssh.HostKeyCallback, error) {
 
 	_, err := os.Stat(path)
-	if err != nil && os.IsNotExist(err) {
+	if err != nil && (errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOENT)) {
 		file, err := os.Create(path)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create known hosts file %s: %w", path, err)

@@ -247,6 +247,10 @@ func TestNoneFileSystemDirectCreation(t *testing.T) {
 	// Test creating noneFileSystem directly (not through transport)
 	fs := &noneFileSystem{}
 
+	if !fs.IsNull() {
+		t.Error("Expected noneFileSystem to be null, but IsNull returned false")
+	}
+
 	// Test both methods fail appropriately
 	info, err := fs.Stat("test")
 	if err == nil {

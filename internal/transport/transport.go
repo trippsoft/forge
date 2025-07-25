@@ -37,6 +37,9 @@ type Transport interface {
 
 // FileSystem interface defines methods for file system operations.
 type FileSystem interface {
+	// IsNull checks if the file system is null or not supported.
+	IsNull() bool
+
 	// Stat retrieves the file information for the given path.
 	Stat(path string) (os.FileInfo, error)
 	// OpenFile opens an existing file with the specified path and flags.

@@ -48,6 +48,11 @@ func (n *noneTransport) FileSystem() FileSystem {
 
 type noneFileSystem struct{}
 
+// IsNull implements FileSystem.
+func (n *noneFileSystem) IsNull() bool {
+	return true // None file system is always null
+}
+
 // Stat implements FileSystem.
 func (n *noneFileSystem) Stat(path string) (os.FileInfo, error) {
 	return nil, errors.New("no file system available")

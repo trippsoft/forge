@@ -141,6 +141,11 @@ func newLocalFileSystem() FileSystem {
 	return &localFileSystem{}
 }
 
+// IsNull implements FileSystem.
+func (l *localFileSystem) IsNull() bool {
+	return false // Local file system is always available
+}
+
 // Open implements FileSystem.
 func (l *localFileSystem) Open(path string) (File, error) {
 	return os.Open(path)

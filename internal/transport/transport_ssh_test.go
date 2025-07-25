@@ -442,6 +442,10 @@ func TestSSHTransportFileSystem(t *testing.T) {
 		t.Fatal("FileSystem returned nil")
 	}
 
+	if fs.IsNull() {
+		t.Error("Expected non-null FileSystem, got null")
+	}
+
 	// Test that it's actually an sftpFileSystem
 	_, ok := fs.(*sftpFileSystem)
 	if !ok {

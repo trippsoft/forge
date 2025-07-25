@@ -2,10 +2,12 @@ package transport
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -301,6 +303,13 @@ func TestDetectPosixShell(t *testing.T) {
 	t.Logf("Detected shell: %s with args: %v", shell, args)
 }
 
+func TestLocalFileSystemIsNull(t *testing.T) {
+	fs := newLocalFileSystem()
+	if fs.IsNull() {
+		t.Error("Expected non-null FileSystem, got null")
+	}
+}
+
 func TestLocalFileSystemOpen(t *testing.T) {
 	fs := newLocalFileSystem()
 
@@ -351,7 +360,7 @@ func TestLocalFileSystemOpenNonExistent(t *testing.T) {
 		t.Error("Expected error when opening non-existent file, but got none")
 	}
 
-	if !os.IsNotExist(err) {
+	if !errors.Is(err, os.ErrNotExist) && !errors.Is(err, syscall.ENOENT) {
 		t.Errorf("Expected 'file not found' error, got: %v", err)
 	}
 }
@@ -392,7 +401,7 @@ func TestLocalFileSystemStatNonExistent(t *testing.T) {
 		t.Error("Expected error when stating non-existent file, but got none")
 	}
 
-	if !os.IsNotExist(err) {
+	if !errors.Is(err, os.ErrNotExist) && !errors.Is(err, syscall.ENOENT) {
 		t.Errorf("Expected 'file not found' error, got: %v", err)
 	}
 }

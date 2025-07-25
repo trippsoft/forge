@@ -2,9 +2,11 @@ package test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -578,7 +580,7 @@ func cleanupTempFile(t *testing.T, path string) {
 	t.Helper()
 
 	err := os.Remove(path)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, os.ErrNotExist) && !errors.Is(err, syscall.ENOENT) {
 		t.Logf("Warning: failed to cleanup temp file %s: %v", path, err)
 	}
 }
