@@ -237,7 +237,7 @@ type sshTransport struct {
 
 // Type implements Transport.
 func (s *sshTransport) Type() TransportType {
-	panic("unimplemented")
+	return TransportTypeSSH
 }
 
 // Connect implements Transport.
@@ -284,9 +284,12 @@ func (s *sshTransport) Close() error {
 }
 
 // ExecuteCommand implements Transport.
-func (s *sshTransport) ExecuteCommand(ctx context.Context, command string) (stdout string, stderr string, err error) {
+func (s *sshTransport) ExecuteCommand(ctx context.Context, command string) (string, string, error) {
 
-	s.Connect() // Ensure we are connected
+	err := s.Connect() // Ensure we are connected
+	if err != nil {
+		return "", "", fmt.Errorf("failed to connect to SSH transport: %w", err)
+	}
 
 	session, err := s.client.NewSession()
 	if err != nil {
@@ -319,7 +322,12 @@ func (s *sshTransport) ExecuteCommand(ctx context.Context, command string) (stdo
 }
 
 // ExecutePowerShell implements Transport.
-func (s *sshTransport) ExecutePowerShell(ctx context.Context, command string) (stdout string, stderr string, err error) {
+func (s *sshTransport) ExecutePowerShell(ctx context.Context, command string) (string, string, error) {
+
+	err := s.Connect() // Ensure we are connected
+	if err != nil {
+		return "", "", fmt.Errorf("failed to connect to SSH transport: %w", err)
+	}
 
 	if !s.hasValidatedPowerShell {
 		// Check if PowerShell is available on the remote system
@@ -403,6 +411,16 @@ func (s *sftpFileSystem) Open(path string) (File, error) {
 }
 
 func newHostKeyAddingCallback(path string) (ssh.HostKeyCallback, error) {
+
+	_, err := os.Stat(path)
+	if err != nil && os.IsNotExist(err) {
+		file, err := os.Create(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create known hosts file %s: %w", path, err)
+		}
+		file.Close()
+	}
+
 	checkingCallback, err := knownhosts.New(path)
 	if err != nil {
 		return nil, err
@@ -410,7 +428,7 @@ func newHostKeyAddingCallback(path string) (ssh.HostKeyCallback, error) {
 
 	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 
-		err := checkingCallback(hostname, remote, key)
+		err = checkingCallback(hostname, remote, key)
 		if err == nil {
 			return nil // Host key is already known
 		}

@@ -3,6 +3,7 @@ module github.com/trippsoft/forge
 go 1.24.4
 
 require (
+	github.com/bmatcuk/go-vagrant v1.6.0
 	github.com/pkg/sftp v1.13.9
 	golang.org/x/crypto v0.40.0
 	golang.org/x/text v0.27.0
