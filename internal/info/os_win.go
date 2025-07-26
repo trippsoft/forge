@@ -60,105 +60,108 @@ func (o *osInfo) populateWindowsOSInfo(transport transport.Transport) error {
 	var friendlyNamePrefix string
 
 	switch {
-	case o.version == "6.1.7600" && isServer:
+	case strings.HasPrefix(o.version, "6.1.7600") && isServer:
 		o.release = "server-2008-r2"
-		friendlyNamePrefix = "Windows Server 2008 R2"
-	case o.version == "6.1.7600" && !isServer:
+		friendlyNamePrefix = "Microsoft Windows Server 2008 R2"
+	case strings.HasPrefix(o.version, "6.1.7600") && !isServer:
 		o.release = "7"
-		friendlyNamePrefix = "Windows 7"
-	case o.version == "6.1.7601" && isServer:
+		friendlyNamePrefix = "Microsoft Windows 7"
+	case strings.HasPrefix(o.version, "6.1.7601") && isServer:
 		o.release = "server-2008-r2-sp1"
-		friendlyNamePrefix = "Windows Server 2008 R2 SP1"
-	case o.version == "6.1.7601" && !isServer:
+		friendlyNamePrefix = "Microsoft Windows Server 2008 R2 SP1"
+	case strings.HasPrefix(o.version, "6.1.7601") && !isServer:
 		o.release = "7-sp1"
-		friendlyNamePrefix = "Windows 7 SP1"
-	case o.version == "6.2.9200" && isServer:
+		friendlyNamePrefix = "Microsoft Windows 7 SP1"
+	case strings.HasPrefix(o.version, "6.2.9200") && isServer:
 		o.release = "server-2012"
-		friendlyNamePrefix = "Windows Server 2012"
-	case o.version == "6.2.9200" && !isServer:
+		friendlyNamePrefix = "Microsoft Windows Server 2012"
+	case strings.HasPrefix(o.version, "6.2.9200") && !isServer:
 		o.release = "8"
-		friendlyNamePrefix = "Windows 8"
-	case o.version == "6.3.9600" && isServer:
+		friendlyNamePrefix = "Microsoft Windows 8"
+	case strings.HasPrefix(o.version, "6.3.9600") && isServer:
 		o.release = "server-2012-r2"
-		friendlyNamePrefix = "Windows Server 2012 R2"
-	case o.version == "6.3.9600" && !isServer:
+		friendlyNamePrefix = "Microsoft Windows Server 2012 R2"
+	case strings.HasPrefix(o.version, "6.3.9600") && !isServer:
 		o.release = "8.1"
-		friendlyNamePrefix = "Windows 8.1"
-	case o.version == "10.0.10240":
+		friendlyNamePrefix = "Microsoft Windows 8.1"
+	case strings.HasPrefix(o.version, "10.0.10240"):
 		o.release = "10-1507"
-		friendlyNamePrefix = "Windows 10 1507"
-	case o.version == "10.0.10586":
+		friendlyNamePrefix = "Microsoft Windows 10 1507"
+	case strings.HasPrefix(o.version, "10.0.10586"):
 		o.release = "10-1511"
-		friendlyNamePrefix = "Windows 10 1511"
-	case o.version == "10.0.14393" && isServer:
+		friendlyNamePrefix = "Microsoft Windows 10 1511"
+	case strings.HasPrefix(o.version, "10.0.14393") && isServer:
 		o.release = "server-2016"
-		friendlyNamePrefix = "Windows Server 2016"
-	case o.version == "10.0.14393" && !isServer:
+		friendlyNamePrefix = "Microsoft Windows Server 2016"
+	case strings.HasPrefix(o.version, "10.0.14393") && !isServer:
 		o.release = "10-1607"
-		friendlyNamePrefix = "Windows 10 1607"
-	case o.version == "10.0.15063":
+		friendlyNamePrefix = "Microsoft Windows 10 1607"
+	case strings.HasPrefix(o.version, "10.0.15063"):
 		o.release = "10-1703"
-		friendlyNamePrefix = "Windows 10 1703"
-	case o.version == "10.0.16299":
+		friendlyNamePrefix = "Microsoft Windows 10 1703"
+	case strings.HasPrefix(o.version, "10.0.16299"):
 		o.release = "10-1709"
-		friendlyNamePrefix = "Windows 10 1709"
-	case o.version == "10.0.17134":
+		friendlyNamePrefix = "Microsoft Windows 10 1709"
+	case strings.HasPrefix(o.version, "10.0.17134"):
 		o.release = "10-1803"
-		friendlyNamePrefix = "Windows 10 1803"
-	case o.version == "10.0.17763" && isServer:
+		friendlyNamePrefix = "Microsoft Windows 10 1803"
+	case strings.HasPrefix(o.version, "10.0.17763") && isServer:
 		o.release = "server-2019"
-		friendlyNamePrefix = "Windows Server 2019"
-	case o.version == "10.0.17763" && !isServer:
+		friendlyNamePrefix = "Microsoft Windows Server 2019"
+	case strings.HasPrefix(o.version, "10.0.17763") && !isServer:
 		o.release = "10-1809"
-		friendlyNamePrefix = "Windows 10 1809"
-	case o.version == "10.0.18362":
+		friendlyNamePrefix = "Microsoft Windows 10 1809"
+	case strings.HasPrefix(o.version, "10.0.18362"):
 		o.release = "10-1903"
-		friendlyNamePrefix = "Windows 10 1903"
-	case o.version == "10.0.18363" && isServer:
+		friendlyNamePrefix = "Microsoft Windows 10 1903"
+	case strings.HasPrefix(o.version, "10.0.18363") && isServer:
 		o.release = "server-1909"
-		friendlyNamePrefix = "Windows Server 1909"
-	case o.version == "10.0.18363" && !isServer:
+		friendlyNamePrefix = "Microsoft Windows Server 1909"
+	case strings.HasPrefix(o.version, "10.0.18363") && !isServer:
 		o.release = "10-1909"
-		friendlyNamePrefix = "Windows 10 1909"
-	case o.version == "10.0.19041" && isServer:
+		friendlyNamePrefix = "Microsoft Windows 10 1909"
+	case strings.HasPrefix(o.version, "10.0.19041") && isServer:
 		o.release = "server-2004"
-		friendlyNamePrefix = "Windows Server 2004"
-	case o.version == "10.0.19041" && !isServer:
+		friendlyNamePrefix = "Microsoft Windows Server 2004"
+	case strings.HasPrefix(o.version, "10.0.19041") && !isServer:
 		o.release = "10-2004"
-		friendlyNamePrefix = "Windows 10 2004"
-	case o.version == "10.0.19042" && isServer:
+		friendlyNamePrefix = "Microsoft Windows 10 2004"
+	case strings.HasPrefix(o.version, "10.0.19042") && isServer:
 		o.release = "server-20h2"
-		friendlyNamePrefix = "Windows Server 20H2"
-	case o.version == "10.0.19042" && !isServer:
+		friendlyNamePrefix = "Microsoft Windows Server 20H2"
+	case strings.HasPrefix(o.version, "10.0.19042") && !isServer:
 		o.release = "10-20h2"
-		friendlyNamePrefix = "Windows 10 20H2"
-	case o.version == "10.0.19043":
+		friendlyNamePrefix = "Microsoft Windows 10 20H2"
+	case strings.HasPrefix(o.version, "10.0.19043"):
 		o.release = "10-21h1"
-		friendlyNamePrefix = "Windows 10 21H1"
-	case o.version == "10.0.19044":
+		friendlyNamePrefix = "Microsoft Windows 10 21H1"
+	case strings.HasPrefix(o.version, "10.0.19044"):
 		o.release = "10-21h2"
-		friendlyNamePrefix = "Windows 10 21H2"
-	case o.version == "10.0.19045":
+		friendlyNamePrefix = "Microsoft Windows 10 21H2"
+	case strings.HasPrefix(o.version, "10.0.19045"):
 		o.release = "10-22h2"
-		friendlyNamePrefix = "Windows 10 22H2"
-	case o.version == "10.0.20348":
+		friendlyNamePrefix = "Microsoft Windows 10 22H2"
+	case strings.HasPrefix(o.version, "10.0.20348"):
 		o.release = "server-2022"
-		friendlyNamePrefix = "Windows Server 2022"
-	case o.version == "10.0.22000":
+		friendlyNamePrefix = "Microsoft Windows Server 2022"
+	case strings.HasPrefix(o.version, "10.0.22000"):
 		o.release = "11-21h2"
-		friendlyNamePrefix = "Windows 11 21H2"
-	case o.version == "10.0.22621":
+		friendlyNamePrefix = "Microsoft Windows 11 21H2"
+	case strings.HasPrefix(o.version, "10.0.22621"):
 		o.release = "11-22h2"
-		friendlyNamePrefix = "Windows 11 22H2"
-	case o.version == "10.0.22631":
+		friendlyNamePrefix = "Microsoft Windows 11 22H2"
+	case strings.HasPrefix(o.version, "10.0.22631"):
 		o.release = "11-23h2"
-		friendlyNamePrefix = "Windows 11 23H2"
-	case o.version == "10.0.25398":
+		friendlyNamePrefix = "Microsoft Windows 11 23H2"
+	case strings.HasPrefix(o.version, "10.0.25398"):
 		o.release = "server-23h2"
-		friendlyNamePrefix = "Windows Server 23H2"
-	case o.version == "10.0.26100":
+		friendlyNamePrefix = "Microsoft Windows Server 23H2"
+	case strings.HasPrefix(o.version, "10.0.26100") && isServer:
+		o.release = "server-2025"
+		friendlyNamePrefix = "Microsoft Windows Server 2025"
+	case strings.HasPrefix(o.version, "10.0.26100") && !isServer:
 		o.release = "11-24h2"
-		friendlyNamePrefix = "Windows 11 24H2"
+		friendlyNamePrefix = "Microsoft Windows 11 24H2"
 	}
 
 	friendlyNameParts := strings.Split(o.friendlyName, " ")
@@ -172,7 +175,7 @@ func (o *osInfo) populateWindowsOSInfo(transport transport.Transport) error {
 	editionIdBuilder := strings.Builder{}
 
 	for _, part := range friendlyNameParts {
-		if strings.Contains(part, "Edition") {
+		if strings.Contains(part, "Edition") || strings.Contains(part, "Evaluation") {
 			continue
 		}
 
@@ -233,26 +236,32 @@ func (o *osInfo) populateWindowsOSArchitecture(transport transport.Transport) er
 		return fmt.Errorf("failed to execute command for OS architecture: %w", err)
 	}
 
-	osArchString := strings.TrimSpace(stdout)
+	osBits := strings.TrimSpace(stdout)
 
-	osArch, exists := architectureMap[osArchString]
-	if !exists {
-		log.Warnf("unknown OS architecture %s detected", osArchString)
-		o.osArch = osArchString
-		o.osArchBits = 0
-		return nil
+	switch {
+	case osBits == "64-bit" && o.procArch == "amd64":
+		o.osArch = "amd64"
+		o.osArchBits = 64
+	case osBits == "64-bit" && o.procArch == "arm64":
+		o.osArch = "arm64"
+		o.osArchBits = 64
+	case osBits == "32-bit" && o.procArch == "amd64":
+		o.osArch = "386"
+		o.osArchBits = 32
+	case osBits == "32-bit" && o.procArch == "arm64":
+		o.osArch = "arm"
+		o.osArchBits = 32
+	case osBits == "32-bit" && o.procArch == "386":
+		o.osArch = "386"
+		o.osArchBits = 32
+	case osBits == "32-bit" && o.procArch == "arm":
+		o.osArch = "arm"
+		o.osArchBits = 32
+	default:
+		log.Warnf("unknown OS architecture detected: %s on %s machine", osBits, o.procArch)
+		o.osArch = o.procArch
+		o.osArchBits = o.procArchBits
 	}
-
-	o.osArch = osArch
-
-	osArchBits, exists := architectureBitsMap[o.osArch]
-	if !exists {
-		log.Warnf("unknown OS architecture bits for %s detected", o.osArch)
-		o.osArchBits = 0
-		return nil
-	}
-
-	o.osArchBits = osArchBits
 
 	return nil
 }

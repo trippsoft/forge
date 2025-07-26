@@ -271,6 +271,10 @@ func (s *sshTransport) Connect() error {
 // Close implements Transport.
 func (s *sshTransport) Close() error {
 
+	if s.fileSystem != nil {
+		_ = s.fileSystem.Close() // Close the file system if it exists
+	}
+
 	if s.client == nil {
 		return nil // No client to close
 	}
@@ -371,8 +375,8 @@ func (s *sshTransport) FileSystem() FileSystem {
 }
 
 type sftpFileSystem struct {
-	transport     *sshTransport
-	pathSeparator rune
+	transport *sshTransport
+	client    *sftp.Client
 }
 
 func newSFTPFileSystem(transport *sshTransport) FileSystem {
@@ -384,38 +388,65 @@ func (s *sftpFileSystem) IsNull() bool {
 	return false // SFTP file system is always available
 }
 
+// Connect implements FileSystem.
+func (s *sftpFileSystem) Connect() error {
+
+	if s.client != nil {
+		return nil // Already connected
+	}
+
+	err := s.transport.Connect()
+	if err != nil {
+		return fmt.Errorf("failed to connect to SSH transport: %w", err)
+	}
+
+	client, err := sftp.NewClient(s.transport.client)
+	if err != nil {
+		s.transport.Close() // Close the SSH client on error
+		return fmt.Errorf("failed to create SFTP client: %w", err)
+	}
+
+	s.client = client
+
+	return nil
+}
+
+// Close implements FileSystem.
+func (s *sftpFileSystem) Close() error {
+
+	if s.client == nil {
+		return nil // No client to close
+	}
+
+	err := s.client.Close()
+	s.client = nil
+	if err != nil {
+		return fmt.Errorf("failed to close SFTP client: %w", err)
+	}
+
+	return nil
+}
+
 // Stat implements FileSystem.
 func (s *sftpFileSystem) Stat(path string) (os.FileInfo, error) {
 
-	err := s.transport.Connect() // Ensure we are connected
+	err := s.Connect() // Ensure we are connected
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to SSH transport: %w", err)
 	}
 
-	session, err := sftp.NewClient(s.transport.client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create SFTP client: %w", err)
-	}
-	defer session.Close()
-
-	return session.Stat(path)
+	return s.client.Stat(path)
 }
 
 // Open implements FileSystem.
 func (s *sftpFileSystem) Open(path string) (File, error) {
 
-	err := s.transport.Connect() // Ensure we are connected
+	err := s.Connect() // Ensure we are connected
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to SSH transport: %w", err)
 	}
 
-	session, err := sftp.NewClient(s.transport.client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create SFTP client: %w", err)
-	}
-	defer session.Close()
-
-	return session.Open(path)
+	return s.client.Open(path)
 }
 
 func newHostKeyAddingCallback(path string) (ssh.HostKeyCallback, error) {

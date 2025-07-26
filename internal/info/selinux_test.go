@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/zclconf/go-cty/cty"
 )
@@ -12,8 +13,11 @@ func TestSelinuxInfo_PopulateSelinuxInfo_NonLinux(t *testing.T) {
 	osInfo := newOSInfo()
 	osInfo.families.Add("windows")
 
+	fileSystem := newMockFileSystem()
+
 	selinuxInfo := &selinuxInfo{}
-	err := selinuxInfo.populateSelinuxInfo(osInfo, &mockFileSystem{})
+
+	err := selinuxInfo.populateSelinuxInfo(osInfo, fileSystem)
 
 	if err != nil {
 		t.Fatalf("expected no error for non-Linux system, got: %v", err)
@@ -36,12 +40,10 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Linux_NoConfigFile(t *testing.T) {
 	osInfo := newOSInfo()
 	osInfo.families.Add("linux")
 
-	mockFS := &mockFileSystem{
-		files: map[string]*mockFile{},
-	}
+	fileSystem := newMockFileSystem()
 
 	selinuxInfo := &selinuxInfo{}
-	err := selinuxInfo.populateSelinuxInfo(osInfo, mockFS)
+	err := selinuxInfo.populateSelinuxInfo(osInfo, fileSystem)
 
 	if err != nil {
 		t.Fatalf("expected no error when config file doesn't exist, got: %v", err)
@@ -96,16 +98,19 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Linux_WithConfigFile(t *testing.T) {
 			osInfo := newOSInfo()
 			osInfo.families.Add("linux")
 
-			mockFS := &mockFileSystem{
-				files: map[string]*mockFile{
-					"/etc/selinux/config": {
-						content: io.NopCloser(bytes.NewBufferString(tc.configContent)),
-					},
+			fileSystem := newMockFileSystem()
+			fileSystem.files["/etc/selinux/config"] = &mockFile{
+				content: io.NopCloser(bytes.NewBufferString(tc.configContent)),
+				info: &mockFileInfo{
+					name:    "config",
+					size:    int64(len(tc.configContent)),
+					mode:    0644,
+					modTime: time.Now(),
 				},
 			}
 
 			selinuxInfo := &selinuxInfo{}
-			err := selinuxInfo.populateSelinuxInfo(osInfo, mockFS)
+			err := selinuxInfo.populateSelinuxInfo(osInfo, fileSystem)
 
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)

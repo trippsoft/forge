@@ -66,6 +66,8 @@ func (f *fipsInfo) populateWindowsFipsInfo(transport transport.Transport) error 
 		return fmt.Errorf("failed to execute PowerShell command: %w", err)
 	}
 
+	stdout = strings.TrimSpace(stdout)
+
 	f.known = true
 	f.enabled = stdout == "1"
 	return nil

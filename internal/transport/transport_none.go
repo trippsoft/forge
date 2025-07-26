@@ -48,6 +48,16 @@ func (n *noneTransport) FileSystem() FileSystem {
 
 type noneFileSystem struct{}
 
+// Connect implements FileSystem.
+func (n *noneFileSystem) Connect() error {
+	return nil // No connection needed for none file system
+}
+
+// Close implements FileSystem.
+func (n *noneFileSystem) Close() error {
+	return nil // No connection needed for none file system
+}
+
 // IsNull implements FileSystem.
 func (n *noneFileSystem) IsNull() bool {
 	return true // None file system is always null

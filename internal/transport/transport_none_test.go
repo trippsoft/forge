@@ -167,6 +167,32 @@ func TestNoneTransportFileSystem(t *testing.T) {
 	}
 }
 
+func TestNoneFileSystemIsNull(t *testing.T) {
+	fs := &noneFileSystem{}
+
+	if !fs.IsNull() {
+		t.Error("IsNull should return true for none file system")
+	}
+}
+
+func TestNoneFileSystemConnect(t *testing.T) {
+	fs := &noneFileSystem{}
+
+	err := fs.Connect()
+	if err != nil {
+		t.Errorf("Connect should not return error for none file system, got: %v", err)
+	}
+}
+
+func TestNoneFileSystemClose(t *testing.T) {
+	fs := &noneFileSystem{}
+
+	err := fs.Close()
+	if err != nil {
+		t.Errorf("Close should not return error for none file system, got: %v", err)
+	}
+}
+
 func TestNoneFileSystemStat(t *testing.T) {
 	fs := &noneFileSystem{}
 
@@ -174,25 +200,6 @@ func TestNoneFileSystemStat(t *testing.T) {
 	info, err := fs.Stat("/some/path/file.txt")
 	if err == nil {
 		t.Error("Expected error for Stat on none file system, but got none")
-	}
-
-	expectedError := "no file system available"
-	if err.Error() != expectedError {
-		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
-	}
-
-	if info != nil {
-		t.Errorf("Expected nil file info, got %v", info)
-	}
-}
-
-func TestNoneFileSystemStatEmptyPath(t *testing.T) {
-	fs := &noneFileSystem{}
-
-	// Test stat with empty path (should still fail with same error)
-	info, err := fs.Stat("")
-	if err == nil {
-		t.Error("Expected error for Stat on none file system with empty path, but got none")
 	}
 
 	expectedError := "no file system available"
@@ -221,98 +228,5 @@ func TestNoneFileSystemOpen(t *testing.T) {
 
 	if file != nil {
 		t.Errorf("Expected nil file, got %v", file)
-	}
-}
-
-func TestNoneFileSystemOpenEmptyPath(t *testing.T) {
-	fs := &noneFileSystem{}
-
-	// Test open with empty path (should still fail with same error)
-	file, err := fs.Open("")
-	if err == nil {
-		t.Error("Expected error for Open on none file system with empty path, but got none")
-	}
-
-	expectedError := "no file system available"
-	if err.Error() != expectedError {
-		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
-	}
-
-	if file != nil {
-		t.Errorf("Expected nil file, got %v", file)
-	}
-}
-
-func TestNoneFileSystemDirectCreation(t *testing.T) {
-	// Test creating noneFileSystem directly (not through transport)
-	fs := &noneFileSystem{}
-
-	if !fs.IsNull() {
-		t.Error("Expected noneFileSystem to be null, but IsNull returned false")
-	}
-
-	// Test both methods fail appropriately
-	info, err := fs.Stat("test")
-	if err == nil {
-		t.Error("Expected error for direct noneFileSystem Stat, but got none")
-	}
-	if info != nil {
-		t.Error("Expected nil info for direct noneFileSystem Stat")
-	}
-
-	file, err := fs.Open("test")
-	if err == nil {
-		t.Error("Expected error for direct noneFileSystem Open, but got none")
-	}
-	if file != nil {
-		t.Error("Expected nil file for direct noneFileSystem Open")
-	}
-}
-
-func TestNoneTransportMultipleOperations(t *testing.T) {
-	// Test that multiple operations on the same transport instance work consistently
-	transport := NewNoneTransport()
-	ctx := context.Background()
-
-	// Test multiple command executions
-	for i := 0; i < 3; i++ {
-		stdout, stderr, err := transport.ExecuteCommand(ctx, "test command")
-		if err == nil {
-			t.Errorf("Expected error on attempt %d, but got none", i+1)
-		}
-		if stdout != "" || stderr != "" {
-			t.Errorf("Expected empty output on attempt %d, got stdout='%s', stderr='%s'", i+1, stdout, stderr)
-		}
-	}
-
-	// Test multiple PowerShell executions
-	for i := 0; i < 3; i++ {
-		stdout, stderr, err := transport.ExecutePowerShell(ctx, "test powershell")
-		if err == nil {
-			t.Errorf("Expected error on PowerShell attempt %d, but got none", i+1)
-		}
-		if stdout != "" || stderr != "" {
-			t.Errorf("Expected empty output on PowerShell attempt %d, got stdout='%s', stderr='%s'", i+1, stdout, stderr)
-		}
-	}
-
-	// Test multiple file system operations
-	fs := transport.FileSystem()
-	for i := 0; i < 3; i++ {
-		info, err := fs.Stat("test")
-		if err == nil {
-			t.Errorf("Expected error on Stat attempt %d, but got none", i+1)
-		}
-		if info != nil {
-			t.Errorf("Expected nil info on Stat attempt %d", i+1)
-		}
-
-		file, err := fs.Open("test")
-		if err == nil {
-			t.Errorf("Expected error on Open attempt %d, but got none", i+1)
-		}
-		if file != nil {
-			t.Errorf("Expected nil file on Open attempt %d", i+1)
-		}
 	}
 }

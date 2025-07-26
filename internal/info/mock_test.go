@@ -2,7 +2,6 @@ package info
 
 import (
 	"context"
-	"errors"
 	"io"
 	"os"
 	"time"
@@ -10,52 +9,71 @@ import (
 	"github.com/trippsoft/forge/internal/transport"
 )
 
-// Mock transport for testing
+type commandResponse struct {
+	stdout string
+	stderr string
+	err    error
+}
+
 type mockTransport struct {
-	powershellOutput string
-	commandOutput    string
-	shouldError      bool
+	transportType transport.TransportType
+
+	connectError error
+	closeError   error
+
+	defaultCommandResponse *commandResponse
+	commandResponses       map[string]*commandResponse
+
+	defaultPowerShellResponse *commandResponse
+	powerShellResponses       map[string]*commandResponse
+
+	fileSystem *mockFileSystem
+}
+
+func newMockTransport() *mockTransport {
+
+	return &mockTransport{
+		transportType:             transport.TransportTypeSSH,
+		defaultCommandResponse:    &commandResponse{},
+		commandResponses:          make(map[string]*commandResponse),
+		defaultPowerShellResponse: &commandResponse{},
+		powerShellResponses:       make(map[string]*commandResponse),
+		fileSystem:                newMockFileSystem(),
+	}
 }
 
 func (m *mockTransport) Type() transport.TransportType {
-	return transport.TransportTypeNone
+	return m.transportType
 }
 
 func (m *mockTransport) Connect() error {
-	return nil
+	return m.connectError
 }
 
 func (m *mockTransport) Close() error {
-	return nil
+	return m.closeError
 }
 
 func (m *mockTransport) ExecuteCommand(ctx context.Context, command string) (string, string, error) {
-	if m.shouldError {
-		return "", "", io.EOF
+
+	response, exists := m.commandResponses[command]
+	if exists {
+		return response.stdout, response.stderr, response.err
 	}
-	return m.commandOutput, "", nil
+	return m.defaultCommandResponse.stdout, m.defaultCommandResponse.stderr, m.defaultCommandResponse.err
 }
 
 func (m *mockTransport) ExecutePowerShell(ctx context.Context, command string) (string, string, error) {
-	if m.shouldError {
-		return "", "", io.EOF
+
+	response, exists := m.powerShellResponses[command]
+	if exists {
+		return response.stdout, response.stderr, response.err
 	}
-	return m.powershellOutput, "", nil
+	return m.defaultPowerShellResponse.stdout, m.defaultPowerShellResponse.stderr, m.defaultPowerShellResponse.err
 }
 
 func (m *mockTransport) FileSystem() transport.FileSystem {
-	return &mockFileSystem{}
-}
-
-// Mock file system for testing
-type mockFileSystem struct {
-	files map[string]*mockFile
-	dirs  map[string]*mockFileInfo
-}
-
-type mockFile struct {
-	content io.ReadCloser
-	info    *mockFileInfo
+	return m.fileSystem
 }
 
 type mockFileInfo struct {
@@ -72,6 +90,11 @@ func (m *mockFileInfo) Mode() os.FileMode  { return m.mode }
 func (m *mockFileInfo) ModTime() time.Time { return m.modTime }
 func (m *mockFileInfo) IsDir() bool        { return m.isDir }
 func (m *mockFileInfo) Sys() interface{}   { return nil }
+
+type mockFile struct {
+	content io.ReadCloser
+	info    *mockFileInfo
+}
 
 func (m *mockFile) Read(p []byte) (n int, err error) {
 	return m.content.Read(p)
@@ -93,11 +116,43 @@ func (m *mockFile) Name() string {
 	return ""
 }
 
+type mockFileSystem struct {
+	isNull bool
+
+	connectError error
+	closeError   error
+
+	files map[string]*mockFile
+	dirs  map[string]*mockFileInfo
+
+	errorPaths map[string]error
+}
+
+func newMockFileSystem() *mockFileSystem {
+	return &mockFileSystem{
+		isNull:     false,
+		files:      make(map[string]*mockFile),
+		dirs:       make(map[string]*mockFileInfo),
+		errorPaths: make(map[string]error),
+	}
+}
+
 func (m *mockFileSystem) IsNull() bool {
-	return false
+	return m.isNull
+}
+
+func (m *mockFileSystem) Connect() error {
+	return m.connectError
+}
+
+func (m *mockFileSystem) Close() error {
+	return m.closeError
 }
 
 func (m *mockFileSystem) Stat(path string) (os.FileInfo, error) {
+	if err, exists := m.errorPaths[path]; exists {
+		return nil, err
+	}
 	if file, exists := m.files[path]; exists {
 		return file.info, nil
 	}
@@ -112,78 +167,4 @@ func (m *mockFileSystem) Open(path string) (transport.File, error) {
 		return file, nil
 	}
 	return nil, os.ErrNotExist
-}
-
-type errorTransport struct {
-	shouldError bool
-}
-
-func (e *errorTransport) Type() transport.TransportType {
-	return transport.TransportTypeNone
-}
-
-func (e *errorTransport) Connect() error {
-	if e.shouldError {
-		return errors.New("connection failed")
-	}
-	return nil
-}
-
-func (e *errorTransport) Close() error {
-	return nil
-}
-
-func (e *errorTransport) ExecuteCommand(ctx context.Context, command string) (string, string, error) {
-	if e.shouldError {
-		return "", "", errors.New("command failed")
-	}
-	return "", "", nil
-}
-
-func (e *errorTransport) ExecutePowerShell(ctx context.Context, command string) (string, string, error) {
-	if e.shouldError {
-		return "", "", errors.New("powershell failed")
-	}
-	return "", "", nil
-}
-
-func (e *errorTransport) FileSystem() transport.FileSystem {
-	return &errorFileSystem{shouldError: e.shouldError}
-}
-
-type errorFileSystem struct {
-	shouldError bool
-}
-
-func (e *errorFileSystem) IsNull() bool {
-	return e.shouldError
-}
-
-func (e *errorFileSystem) Stat(path string) (os.FileInfo, error) {
-	if e.shouldError {
-		return nil, errors.New("stat failed")
-	}
-	return nil, os.ErrNotExist
-}
-
-func (e *errorFileSystem) Open(path string) (transport.File, error) {
-	if e.shouldError {
-		return nil, errors.New("open failed")
-	}
-	return nil, os.ErrNotExist
-}
-
-type errorReadCloser struct {
-	shouldError bool
-}
-
-func (e *errorReadCloser) Read(p []byte) (n int, err error) {
-	if e.shouldError {
-		return 0, errors.New("read failed")
-	}
-	return 0, io.EOF
-}
-
-func (e *errorReadCloser) Close() error {
-	return nil
 }

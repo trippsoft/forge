@@ -40,9 +40,15 @@ type FileSystem interface {
 	// IsNull checks if the file system is null or not supported.
 	IsNull() bool
 
+	// Connect establishes a connection to the file system if needed.
+	Connect() error
+
+	// Close closes the file system connection if needed.
+	Close() error
+
 	// Stat retrieves the file information for the given path.
 	Stat(path string) (os.FileInfo, error)
-	// OpenFile opens an existing file with the specified path and flags.
+	// Open opens an existing file with the specified path and flags.
 	Open(path string) (File, error)
 }
 

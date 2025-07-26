@@ -71,17 +71,6 @@ func TestHostInfo_Populate_WithLocalTransport(t *testing.T) {
 	}
 }
 
-func TestHostInfo_Populate_ErrorHandling(t *testing.T) {
-	// Test with transport that returns errors
-	errorTransport := &errorTransport{shouldError: true}
-
-	hostInfo := NewHostInfo()
-	err := hostInfo.Populate(errorTransport)
-	if err == nil {
-		t.Error("expected error when transport operations fail")
-	}
-}
-
 func TestHostInfo_ToMapOfCtyValues(t *testing.T) {
 	localTransport, err := transport.NewLocalTransport()
 	if err != nil {

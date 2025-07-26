@@ -303,65 +303,28 @@ func TestDetectPosixShell(t *testing.T) {
 	t.Logf("Detected shell: %s with args: %v", shell, args)
 }
 
+func TestLocalFileSystemConnect(t *testing.T) {
+	fs := newLocalFileSystem()
+
+	err := fs.Connect()
+	if err != nil {
+		t.Errorf("Connect() failed: %v", err)
+	}
+}
+
+func TestLocalFileSystemClose(t *testing.T) {
+	fs := newLocalFileSystem()
+
+	err := fs.Close()
+	if err != nil {
+		t.Errorf("Close() failed: %v", err)
+	}
+}
+
 func TestLocalFileSystemIsNull(t *testing.T) {
 	fs := newLocalFileSystem()
 	if fs.IsNull() {
 		t.Error("Expected non-null FileSystem, got null")
-	}
-}
-
-func TestLocalFileSystemOpen(t *testing.T) {
-	fs := newLocalFileSystem()
-
-	// Create a temporary file for testing
-	tmpFile, err := os.CreateTemp("", "test_local_fs_*.txt")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer os.Remove(tmpFile.Name())
-	defer tmpFile.Close()
-
-	// Write some test data
-	testData := "test file content"
-	if _, err := tmpFile.WriteString(testData); err != nil {
-		t.Fatalf("Failed to write to temp file: %v", err)
-	}
-	tmpFile.Close()
-
-	// Test opening the file
-	file, err := fs.Open(tmpFile.Name())
-	if err != nil {
-		t.Fatalf("Failed to open file: %v", err)
-	}
-	defer file.Close()
-
-	// Verify we can read from it
-	buffer := make([]byte, len(testData))
-	n, err := file.Read(buffer)
-	if err != nil {
-		t.Fatalf("Failed to read from file: %v", err)
-	}
-
-	if n != len(testData) {
-		t.Errorf("Expected to read %d bytes, got %d", len(testData), n)
-	}
-
-	if string(buffer) != testData {
-		t.Errorf("Expected to read '%s', got '%s'", testData, string(buffer))
-	}
-}
-
-func TestLocalFileSystemOpenNonExistent(t *testing.T) {
-	fs := newLocalFileSystem()
-
-	// Try to open a non-existent file
-	_, err := fs.Open("/path/that/does/not/exist/file.txt")
-	if err == nil {
-		t.Error("Expected error when opening non-existent file, but got none")
-	}
-
-	if !errors.Is(err, os.ErrNotExist) && !errors.Is(err, syscall.ENOENT) {
-		t.Errorf("Expected 'file not found' error, got: %v", err)
 	}
 }
 
@@ -429,5 +392,60 @@ func TestLocalFileSystemStatDirectory(t *testing.T) {
 	expectedName := filepath.Base(tmpDir)
 	if info.Name() != expectedName {
 		t.Errorf("Expected directory name '%s', got '%s'", expectedName, info.Name())
+	}
+}
+
+func TestLocalFileSystemOpen(t *testing.T) {
+	fs := newLocalFileSystem()
+
+	// Create a temporary file for testing
+	tmpFile, err := os.CreateTemp("", "test_local_fs_*.txt")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
+
+	// Write some test data
+	testData := "test file content"
+	if _, err := tmpFile.WriteString(testData); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	// Test opening the file
+	file, err := fs.Open(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("Failed to open file: %v", err)
+	}
+	defer file.Close()
+
+	// Verify we can read from it
+	buffer := make([]byte, len(testData))
+	n, err := file.Read(buffer)
+	if err != nil {
+		t.Fatalf("Failed to read from file: %v", err)
+	}
+
+	if n != len(testData) {
+		t.Errorf("Expected to read %d bytes, got %d", len(testData), n)
+	}
+
+	if string(buffer) != testData {
+		t.Errorf("Expected to read '%s', got '%s'", testData, string(buffer))
+	}
+}
+
+func TestLocalFileSystemOpenNonExistent(t *testing.T) {
+	fs := newLocalFileSystem()
+
+	// Try to open a non-existent file
+	_, err := fs.Open("/path/that/does/not/exist/file.txt")
+	if err == nil {
+		t.Error("Expected error when opening non-existent file, but got none")
+	}
+
+	if !errors.Is(err, os.ErrNotExist) && !errors.Is(err, syscall.ENOENT) {
+		t.Errorf("Expected 'file not found' error, got: %v", err)
 	}
 }

@@ -8,10 +8,11 @@ func TestFipsInfo_PopulateFipsInfo_Linux_Enabled(t *testing.T) {
 	osInfo := newOSInfo()
 	osInfo.families.Add("linux")
 
-	mockTransport := &mockTransport{commandOutput: "1\n"}
+	transport := newMockTransport()
+	transport.defaultCommandResponse.stdout = "1\n"
 
 	fipsInfo := &fipsInfo{}
-	err := fipsInfo.populateFipsInfo(osInfo, mockTransport)
+	err := fipsInfo.populateFipsInfo(osInfo, transport)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -30,10 +31,11 @@ func TestFipsInfo_PopulateFipsInfo_Linux_Disabled(t *testing.T) {
 	osInfo := newOSInfo()
 	osInfo.families.Add("linux")
 
-	mockTransport := &mockTransport{commandOutput: "0\n"}
+	transport := newMockTransport()
+	transport.defaultCommandResponse.stdout = "0\n"
 
 	fipsInfo := &fipsInfo{}
-	err := fipsInfo.populateFipsInfo(osInfo, mockTransport)
+	err := fipsInfo.populateFipsInfo(osInfo, transport)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -52,12 +54,11 @@ func TestFipsInfo_PopulateFipsInfo_Windows_Enabled(t *testing.T) {
 	osInfo := newOSInfo()
 	osInfo.families.Add("windows")
 
-	mockTransport := &mockTransport{
-		powershellOutput: "1",
-	}
+	transport := newMockTransport()
+	transport.defaultPowerShellResponse.stdout = "1\r\n"
 
 	fipsInfo := &fipsInfo{}
-	err := fipsInfo.populateFipsInfo(osInfo, mockTransport)
+	err := fipsInfo.populateFipsInfo(osInfo, transport)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -76,12 +77,11 @@ func TestFipsInfo_PopulateFipsInfo_Windows_Disabled(t *testing.T) {
 	osInfo := newOSInfo()
 	osInfo.families.Add("windows")
 
-	mockTransport := &mockTransport{
-		powershellOutput: "0",
-	}
+	transport := newMockTransport()
+	transport.defaultPowerShellResponse.stdout = "0\r\n"
 
 	fipsInfo := &fipsInfo{}
-	err := fipsInfo.populateFipsInfo(osInfo, mockTransport)
+	err := fipsInfo.populateFipsInfo(osInfo, transport)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -100,10 +100,10 @@ func TestFipsInfo_PopulateFipsInfo_UnknownOS(t *testing.T) {
 	osInfo := newOSInfo()
 	osInfo.families.Add("darwin") // macOS
 
-	mockTransport := &mockTransport{}
+	transport := newMockTransport()
 
 	fipsInfo := &fipsInfo{}
-	err := fipsInfo.populateFipsInfo(osInfo, mockTransport)
+	err := fipsInfo.populateFipsInfo(osInfo, transport)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -123,10 +123,10 @@ func TestFipsInfo_PopulateFipsInfo_CommandError(t *testing.T) {
 	osInfo := newOSInfo()
 	osInfo.families.Add("linux")
 
-	mockTransport := &mockTransport{}
+	transport := newMockTransport()
 
 	fipsInfo := &fipsInfo{}
-	err := fipsInfo.populateFipsInfo(osInfo, mockTransport)
+	err := fipsInfo.populateFipsInfo(osInfo, transport)
 	if err == nil {
 		t.Error("expected error when reading FIPS file fails")
 	}

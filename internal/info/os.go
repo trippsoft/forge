@@ -11,6 +11,7 @@ import (
 
 var (
 	architectureMap = map[string]string{
+		"386":     "386",
 		"i386":    "386",
 		"i486":    "386",
 		"i586":    "386",
@@ -18,6 +19,7 @@ var (
 		"x86":     "386",
 		"amd64":   "amd64",
 		"x86_64":  "amd64",
+		"arm":     "arm",
 		"armv6l":  "arm",
 		"armv7l":  "arm",
 		"aarch64": "arm64",
@@ -61,19 +63,17 @@ var (
 		"linuxmint":     {"debian", "ubuntu"}, // We will treat Linux Mint as always being Ubuntu-based, despite the existence of Debian-based versions.
 		"mageia":        {"mandrake"},
 		"manjaro":       {"archlinux"},
-		"manjaro-arm":   {"archlinux"},
+		"manjaro-arm":   {"archlinux", "manjaro"},
 		"nobara":        {"el", "fedora"},
 		"opensuse":      {"suse"},
 		"oraclelinux":   {"el"},
 		"pop_os":        {"debian", "ubuntu"},
-		"rancheros":     {"rancheros"},
 		"raspbian":      {"debian"},
 		"rhel":          {"el"},
 		"rocky":         {"el"},
 		"scientific":    {"el"},
 		"sled":          {"suse"},
 		"sles":          {"suse"},
-		"sles_sap":      {"suse"},
 		"ubuntu":        {"debian"},
 		"virtuozzo":     {"el"},
 	}

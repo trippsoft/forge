@@ -7,11 +7,14 @@ import (
 )
 
 func TestAppArmorInfo_PopulateAppArmorInfo_NonLinux(t *testing.T) {
+
 	osInfo := newOSInfo()
 	osInfo.families.Add("windows")
 
+	fileSystem := newMockFileSystem()
+
 	appArmorInfo := newAppArmorInfo()
-	err := appArmorInfo.populateAppArmorInfo(osInfo, &mockFileSystem{})
+	err := appArmorInfo.populateAppArmorInfo(osInfo, fileSystem)
 
 	if err != nil {
 		t.Fatalf("expected no error for non-Linux system, got: %v", err)
@@ -30,19 +33,16 @@ func TestAppArmorInfo_PopulateAppArmorInfo_Linux_Enabled(t *testing.T) {
 	osInfo := newOSInfo()
 	osInfo.families.Add("linux")
 
-	mockFS := &mockFileSystem{
-		dirs: map[string]*mockFileInfo{
-			"/sys/kernel/security/apparmor": {
-				name:    "apparmor",
-				isDir:   true,
-				mode:    os.ModeDir | 0755,
-				modTime: time.Now(),
-			},
-		},
+	fileSystem := newMockFileSystem()
+	fileSystem.dirs["/sys/kernel/security/apparmor"] = &mockFileInfo{
+		name:    "apparmor",
+		isDir:   true,
+		mode:    os.ModeDir | 0755,
+		modTime: time.Now(),
 	}
 
 	appArmorInfo := newAppArmorInfo()
-	err := appArmorInfo.populateAppArmorInfo(osInfo, mockFS)
+	err := appArmorInfo.populateAppArmorInfo(osInfo, fileSystem)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -61,12 +61,10 @@ func TestAppArmorInfo_PopulateAppArmorInfo_Linux_Disabled(t *testing.T) {
 	osInfo := newOSInfo()
 	osInfo.families.Add("linux")
 
-	mockFS := &mockFileSystem{
-		dirs: map[string]*mockFileInfo{},
-	}
+	fileSystem := newMockFileSystem()
 
 	appArmorInfo := newAppArmorInfo()
-	err := appArmorInfo.populateAppArmorInfo(osInfo, mockFS)
+	err := appArmorInfo.populateAppArmorInfo(osInfo, fileSystem)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -86,10 +84,11 @@ func TestAppArmorInfo_PopulateAppArmorInfo_FileSystemError(t *testing.T) {
 	osInfo := newOSInfo()
 	osInfo.families.Add("linux")
 
-	mockFS := &errorFileSystem{shouldError: true}
+	fileSystem := newMockFileSystem()
+	fileSystem.errorPaths["/sys/kernel/security/apparmor"] = os.ErrPermission
 
 	appArmorInfo := newAppArmorInfo()
-	err := appArmorInfo.populateAppArmorInfo(osInfo, mockFS)
+	err := appArmorInfo.populateAppArmorInfo(osInfo, fileSystem)
 	if err == nil {
 		t.Error("expected error when file system operations fail")
 	}

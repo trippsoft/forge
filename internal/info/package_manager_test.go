@@ -1,6 +1,7 @@
 package info
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/trippsoft/forge/internal/util"
@@ -11,14 +12,11 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Windows(t *testing.T) {
 		families: util.NewSet("windows"),
 	}
 
-	mockTransport := &mockTransport{}
-	mockFS := &mockFileSystem{
-		files: make(map[string]*mockFile),
-		dirs:  make(map[string]*mockFileInfo),
-	}
+	transport := newMockTransport()
+	fileSystem := transport.FileSystem()
 
 	pmInfo := newPackageManagerInfo()
-	err := pmInfo.populatePackageManagerInfo(osInfo, mockTransport, mockFS)
+	err := pmInfo.populatePackageManagerInfo(osInfo, transport, fileSystem)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -76,14 +74,13 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL(t *testing.T) {
 				families: util.NewSet("linux", "el"),
 			}
 
-			mockFS := &mockFileSystem{
-				files: make(map[string]*mockFile),
-				dirs:  make(map[string]*mockFileInfo),
-			}
+			transport := newMockTransport()
+
+			fileSystem := transport.fileSystem
 
 			// Add package manager file
 			if tc.packageMgr != "" {
-				mockFS.files[tc.packageMgr] = &mockFile{
+				fileSystem.files[tc.packageMgr] = &mockFile{
 					info: &mockFileInfo{
 						name:  "packagemgr",
 						isDir: false,
@@ -94,7 +91,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL(t *testing.T) {
 
 			// Add or omit ostree-booted file
 			if tc.osTreeBoot {
-				mockFS.files["/run/ostree-booted"] = &mockFile{
+				fileSystem.files["/run/ostree-booted"] = &mockFile{
 					info: &mockFileInfo{
 						name:  "ostree-booted",
 						isDir: false,
@@ -103,10 +100,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL(t *testing.T) {
 				}
 			}
 
-			mockTransport := &mockTransport{}
-
 			pmInfo := newPackageManagerInfo()
-			err := pmInfo.populatePackageManagerInfo(osInfo, mockTransport, mockFS)
+			err := pmInfo.populatePackageManagerInfo(osInfo, transport, fileSystem)
 
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -260,22 +255,23 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic(t *testing.T) {
 				families: util.NewSet(tc.families...),
 			}
 
-			mockFS := &mockFileSystem{
-				files: map[string]*mockFile{
-					tc.packageMgr: {
-						info: &mockFileInfo{
-							name:  "packagemgr",
-							isDir: false,
-							mode:  0755,
-						},
-					},
+			transport := newMockTransport()
+			transport.commandResponses["/usr/bin/rpm -q --whatprovides apt"] = &commandResponse{
+				err: errors.New("error: process exited with status 1"),
+			}
+
+			fileSystem := transport.fileSystem
+			fileSystem.files[tc.packageMgr] = &mockFile{
+				info: &mockFileInfo{
+					name:  "packagemgr",
+					isDir: false,
+					mode:  0755,
 				},
-				dirs: make(map[string]*mockFileInfo),
 			}
 
 			// Test RPM detection for apt
 			if tc.expectName == "apt" {
-				mockFS.files["/usr/bin/rpm"] = &mockFile{
+				fileSystem.files["/usr/bin/rpm"] = &mockFile{
 					info: &mockFileInfo{
 						name:  "rpm",
 						isDir: false,
@@ -284,13 +280,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic(t *testing.T) {
 				}
 			}
 
-			mockTransport := &mockTransport{
-				commandOutput: "",
-				shouldError:   tc.expectName == "apt", // Simulate RPM check failure for apt
-			}
-
 			pmInfo := newPackageManagerInfo()
-			err := pmInfo.populatePackageManagerInfo(osInfo, mockTransport, mockFS)
+			err := pmInfo.populatePackageManagerInfo(osInfo, transport, fileSystem)
 
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -316,33 +307,29 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AptRpmBacked(t *testing.T
 		families: util.NewSet("linux", "unknown"),
 	}
 
-	mockFS := &mockFileSystem{
-		files: map[string]*mockFile{
-			"/usr/bin/apt-get": {
-				info: &mockFileInfo{
-					name:  "apt-get",
-					isDir: false,
-					mode:  0755,
-				},
-			},
-			"/usr/bin/rpm": {
-				info: &mockFileInfo{
-					name:  "rpm",
-					isDir: false,
-					mode:  0755,
-				},
-			},
-		},
-		dirs: make(map[string]*mockFileInfo),
+	transport := newMockTransport()
+	transport.commandResponses["/usr/bin/rpm -q --whatprovides apt"] = &commandResponse{
+		stdout: "some-package-provides-apt",
 	}
 
-	mockTransport := &mockTransport{
-		commandOutput: "some-package-provides-apt",
-		shouldError:   false, // Simulate successful RPM check
+	fileSystem := transport.fileSystem
+	fileSystem.files["/usr/bin/apt-get"] = &mockFile{
+		info: &mockFileInfo{
+			name:  "apt-get",
+			isDir: false,
+			mode:  0755,
+		},
+	}
+	fileSystem.files["/usr/bin/rpm"] = &mockFile{
+		info: &mockFileInfo{
+			name:  "rpm",
+			isDir: false,
+			mode:  0755,
+		},
 	}
 
 	pmInfo := newPackageManagerInfo()
-	err := pmInfo.populatePackageManagerInfo(osInfo, mockTransport, mockFS)
+	err := pmInfo.populatePackageManagerInfo(osInfo, transport, fileSystem)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

@@ -317,6 +317,13 @@ func TestSSHTransportIntegrationFileSystem(t *testing.T) {
 		t.Fatal("FileSystem returned nil")
 	}
 
+	err = fs.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect to file system: %v", err)
+	}
+
+	defer fs.Close()
+
 	// Create a test file first via SSH command
 	ctx := context.Background()
 	testContent := "Hello from SSH file system test"
@@ -346,17 +353,31 @@ func TestSSHTransportIntegrationFileSystem(t *testing.T) {
 		t.Error("Expected error when stating non-existent file")
 	}
 
-	// Test Open (Note: This might be tricky due to SFTP session management)
-	// The current implementation has a bug where it closes the SFTP session
-	// before returning the file, which would make the file unusable
-	// For now, we'll just test that Open doesn't panic and returns an error or file
+	// Test Open
 	file, err := fs.Open("/tmp/ssh_test_file.txt")
 	if err != nil {
 		// This is expected with the current implementation
-		t.Logf("Open failed as expected due to SFTP session closure: %v", err)
-	} else if file != nil {
-		// If it succeeds, clean up
-		file.Close()
+		t.Fatalf("Open failed as expected due to SFTP session closure: %v", err)
+	}
+
+	if file == nil {
+		t.Fatal("Open returned nil file")
+	}
+
+	// Read the content of the file
+	content := make([]byte, len(testContent))
+	n, err := file.Read(content)
+	if err != nil {
+		t.Fatalf("Failed to read from test file: %v", err)
+	}
+	file.Close()
+
+	if n != len(testContent) {
+		t.Errorf("Expected to read %d bytes, got %d", len(testContent), n)
+	}
+
+	if string(content) != testContent {
+		t.Errorf("Expected file content '%s', got '%s'", testContent, string(content))
 	}
 
 	// Clean up

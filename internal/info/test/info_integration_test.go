@@ -203,25 +203,23 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 	}
 }
 
-func TestHostInfo_SSH_Integration_CompareWithLocal(t *testing.T) {
+func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
 
-	// Test that SSH transport gives same results as local transport on Linux
 	setupVagrantEnvironment(t)
 
-	// Get info via SSH
 	sshBuilder, err := transport.NewSSHBuilder()
 	if err != nil {
 		t.Fatalf("failed to create SSH builder: %v", err)
 	}
 
 	sshTransport, err := sshBuilder.
-		Host(linuxHost).
-		Port(linuxPort).
-		User(linuxUser).
-		PasswordAuth(linuxPassword).
+		Host(cmdHost).
+		Port(cmdPort).
+		User(cmdUser).
+		PasswordAuth(cmdPassword).
 		DontUseKnownHosts().
 		Build()
 	if err != nil {
@@ -234,30 +232,72 @@ func TestHostInfo_SSH_Integration_CompareWithLocal(t *testing.T) {
 		t.Fatalf("failed to connect SSH transport: %v", err)
 	}
 
-	sshHostInfo := info.NewHostInfo()
-	err = sshHostInfo.Populate(sshTransport)
+	hostInfo := info.NewHostInfo()
+	err = hostInfo.Populate(sshTransport)
 	if err != nil {
 		t.Fatalf("failed to populate host info via SSH: %v", err)
 	}
 
-	sshValues := sshHostInfo.ToMapOfCtyValues()
+	values := hostInfo.ToMapOfCtyValues()
 
-	// Architecture and basic OS info should be consistent
-	// Note: We can't directly compare with local transport here since we're
-	// running tests on the host system, not in the VM. This test serves
-	// as a basic validation that SSH transport works.
+	// Verify that we have expected keys
+	expectedKeys := []string{
+		"os_families",
+		"os_id",
+		"os_friendly_name",
+		"os_architecture",
+		"processor_architecture",
+		"selinux_status",
+		"apparmor_enabled",
+		"fips_enabled",
+		"package_manager_name",
+		"package_manager_path",
+	}
 
-	if osArch, exists := sshValues["os_architecture"]; exists && !osArch.IsNull() {
-		arch := osArch.AsString()
-		if arch == "" {
-			t.Error("expected OS architecture to be populated via SSH")
+	for _, key := range expectedKeys {
+		if _, exists := values[key]; !exists {
+			t.Errorf("expected key %q to be present in values map", key)
 		}
 	}
 
-	if procArch, exists := sshValues["processor_architecture"]; exists && !procArch.IsNull() {
-		arch := procArch.AsString()
-		if arch == "" {
-			t.Error("expected processor architecture to be populated via SSH")
+	// Verify Windows-specific expectations
+	if osFamilies, exists := values["os_families"]; exists && !osFamilies.IsNull() {
+		// Convert to string slice to check families
+		familiesSlice := make([]string, 0)
+		osFamilies.ForEachElement(func(key, val cty.Value) (stop bool) {
+			familiesSlice = append(familiesSlice, val.AsString())
+			return false
+		})
+
+		foundWindows := false
+		for _, family := range familiesSlice {
+			if family == "windows" {
+				foundWindows = true
+			}
+		}
+
+		if !foundWindows {
+			t.Error("expected 'windows' family to be present in OS families")
+		}
+	}
+
+	// On Windows, SELinux and AppArmor should be null/not supported
+	if selinuxStatus, exists := values["selinux_status"]; exists {
+		if !selinuxStatus.IsNull() {
+			t.Error("expected SELinux status to be null on Windows")
+		}
+	}
+
+	if appArmorEnabled, exists := values["apparmor_enabled"]; exists {
+		if !appArmorEnabled.IsNull() {
+			t.Error("expected AppArmor enabled to be null on Windows")
+		}
+	}
+
+	// FIPS should be known on Windows
+	if fipsEnabled, exists := values["fips_enabled"]; exists {
+		if fipsEnabled.IsNull() {
+			t.Error("expected FIPS enabled to be known (not null) on Windows")
 		}
 	}
 }

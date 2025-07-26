@@ -62,7 +62,7 @@ func (o *osInfo) populatePosixArchitecture(transport transport.Transport) error 
 	o.osArch = arch
 
 	archBits, exists := architectureBitsMap[arch]
-	if !exists {
+	if !exists { // This should not happen, but handle it gracefully
 		log.Warnf("unknown architecture bits for %q detected", arch)
 		o.procArchBits = 0
 		o.osArchBits = 0
@@ -93,8 +93,8 @@ func (o *osInfo) populateDarwinOSInfo(transport transport.Transport) error {
 	}
 
 	o.id = "darwin"
-	o.friendlyName = "macOS"
 	o.version = strings.TrimSpace(stdout)
+	o.friendlyName = "macOS " + o.version
 
 	versionParts := strings.Split(o.version, ".")
 	o.majorVersion = versionParts[0]
@@ -186,9 +186,14 @@ func (o *osInfo) populateLinuxOSInfo(transport transport.Transport, fileSystem t
 		}
 	}
 
-	osID, exists = osIDCorrectionMap[o.id]
+	correctedId, exists := osIDCorrectionMap[o.id]
 	if exists {
-		o.id = osID // Correct the ID if it exists in the correction map to make it consistent and identifiable
+		o.id = correctedId // Correct the ID if it exists in the correction map to make it consistent and identifiable
+	}
+
+	versionParts := strings.Split(o.version, ".")
+	if len(versionParts) > 0 {
+		o.majorVersion = strings.TrimLeft(strings.TrimSpace(versionParts[0]), "vV")
 	}
 
 	osFamilies, exists := osFamiliesMap[o.id]
@@ -256,9 +261,9 @@ func (o *osInfo) parseOSReleaseFileContent(file transport.File) (map[string]stri
 
 func (o *osInfo) parseLSBReleaseOutput(transport transport.Transport) (map[string]string, error) {
 
-	stdout, _, err := transport.ExecuteCommand(context.Background(), "lsb_release -a")
+	stdout, _, err := transport.ExecuteCommand(context.Background(), "/usr/bin/lsb_release -a")
 	if err != nil {
-		return map[string]string{}, fmt.Errorf("failed to execute lsb_release command: %w", err)
+		return map[string]string{}, fmt.Errorf("failed to execute /usr/bin/lsb_release command: %w", err)
 	}
 
 	content := make(map[string]string)

@@ -141,6 +141,16 @@ func newLocalFileSystem() FileSystem {
 	return &localFileSystem{}
 }
 
+// Connect implements FileSystem.
+func (l *localFileSystem) Connect() error {
+	return nil // No connection needed for local file system
+}
+
+// Close implements FileSystem.
+func (l *localFileSystem) Close() error {
+	return nil // No connection needed for local file system
+}
+
 // IsNull implements FileSystem.
 func (l *localFileSystem) IsNull() bool {
 	return false // Local file system is always available
