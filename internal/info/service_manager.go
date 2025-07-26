@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path"
 	"strconv"
 	"strings"
 
@@ -74,7 +73,11 @@ func (s *serviceManagerInfo) getProcess1FromVirtualFile(transport transport.Tran
 		return fmt.Errorf("got imprecise or unexpected value in /proc/1/comm: %s", proc1)
 	}
 
-	proc1 = path.Base(proc1)
+	pathParts := strings.Split(proc1, "/") // Not using path.Base here for cross-platform compatibility
+	if len(pathParts) > 0 {
+		proc1 = pathParts[len(pathParts)-1]
+	}
+
 	if correctedName, ok := serviceManagerCorrectionMap[proc1]; ok {
 		proc1 = correctedName
 	}
@@ -97,7 +100,11 @@ func (s *serviceManagerInfo) getProcess1FromInitLink(transport transport.Transpo
 		return fmt.Errorf("got imprecise or unexpected value in /sbin/init link: %s", proc1)
 	}
 
-	proc1 = path.Base(proc1)
+	pathParts := strings.Split(proc1, "/") // Not using path.Base here for cross-platform compatibility
+	if len(pathParts) > 0 {
+		proc1 = pathParts[len(pathParts)-1]
+	}
+
 	if correctedName, ok := serviceManagerCorrectionMap[proc1]; ok {
 		proc1 = correctedName
 	}
