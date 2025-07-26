@@ -17,6 +17,7 @@ type HostInfo struct {
 	fipsInfo           *fipsInfo
 	packageManagerInfo *packageManagerInfo
 	serviceManagerInfo *serviceManagerInfo
+	userInfo           *userInfo
 }
 
 func NewHostInfo() *HostInfo {
@@ -27,6 +28,7 @@ func NewHostInfo() *HostInfo {
 		fipsInfo:           newFipsInfo(),
 		packageManagerInfo: newPackageManagerInfo(),
 		serviceManagerInfo: newServiceManagerInfo(),
+		userInfo:           newUserInfo(),
 	}
 }
 
@@ -52,6 +54,10 @@ func (i *HostInfo) GetPackageManagerInfo() *packageManagerInfo {
 
 func (i *HostInfo) GetServiceManagerInfo() *serviceManagerInfo {
 	return i.serviceManagerInfo
+}
+
+func (i *HostInfo) GetUserInfo() *userInfo {
+	return i.userInfo
 }
 
 func (i *HostInfo) Populate(transport transport.Transport) error {
@@ -120,6 +126,15 @@ func (i *HostInfo) Populate(transport transport.Transport) error {
 		log.Warn("Service Manager info population skipped due to OS info failure")
 	}
 
+	if !osInfoFailed {
+		err = i.userInfo.populateUserInfo(i.osInfo, transport)
+		if err != nil {
+			log.Errorf("failed to populate User info: %v", err)
+		}
+	} else {
+		log.Warn("User info population skipped due to OS info failure")
+	}
+
 	return nil
 }
 
@@ -132,6 +147,7 @@ func (i *HostInfo) ToMapOfCtyValues() map[string]cty.Value {
 	maps.Copy(values, i.fipsInfo.toMapOfCtyValues())
 	maps.Copy(values, i.packageManagerInfo.toMapOfCtyValues())
 	maps.Copy(values, i.serviceManagerInfo.toMapOfCtyValues())
+	maps.Copy(values, i.userInfo.toMapOfCtyValues())
 
 	return values
 }
@@ -155,6 +171,9 @@ func (i *HostInfo) String() string {
 	stringBuilder.WriteString("\n")
 
 	stringBuilder.WriteString(i.serviceManagerInfo.String())
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString(i.userInfo.String())
 
 	return stringBuilder.String()
 }

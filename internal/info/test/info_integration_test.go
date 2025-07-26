@@ -171,6 +171,30 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 			t.Errorf("expected Service Manager name to be 'systemd', got '%s'", serviceManagerInfo.Name())
 		}
 	}
+
+	userInfo := hostInfo.GetUserInfo()
+	if userInfo == nil {
+		t.Error("expected User info to be populated")
+	} else {
+		if userInfo.Name() != "vagrant" {
+			t.Errorf("expected User name to be 'vagrant', got '%s'", userInfo.Name())
+		}
+		if userInfo.UserId() != "1000" {
+			t.Errorf("expected User ID to be '1000', got '%s'", userInfo.UserId())
+		}
+		if userInfo.GroupId() != "1000" {
+			t.Errorf("expected Group ID to be '1000', got '%s'", userInfo.GroupId())
+		}
+		if userInfo.HomeDir() != "/home/vagrant" {
+			t.Errorf("expected Home Directory to be '/home/vagrant', got '%s'", userInfo.HomeDir())
+		}
+		if userInfo.Shell() != "/bin/bash" {
+			t.Errorf("expected Shell to be '/bin/bash', got '%s'", userInfo.Shell())
+		}
+		if userInfo.Gecos() != "vagrant" {
+			t.Errorf("expected GECOS to be 'vagrant', got '%s'", userInfo.Gecos())
+		}
+	}
 }
 
 func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
@@ -313,6 +337,30 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 			t.Errorf("expected Service Manager name to be 'windows-service-manager', got '%s'", serviceManagerInfo.Name())
 		}
 	}
+
+	userInfo := hostInfo.GetUserInfo()
+	if userInfo == nil {
+		t.Error("expected User info to be populated")
+	} else {
+		if userInfo.Name() != "vagrant" {
+			t.Errorf("expected User name to be 'vagrant', got '%s'", userInfo.Name())
+		}
+		if !strings.HasPrefix(userInfo.UserId(), "S-1-5-21-") || !strings.HasSuffix(userInfo.UserId(), "-1000") {
+			t.Errorf("expected User ID to start with 'S-1-5-21-' and end with '-1000', got '%s'", userInfo.UserId())
+		}
+		if userInfo.GroupId() != "" {
+			t.Errorf("expected Group ID to be empty on Windows, got '%s'", userInfo.GroupId())
+		}
+		if userInfo.HomeDir() != "C:\\Users\\vagrant" {
+			t.Errorf("expected Home Directory to be 'C:\\Users\\vagrant', got '%s'", userInfo.HomeDir())
+		}
+		if userInfo.Shell() != "" {
+			t.Errorf("expected Shell to be empty on Windows, got '%s'", userInfo.Shell())
+		}
+		if userInfo.Gecos() != "" {
+			t.Errorf("expected GECOS to be empty on Windows, got '%s'", userInfo.Gecos())
+		}
+	}
 }
 
 func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
@@ -453,6 +501,30 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 	} else {
 		if serviceManagerInfo.Name() != "windows-service-manager" {
 			t.Errorf("expected Service Manager name to be 'windows-service-manager', got '%s'", serviceManagerInfo.Name())
+		}
+	}
+
+	userInfo := hostInfo.GetUserInfo()
+	if userInfo == nil {
+		t.Error("expected User info to be populated")
+	} else {
+		if userInfo.Name() != "vagrant" {
+			t.Errorf("expected User name to be 'vagrant', got '%s'", userInfo.Name())
+		}
+		if !strings.HasPrefix(userInfo.UserId(), "S-1-5-21-") || !strings.HasSuffix(userInfo.UserId(), "-1000") {
+			t.Errorf("expected User ID to start with 'S-1-5-21-' and end with '-1000', got '%s'", userInfo.UserId())
+		}
+		if userInfo.GroupId() != "" {
+			t.Errorf("expected Group ID to be empty on Windows, got '%s'", userInfo.GroupId())
+		}
+		if userInfo.HomeDir() != "C:\\Users\\vagrant" {
+			t.Errorf("expected Home Directory to be 'C:\\Users\\vagrant', got '%s'", userInfo.HomeDir())
+		}
+		if userInfo.Shell() != "" {
+			t.Errorf("expected Shell to be empty on Windows, got '%s'", userInfo.Shell())
+		}
+		if userInfo.Gecos() != "" {
+			t.Errorf("expected GECOS to be empty on Windows, got '%s'", userInfo.Gecos())
 		}
 	}
 }
