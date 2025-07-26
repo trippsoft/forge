@@ -3,6 +3,8 @@ package info
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/trippsoft/forge/internal/transport"
 	"github.com/trippsoft/forge/internal/util"
@@ -129,6 +131,54 @@ func newOSInfo() *osInfo {
 	}
 }
 
+func (o *osInfo) Families() *util.Set[string] {
+	return o.families
+}
+
+func (o *osInfo) Id() string {
+	return o.id
+}
+
+func (o *osInfo) FriendlyName() string {
+	return o.friendlyName
+}
+
+func (o *osInfo) Release() string {
+	return o.release
+}
+
+func (o *osInfo) MajorVersion() string {
+	return o.majorVersion
+}
+
+func (o *osInfo) Version() string {
+	return o.version
+}
+
+func (o *osInfo) Edition() string {
+	return o.edition
+}
+
+func (o *osInfo) EditionId() string {
+	return o.editionId
+}
+
+func (o *osInfo) OsArch() string {
+	return o.osArch
+}
+
+func (o *osInfo) OsArchBits() int {
+	return o.osArchBits
+}
+
+func (o *osInfo) ProcArch() string {
+	return o.procArch
+}
+
+func (o *osInfo) ProcArchBits() int {
+	return o.procArchBits
+}
+
 func (o *osInfo) populateOSInfo(transport transport.Transport, fileSystem transport.FileSystem) error {
 
 	_, _, err := transport.ExecuteCommand(context.Background(), "uname -s")
@@ -230,4 +280,81 @@ func (o *osInfo) toMapOfCtyValues() map[string]cty.Value {
 	}
 
 	return values
+}
+
+// String returns a string representation of the OS information.
+// This is useful for logging or debugging purposes.
+func (o *osInfo) String() string {
+
+	stringBuilder := &strings.Builder{}
+
+	stringBuilder.WriteString("os_families: ")
+
+	if o.families.Size() == 0 {
+		stringBuilder.WriteString("none\n")
+	} else {
+		for i, family := range o.families.Items() {
+
+			if i > 0 {
+				stringBuilder.WriteString(", ")
+			}
+
+			stringBuilder.WriteString(family)
+		}
+
+		stringBuilder.WriteString("\n")
+	}
+
+	stringBuilder.WriteString("os_id: ")
+	stringBuilder.WriteString(o.id)
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_friendly_name: ")
+	stringBuilder.WriteString(o.friendlyName)
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_release: ")
+	stringBuilder.WriteString(o.release)
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_major_version: ")
+	stringBuilder.WriteString(o.majorVersion)
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_version: ")
+	stringBuilder.WriteString(o.version)
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_edition: ")
+	stringBuilder.WriteString(o.edition)
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_edition_id: ")
+	stringBuilder.WriteString(o.editionId)
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_architecture: ")
+	stringBuilder.WriteString(o.osArch)
+	stringBuilder.WriteString("\n")
+
+	if o.osArchBits == 0 {
+		stringBuilder.WriteString("os_architecture_bits: unknown\n")
+	} else {
+		stringBuilder.WriteString("os_architecture_bits: ")
+		fmt.Fprintf(stringBuilder, "%d", o.osArchBits)
+		stringBuilder.WriteString("\n")
+	}
+
+	stringBuilder.WriteString("processor_architecture: ")
+	stringBuilder.WriteString(o.procArch)
+	stringBuilder.WriteString("\n")
+
+	if o.procArchBits == 0 {
+		stringBuilder.WriteString("processor_architecture_bits: unknown")
+	} else {
+		stringBuilder.WriteString("processor_architecture_bits: ")
+		fmt.Fprintf(stringBuilder, "%d", o.procArchBits)
+	}
+
+	return stringBuilder.String()
 }

@@ -22,6 +22,14 @@ func newAppArmorInfo() *appArmorInfo {
 	}
 }
 
+func (a *appArmorInfo) Supported() bool {
+	return a.supported
+}
+
+func (a *appArmorInfo) Enabled() bool {
+	return a.enabled
+}
+
 func (a *appArmorInfo) populateAppArmorInfo(osInfo *osInfo, fileSystem transport.FileSystem) error {
 
 	if !osInfo.families.Contains("linux") {
@@ -57,4 +65,15 @@ func (a *appArmorInfo) toMapOfCtyValues() map[string]cty.Value {
 	return map[string]cty.Value{
 		"apparmor_enabled": cty.BoolVal(a.enabled),
 	}
+}
+
+// String returns a string representation of the AppArmor information.
+// This is useful for logging or debugging purposes.
+func (a *appArmorInfo) String() string {
+
+	if !a.supported {
+		return "apparmor_enabled: not supported"
+	}
+
+	return fmt.Sprintf("apparmor_enabled: %t", a.enabled)
 }

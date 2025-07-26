@@ -3,6 +3,7 @@ package info
 import (
 	"errors"
 	"maps"
+	"strings"
 
 	"github.com/trippsoft/forge/internal/log"
 	"github.com/trippsoft/forge/internal/transport"
@@ -27,6 +28,30 @@ func NewHostInfo() *HostInfo {
 		packageManagerInfo: newPackageManagerInfo(),
 		serviceManagerInfo: newServiceManagerInfo(),
 	}
+}
+
+func (i *HostInfo) GetOSInfo() *osInfo {
+	return i.osInfo
+}
+
+func (i *HostInfo) GetSELinuxInfo() *selinuxInfo {
+	return i.selinuxInfo
+}
+
+func (i *HostInfo) GetAppArmorInfo() *appArmorInfo {
+	return i.appArmorInfo
+}
+
+func (i *HostInfo) GetFipsInfo() *fipsInfo {
+	return i.fipsInfo
+}
+
+func (i *HostInfo) GetPackageManagerInfo() *packageManagerInfo {
+	return i.packageManagerInfo
+}
+
+func (i *HostInfo) GetServiceManagerInfo() *serviceManagerInfo {
+	return i.serviceManagerInfo
 }
 
 func (i *HostInfo) Populate(transport transport.Transport) error {
@@ -109,4 +134,27 @@ func (i *HostInfo) ToMapOfCtyValues() map[string]cty.Value {
 	maps.Copy(values, i.serviceManagerInfo.toMapOfCtyValues())
 
 	return values
+}
+
+func (i *HostInfo) String() string {
+	stringBuilder := &strings.Builder{}
+
+	stringBuilder.WriteString(i.osInfo.String())
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString(i.selinuxInfo.String())
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString(i.appArmorInfo.String())
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString(i.fipsInfo.String())
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString(i.packageManagerInfo.String())
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString(i.serviceManagerInfo.String())
+
+	return stringBuilder.String()
 }

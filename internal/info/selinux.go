@@ -45,6 +45,22 @@ func newSELinuxInfo() *selinuxInfo {
 	}
 }
 
+func (s *selinuxInfo) Supported() bool {
+	return s.supported
+}
+
+func (s *selinuxInfo) Installed() bool {
+	return s.installed
+}
+
+func (s *selinuxInfo) Status() selinuxStatus {
+	return s.status
+}
+
+func (s *selinuxInfo) SelinuxType() selinuxType {
+	return s.selinuxType
+}
+
 func (s *selinuxInfo) populateSelinuxInfo(osInfo *osInfo, fileSystem transport.FileSystem) error {
 
 	if !osInfo.families.Contains("linux") {
@@ -132,4 +148,35 @@ func (s *selinuxInfo) toMapOfCtyValues() map[string]cty.Value {
 		"selinux_status":    cty.StringVal(string(s.status)),
 		"selinux_type":      cty.StringVal(string(s.selinuxType)),
 	}
+}
+
+// String returns a string representation of the SELinux information.
+// This is useful for logging or debugging purposes.
+func (s *selinuxInfo) String() string {
+
+	stringBuilder := &strings.Builder{}
+	if !s.supported {
+		stringBuilder.WriteString("selinux_installed: not supported on this OS\n")
+		stringBuilder.WriteString("selinux_status: not supported on this OS\n")
+		stringBuilder.WriteString("selinux_type: not supported on this OS")
+
+		return stringBuilder.String()
+	}
+
+	if !s.installed {
+		stringBuilder.WriteString("selinux_installed: false\n")
+		stringBuilder.WriteString("selinux_status: not installed\n")
+		stringBuilder.WriteString("selinux_type: not installed\n")
+
+		return stringBuilder.String()
+	}
+
+	stringBuilder.WriteString("selinux_installed: true\n")
+	stringBuilder.WriteString("selinux_status: ")
+	stringBuilder.WriteString(string(s.status))
+	stringBuilder.WriteString("\n")
+	stringBuilder.WriteString("selinux_type: ")
+	stringBuilder.WriteString(string(s.selinuxType))
+
+	return stringBuilder.String()
 }

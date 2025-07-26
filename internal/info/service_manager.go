@@ -27,6 +27,10 @@ func newServiceManagerInfo() *serviceManagerInfo {
 	return &serviceManagerInfo{}
 }
 
+func (s *serviceManagerInfo) Name() string {
+	return s.name
+}
+
 func (s *serviceManagerInfo) populateServiceManagerInfo(osInfo *osInfo, transport transport.Transport, fileSystem transport.FileSystem) error {
 
 	if osInfo.families.Contains("windows") {
@@ -190,4 +194,15 @@ func (s *serviceManagerInfo) toMapOfCtyValues() map[string]cty.Value {
 	return map[string]cty.Value{
 		"service_manager": cty.StringVal(s.name),
 	}
+}
+
+// String returns a string representation of the service manager information.
+// This is useful for logging or debugging purposes.
+func (s *serviceManagerInfo) String() string {
+
+	if s.name == "" {
+		return "service_manager: unknown"
+	}
+
+	return fmt.Sprintf("service_manager: %s", s.name)
 }

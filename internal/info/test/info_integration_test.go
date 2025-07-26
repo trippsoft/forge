@@ -1,11 +1,11 @@
 package test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/trippsoft/forge/internal/info"
 	"github.com/trippsoft/forge/internal/transport"
-	"github.com/zclconf/go-cty/cty"
 )
 
 func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
@@ -43,64 +43,133 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 		t.Fatalf("failed to populate host info via SSH: %v", err)
 	}
 
-	values := hostInfo.ToMapOfCtyValues()
-
-	// Verify that we have expected keys
-	expectedKeys := []string{
-		"os_families",
-		"os_id",
-		"os_friendly_name",
-		"os_architecture",
-		"processor_architecture",
-		"selinux_status",
-		"apparmor_enabled",
-		"fips_enabled",
-		"package_manager_name",
-		"package_manager_path",
-	}
-
-	for _, key := range expectedKeys {
-		if _, exists := values[key]; !exists {
-			t.Errorf("expected key %q to be present in values map", key)
-		}
-	}
-
-	// Verify Linux-specific expectations
-	if osFamilies, exists := values["os_families"]; exists && !osFamilies.IsNull() {
-		// Convert to string slice to check families
-		familiesSlice := make([]string, 0)
-		osFamilies.ForEachElement(func(key, val cty.Value) (stop bool) {
-			familiesSlice = append(familiesSlice, val.AsString())
-			return false
-		})
-
-		foundPosix := false
-		foundLinux := false
-		for _, family := range familiesSlice {
-			if family == "posix" {
-				foundPosix = true
-			}
-			if family == "linux" {
-				foundLinux = true
-			}
-		}
-
-		if !foundPosix {
-			t.Error("expected 'posix' family to be present in OS families")
-		}
-		if !foundLinux {
-			t.Error("expected 'linux' family to be present in OS families")
-		}
-	}
-
-	// Verify that architecture information is populated
-	if osArch, exists := values["os_architecture"]; exists && !osArch.IsNull() {
-		arch := osArch.AsString()
-		if arch == "" {
-			t.Error("expected OS architecture to be non-empty")
-		}
+	osInfo := hostInfo.GetOSInfo()
+	if osInfo == nil {
+		t.Error("expected OS info to be populated")
 	} else {
-		t.Error("expected OS architecture to be present and non-null")
+		families := osInfo.Families()
+		if !families.Contains("posix") {
+			t.Error("expected OS families to contain 'posix'")
+		}
+		if !families.Contains("linux") {
+			t.Error("expected OS families to contain 'linux'")
+		}
+		if !families.Contains("el") {
+			t.Error("expected OS families to contain 'el'")
+		}
+		if !families.Contains("rocky") {
+			t.Error("expected OS families to contain 'rocky'")
+		}
+		if families.Size() != 4 {
+			t.Errorf("expected OS families to have size 4, got %d", families.Size())
+		}
+
+		if osInfo.Id() != "rocky" {
+			t.Errorf("expected OS ID to be 'rocky', got '%s'", osInfo.Id())
+		}
+
+		if !strings.Contains(osInfo.FriendlyName(), "Rocky Linux 9") {
+			t.Errorf("expected OS friendly name to contain 'Rocky Linux 9', got '%s'", osInfo.FriendlyName())
+		}
+
+		if osInfo.Release() != "" {
+			t.Errorf("expected OS release to be empty, got '%s'", osInfo.Release())
+		}
+
+		if osInfo.MajorVersion() != "9" {
+			t.Errorf("expected OS major version to be '9', got '%s'", osInfo.MajorVersion())
+		}
+
+		if !strings.Contains(osInfo.Version(), "9") || osInfo.Version() == "9" {
+			t.Errorf("expected OS version to contain '9', got '%s'", osInfo.Version())
+		}
+
+		if osInfo.Edition() != "" {
+			t.Errorf("expected OS edition to be empty, got '%s'", osInfo.Edition())
+		}
+
+		if osInfo.EditionId() != "" {
+			t.Errorf("expected OS edition ID to be empty, got '%s'", osInfo.EditionId())
+		}
+
+		if osInfo.OsArch() != "amd64" {
+			t.Errorf("expected OS architecture to be 'amd64', got '%s'", osInfo.OsArch())
+		}
+
+		if osInfo.OsArchBits() != 64 {
+			t.Errorf("expected OS architecture bits to be 64, got %d", osInfo.OsArchBits())
+		}
+
+		if osInfo.ProcArch() != "amd64" {
+			t.Errorf("expected processor architecture to be 'amd64', got '%s'", osInfo.ProcArch())
+		}
+
+		if osInfo.ProcArchBits() != 64 {
+			t.Errorf("expected processor architecture bits to be 64, got %d", osInfo.ProcArchBits())
+		}
+	}
+
+	selinuxInfo := hostInfo.GetSELinuxInfo()
+	if selinuxInfo == nil {
+		t.Error("expected SELinux info to be populated")
+	} else {
+		if !selinuxInfo.Supported() {
+			t.Error("expected SELinux to be supported on Rocky Linux")
+		}
+		if !selinuxInfo.Installed() {
+			t.Error("expected SELinux to be installed on Rocky Linux")
+		}
+		if selinuxInfo.Status() != info.SelinuxEnforcing {
+			t.Errorf("expected SELinux status to be 'enforcing', got '%s'", selinuxInfo.Status())
+		}
+		if selinuxInfo.SelinuxType() != info.SelinuxTypeTargeted {
+			t.Errorf("expected SELinux type to be 'targeted', got '%s'", selinuxInfo.SelinuxType())
+		}
+	}
+
+	appArmorInfo := hostInfo.GetAppArmorInfo()
+	if appArmorInfo == nil {
+		t.Error("expected AppArmor info to be populated")
+	} else {
+		if !appArmorInfo.Supported() {
+			t.Error("expected AppArmor to be supported on Rocky Linux")
+		}
+		if appArmorInfo.Enabled() {
+			t.Error("expected AppArmor to be disabled on Rocky Linux")
+		}
+	}
+
+	fipsInfo := hostInfo.GetFipsInfo()
+	if fipsInfo == nil {
+		t.Error("expected FIPS info to be populated")
+	} else {
+		if !fipsInfo.Known() {
+			t.Error("expected FIPS info to be known on Rocky Linux")
+		}
+		if fipsInfo.Enabled() {
+			t.Error("expected FIPS to be disabled on Rocky Linux")
+		}
+	}
+
+	packageManagerInfo := hostInfo.GetPackageManagerInfo()
+	if packageManagerInfo == nil {
+		t.Error("expected Package Manager info to be populated")
+	} else {
+		if packageManagerInfo.Name() != "dnf" {
+			t.Errorf("expected Package Manager name to be 'dnf', got '%s'", packageManagerInfo.Name())
+		}
+		if packageManagerInfo.Path() != "/usr/bin/dnf-3" {
+			t.Errorf("expected Package Manager path to be '/usr/bin/dnf-3', got '%s'", packageManagerInfo.Path())
+		}
+	}
+
+	serviceManagerInfo := hostInfo.GetServiceManagerInfo()
+	if serviceManagerInfo == nil {
+		t.Error("expected Service Manager info to be populated")
+	} else {
+		if serviceManagerInfo.Name() != "systemd" {
+			t.Errorf("expected Service Manager name to be 'systemd', got '%s'", serviceManagerInfo.Name())
+		}
 	}
 }
 
@@ -139,66 +208,109 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 		t.Fatalf("failed to populate host info via SSH: %v", err)
 	}
 
-	values := hostInfo.ToMapOfCtyValues()
+	osInfo := hostInfo.GetOSInfo()
+	if osInfo == nil {
+		t.Error("expected OS info to be populated")
+	} else {
+		families := osInfo.Families()
+		if !families.Contains("windows") {
+			t.Error("expected OS families to contain 'windows'")
+		}
+		if !families.Contains("windows-server") {
+			t.Error("expected OS families to contain 'windows-server'")
+		}
+		if families.Size() != 2 {
+			t.Errorf("expected OS families to have size 2, got %d", families.Size())
+		}
 
-	// Verify that we have expected keys
-	expectedKeys := []string{
-		"os_families",
-		"os_id",
-		"os_friendly_name",
-		"os_architecture",
-		"processor_architecture",
-		"selinux_status",
-		"apparmor_enabled",
-		"fips_enabled",
-		"package_manager_name",
-		"package_manager_path",
-	}
+		if osInfo.Id() != "windows-server" {
+			t.Errorf("expected OS ID to be 'windows-server', got '%s'", osInfo.Id())
+		}
 
-	for _, key := range expectedKeys {
-		if _, exists := values[key]; !exists {
-			t.Errorf("expected key %q to be present in values map", key)
+		if !strings.Contains(osInfo.FriendlyName(), "Microsoft Windows Server 2025 Datacenter") {
+			t.Errorf("expected OS friendly name to contain 'Microsoft Windows Server 2025 Datacenter', got '%s'", osInfo.FriendlyName())
+		}
+
+		if osInfo.Release() != "server-2025" {
+			t.Errorf("expected OS release to be 'server-2025', got '%s'", osInfo.Release())
+		}
+
+		if osInfo.MajorVersion() != "10" {
+			t.Errorf("expected OS major version to be '10', got '%s'", osInfo.MajorVersion())
+		}
+
+		if osInfo.Version() != "10.0.26100.0" {
+			t.Errorf("expected OS version to be '10.0.26100.0', got '%s'", osInfo.Version())
+		}
+
+		if osInfo.Edition() != "Datacenter" {
+			t.Errorf("expected OS edition to be 'Datacenter', got '%s'", osInfo.Edition())
+		}
+
+		if osInfo.EditionId() != "datacenter" {
+			t.Errorf("expected OS edition ID to be 'datacenter', got '%s'", osInfo.EditionId())
+		}
+
+		if osInfo.OsArch() != "amd64" {
+			t.Errorf("expected OS architecture to be 'amd64', got '%s'", osInfo.OsArch())
+		}
+
+		if osInfo.OsArchBits() != 64 {
+			t.Errorf("expected OS architecture bits to be 64, got %d", osInfo.OsArchBits())
+		}
+
+		if osInfo.ProcArch() != "amd64" {
+			t.Errorf("expected processor architecture to be 'amd64', got '%s'", osInfo.ProcArch())
+		}
+
+		if osInfo.ProcArchBits() != 64 {
+			t.Errorf("expected processor architecture bits to be 64, got %d", osInfo.ProcArchBits())
 		}
 	}
 
-	// Verify Windows-specific expectations
-	if osFamilies, exists := values["os_families"]; exists && !osFamilies.IsNull() {
-		// Convert to string slice to check families
-		familiesSlice := make([]string, 0)
-		osFamilies.ForEachElement(func(key, val cty.Value) (stop bool) {
-			familiesSlice = append(familiesSlice, val.AsString())
-			return false
-		})
-
-		foundWindows := false
-		for _, family := range familiesSlice {
-			if family == "windows" {
-				foundWindows = true
-			}
-		}
-
-		if !foundWindows {
-			t.Error("expected 'windows' family to be present in OS families")
+	selinuxInfo := hostInfo.GetSELinuxInfo()
+	if selinuxInfo == nil {
+		t.Error("expected SELinux info to be populated")
+	} else {
+		if selinuxInfo.Supported() {
+			t.Error("expected SELinux to be unsupported on Windows")
 		}
 	}
 
-	// On Windows, SELinux and AppArmor should be null/not supported
-	if selinuxStatus, exists := values["selinux_status"]; exists {
-		if !selinuxStatus.IsNull() {
-			t.Error("expected SELinux status to be null on Windows")
+	appArmorInfo := hostInfo.GetAppArmorInfo()
+	if appArmorInfo == nil {
+		t.Error("expected AppArmor info to be populated")
+	} else {
+		if appArmorInfo.Supported() {
+			t.Error("expected AppArmor to be unsupported on Windows")
 		}
 	}
 
-	if appArmorEnabled, exists := values["apparmor_enabled"]; exists {
-		if !appArmorEnabled.IsNull() {
-			t.Error("expected AppArmor enabled to be null on Windows")
+	fipsInfo := hostInfo.GetFipsInfo()
+	if fipsInfo == nil {
+		t.Error("expected FIPS info to be populated")
+	} else {
+		if !fipsInfo.Known() {
+			t.Error("expected FIPS info to be known on Windows")
+		}
+		if fipsInfo.Enabled() {
+			t.Error("expected FIPS to be enabled on Windows")
 		}
 	}
 
-	// FIPS should be known on Windows
-	if fipsEnabled, exists := values["fips_enabled"]; exists {
-		if fipsEnabled.IsNull() {
-			t.Error("expected FIPS enabled to be known (not null) on Windows")
+	packageManagerInfo := hostInfo.GetPackageManagerInfo()
+	if packageManagerInfo == nil {
+		t.Error("expected Package Manager info to be populated")
+	} else {
+		// Blank for now, Windows is not supported yet
+	}
+
+	serviceManagerInfo := hostInfo.GetServiceManagerInfo()
+	if serviceManagerInfo == nil {
+		t.Error("expected Service Manager info to be populated")
+	} else {
+		if serviceManagerInfo.Name() != "windows-service-manager" {
+			t.Errorf("expected Service Manager name to be 'windows-service-manager', got '%s'", serviceManagerInfo.Name())
 		}
 	}
 }
@@ -238,66 +350,109 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 		t.Fatalf("failed to populate host info via SSH: %v", err)
 	}
 
-	values := hostInfo.ToMapOfCtyValues()
+	osInfo := hostInfo.GetOSInfo()
+	if osInfo == nil {
+		t.Error("expected OS info to be populated")
+	} else {
+		families := osInfo.Families()
+		if !families.Contains("windows") {
+			t.Error("expected OS families to contain 'windows'")
+		}
+		if !families.Contains("windows-server") {
+			t.Error("expected OS families to contain 'windows-server'")
+		}
+		if families.Size() != 2 {
+			t.Errorf("expected OS families to have size 2, got %d", families.Size())
+		}
 
-	// Verify that we have expected keys
-	expectedKeys := []string{
-		"os_families",
-		"os_id",
-		"os_friendly_name",
-		"os_architecture",
-		"processor_architecture",
-		"selinux_status",
-		"apparmor_enabled",
-		"fips_enabled",
-		"package_manager_name",
-		"package_manager_path",
-	}
+		if osInfo.Id() != "windows-server" {
+			t.Errorf("expected OS ID to be 'windows-server', got '%s'", osInfo.Id())
+		}
 
-	for _, key := range expectedKeys {
-		if _, exists := values[key]; !exists {
-			t.Errorf("expected key %q to be present in values map", key)
+		if !strings.Contains(osInfo.FriendlyName(), "Microsoft Windows Server 2025 Datacenter") {
+			t.Errorf("expected OS friendly name to contain 'Microsoft Windows Server 2025 Datacenter', got '%s'", osInfo.FriendlyName())
+		}
+
+		if osInfo.Release() != "server-2025" {
+			t.Errorf("expected OS release to be 'server-2025', got '%s'", osInfo.Release())
+		}
+
+		if osInfo.MajorVersion() != "10" {
+			t.Errorf("expected OS major version to be '10', got '%s'", osInfo.MajorVersion())
+		}
+
+		if osInfo.Version() != "10.0.26100.0" {
+			t.Errorf("expected OS version to be '10.0.26100.0', got '%s'", osInfo.Version())
+		}
+
+		if osInfo.Edition() != "Datacenter" {
+			t.Errorf("expected OS edition to be 'Datacenter', got '%s'", osInfo.Edition())
+		}
+
+		if osInfo.EditionId() != "datacenter" {
+			t.Errorf("expected OS edition ID to be 'datacenter', got '%s'", osInfo.EditionId())
+		}
+
+		if osInfo.OsArch() != "amd64" {
+			t.Errorf("expected OS architecture to be 'amd64', got '%s'", osInfo.OsArch())
+		}
+
+		if osInfo.OsArchBits() != 64 {
+			t.Errorf("expected OS architecture bits to be 64, got %d", osInfo.OsArchBits())
+		}
+
+		if osInfo.ProcArch() != "amd64" {
+			t.Errorf("expected processor architecture to be 'amd64', got '%s'", osInfo.ProcArch())
+		}
+
+		if osInfo.ProcArchBits() != 64 {
+			t.Errorf("expected processor architecture bits to be 64, got %d", osInfo.ProcArchBits())
 		}
 	}
 
-	// Verify Windows-specific expectations
-	if osFamilies, exists := values["os_families"]; exists && !osFamilies.IsNull() {
-		// Convert to string slice to check families
-		familiesSlice := make([]string, 0)
-		osFamilies.ForEachElement(func(key, val cty.Value) (stop bool) {
-			familiesSlice = append(familiesSlice, val.AsString())
-			return false
-		})
-
-		foundWindows := false
-		for _, family := range familiesSlice {
-			if family == "windows" {
-				foundWindows = true
-			}
-		}
-
-		if !foundWindows {
-			t.Error("expected 'windows' family to be present in OS families")
+	selinuxInfo := hostInfo.GetSELinuxInfo()
+	if selinuxInfo == nil {
+		t.Error("expected SELinux info to be populated")
+	} else {
+		if selinuxInfo.Supported() {
+			t.Error("expected SELinux to be unsupported on Windows")
 		}
 	}
 
-	// On Windows, SELinux and AppArmor should be null/not supported
-	if selinuxStatus, exists := values["selinux_status"]; exists {
-		if !selinuxStatus.IsNull() {
-			t.Error("expected SELinux status to be null on Windows")
+	appArmorInfo := hostInfo.GetAppArmorInfo()
+	if appArmorInfo == nil {
+		t.Error("expected AppArmor info to be populated")
+	} else {
+		if appArmorInfo.Supported() {
+			t.Error("expected AppArmor to be unsupported on Windows")
 		}
 	}
 
-	if appArmorEnabled, exists := values["apparmor_enabled"]; exists {
-		if !appArmorEnabled.IsNull() {
-			t.Error("expected AppArmor enabled to be null on Windows")
+	fipsInfo := hostInfo.GetFipsInfo()
+	if fipsInfo == nil {
+		t.Error("expected FIPS info to be populated")
+	} else {
+		if !fipsInfo.Known() {
+			t.Error("expected FIPS info to be known on Windows")
+		}
+		if fipsInfo.Enabled() {
+			t.Error("expected FIPS to be enabled on Windows")
 		}
 	}
 
-	// FIPS should be known on Windows
-	if fipsEnabled, exists := values["fips_enabled"]; exists {
-		if fipsEnabled.IsNull() {
-			t.Error("expected FIPS enabled to be known (not null) on Windows")
+	packageManagerInfo := hostInfo.GetPackageManagerInfo()
+	if packageManagerInfo == nil {
+		t.Error("expected Package Manager info to be populated")
+	} else {
+		// Blank for now, Windows is not supported yet
+	}
+
+	serviceManagerInfo := hostInfo.GetServiceManagerInfo()
+	if serviceManagerInfo == nil {
+		t.Error("expected Service Manager info to be populated")
+	} else {
+		if serviceManagerInfo.Name() != "windows-service-manager" {
+			t.Errorf("expected Service Manager name to be 'windows-service-manager', got '%s'", serviceManagerInfo.Name())
 		}
 	}
 }

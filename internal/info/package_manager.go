@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"syscall"
 
 	"github.com/trippsoft/forge/internal/transport"
@@ -100,6 +101,19 @@ func newPackageManagerInfo() *packageManagerInfo {
 		path:      "",
 	}
 }
+
+func (p *packageManagerInfo) Supported() bool {
+	return p.supported
+}
+
+func (p *packageManagerInfo) Name() string {
+	return p.name
+}
+
+func (p *packageManagerInfo) Path() string {
+	return p.path
+}
+
 func (p *packageManagerInfo) populatePackageManagerInfo(osInfo *osInfo, transport transport.Transport, fileSystem transport.FileSystem) error {
 
 	if osInfo.families.Contains("windows") {
@@ -278,4 +292,26 @@ func (p *packageManagerInfo) toMapOfCtyValues() map[string]cty.Value {
 	values["package_manager_path"] = cty.StringVal(p.path)
 
 	return values
+}
+
+// String returns a string representation of the package manager information.
+// This is useful for logging or debugging purposes.
+func (p *packageManagerInfo) String() string {
+
+	stringBuilder := &strings.Builder{}
+
+	if !p.supported {
+		stringBuilder.WriteString("package_manager_name: not supported on this OS\n")
+		stringBuilder.WriteString("package_manager_path: not supported on this OS")
+
+		return stringBuilder.String()
+	}
+
+	stringBuilder.WriteString("package_manager_name: ")
+	stringBuilder.WriteString(p.name)
+	stringBuilder.WriteString("\n")
+	stringBuilder.WriteString("package_manager_path: ")
+	stringBuilder.WriteString(p.path)
+
+	return stringBuilder.String()
 }

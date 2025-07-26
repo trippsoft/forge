@@ -26,6 +26,14 @@ func newFipsInfo() *fipsInfo {
 	}
 }
 
+func (f *fipsInfo) Known() bool {
+	return f.known
+}
+
+func (f *fipsInfo) Enabled() bool {
+	return f.enabled
+}
+
 func (f *fipsInfo) populateFipsInfo(osInfo *osInfo, transport transport.Transport) error {
 
 	if osInfo.families.Contains("linux") {
@@ -84,4 +92,15 @@ func (f *fipsInfo) toMapOfCtyValues() map[string]cty.Value {
 	return map[string]cty.Value{
 		"fips_enabled": cty.BoolVal(f.enabled),
 	}
+}
+
+// String returns a string representation of the FIPS information.
+// This is useful for logging or debugging purposes.
+func (f *fipsInfo) String() string {
+
+	if !f.known {
+		return "fips_enabled: unknown on this OS"
+	}
+
+	return fmt.Sprintf("fips_enabled: %t", f.enabled)
 }
