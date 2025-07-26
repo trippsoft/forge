@@ -38,10 +38,7 @@ func TestMain(m *testing.M) {
 	}
 
 	vagrantDestroy := vagrantClient.Destroy()
-	err := vagrantDestroy.Run()
-	if err != nil {
-		os.Exit(code)
-	}
+	_ = vagrantDestroy.Run()
 
 	os.Exit(code)
 }
