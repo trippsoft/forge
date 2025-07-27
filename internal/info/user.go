@@ -108,20 +108,20 @@ func (u *userInfo) populatePosixUserInfo(transport transport.Transport) error {
 
 func (u *userInfo) populateWindowsUserInfo(transport transport.Transport) error {
 
-	stdout, _, err := transport.ExecutePowerShell(context.Background(), UserNamePowerShell)
+	stdout, err := transport.ExecutePowerShell(context.Background(), UserNamePowerShell)
 	if err != nil {
 		return err
 	}
 
 	u.name = strings.TrimSpace(stdout)
 
-	stdout, _, err = transport.ExecutePowerShell(context.Background(), UserIdPowerShell)
+	stdout, err = transport.ExecutePowerShell(context.Background(), UserIdPowerShell)
 	if err != nil {
 		return err
 	}
 	u.userId = strings.TrimSpace(stdout)
 
-	stdout, _, err = transport.ExecutePowerShell(context.Background(), UserHomeDirPowerShell)
+	stdout, err = transport.ExecutePowerShell(context.Background(), UserHomeDirPowerShell)
 	if err != nil {
 		return err
 	}

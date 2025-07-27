@@ -200,7 +200,7 @@ func (o *osInfo) populateWindowsOSInfo(transport transport.Transport) error {
 
 func (o *osInfo) populateWindowsProcArchitecture(transport transport.Transport) error {
 
-	stdout, _, err := transport.ExecutePowerShell(context.Background(), procArchPowerShell)
+	stdout, err := transport.ExecutePowerShell(context.Background(), procArchPowerShell)
 	if err != nil {
 		return fmt.Errorf("failed to exec PowerShell command: %w", err)
 	}
@@ -231,7 +231,7 @@ func (o *osInfo) populateWindowsProcArchitecture(transport transport.Transport) 
 
 func (o *osInfo) populateWindowsOSArchitecture(transport transport.Transport) error {
 
-	stdout, _, err := transport.ExecutePowerShell(context.Background(), osArchPowerShell)
+	stdout, err := transport.ExecutePowerShell(context.Background(), osArchPowerShell)
 	if err != nil {
 		return fmt.Errorf("failed to execute command for OS architecture: %w", err)
 	}
@@ -268,7 +268,7 @@ func (o *osInfo) populateWindowsOSArchitecture(transport transport.Transport) er
 
 func (o *osInfo) getWindowsFriendlyName(transport transport.Transport) (string, error) {
 
-	stdout, _, err := transport.ExecutePowerShell(context.Background(), osFriendlyNamePowerShell)
+	stdout, err := transport.ExecutePowerShell(context.Background(), osFriendlyNamePowerShell)
 	if err != nil {
 		return "", fmt.Errorf("failed to execute command for OS friendly name: %w", err)
 	}
@@ -278,7 +278,7 @@ func (o *osInfo) getWindowsFriendlyName(transport transport.Transport) (string, 
 
 func (o *osInfo) getWindowsVersion(transport transport.Transport) (string, error) {
 
-	stdout, _, err := transport.ExecutePowerShell(context.Background(), osVersionPowerShell)
+	stdout, err := transport.ExecutePowerShell(context.Background(), osVersionPowerShell)
 	if err != nil {
 		return "", fmt.Errorf("failed to execute command for OS version: %w", err)
 	}

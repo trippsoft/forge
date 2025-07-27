@@ -73,7 +73,7 @@ func (l *localTransport) Close() error {
 }
 
 // ExecuteCommand implements Transport.
-func (l *localTransport) ExecuteCommand(ctx context.Context, command string) (stdout string, stderr string, err error) {
+func (l *localTransport) ExecuteCommand(ctx context.Context, command string) (string, string, error) {
 
 	args := slices.Clone(l.shellArgs)
 	args = append(args, command)
@@ -84,7 +84,7 @@ func (l *localTransport) ExecuteCommand(ctx context.Context, command string) (st
 	cmd.Stdout = &outBuf
 	cmd.Stderr = &errBuf
 
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		return outBuf.String(), errBuf.String(), fmt.Errorf("failed to execute command: %w", err)
 	}
@@ -93,32 +93,31 @@ func (l *localTransport) ExecuteCommand(ctx context.Context, command string) (st
 }
 
 // ExecutePowerShell implements Transport.
-func (l *localTransport) ExecutePowerShell(ctx context.Context, command string) (stdout string, stderr string, err error) {
+func (l *localTransport) ExecutePowerShell(ctx context.Context, command string) (string, error) {
 
 	if runtime.GOOS != "windows" {
-		return "", "", fmt.Errorf("PowerShell execution is only supported on Windows")
+		return "", fmt.Errorf("PowerShell execution is only supported on Windows")
 	}
 
 	args := slices.Clone(l.powershellArgs)
 	encodedCommand, err := encodePowerShellAsUTF16LEBase64(command)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to encode PowerShell command: %w", err)
+		return "", fmt.Errorf("failed to encode PowerShell command: %w", err)
 	}
 
 	args = append(args, encodedCommand)
 
 	cmd := exec.CommandContext(ctx, l.powershellCommand, args...)
 
-	var outBuf, errBuf bytes.Buffer
+	var outBuf bytes.Buffer
 	cmd.Stdout = &outBuf
-	cmd.Stderr = &errBuf
 
 	err = cmd.Run()
 	if err != nil {
-		return outBuf.String(), errBuf.String(), fmt.Errorf("failed to execute PowerShell command: %w", err)
+		return outBuf.String(), fmt.Errorf("failed to execute PowerShell command: %w", err)
 	}
 
-	return outBuf.String(), errBuf.String(), nil
+	return outBuf.String(), nil
 }
 
 // FileSystem implements Transport.

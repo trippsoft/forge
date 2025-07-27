@@ -63,13 +63,13 @@ func (m *mockTransport) ExecuteCommand(ctx context.Context, command string) (str
 	return m.defaultCommandResponse.stdout, m.defaultCommandResponse.stderr, m.defaultCommandResponse.err
 }
 
-func (m *mockTransport) ExecutePowerShell(ctx context.Context, command string) (string, string, error) {
+func (m *mockTransport) ExecutePowerShell(ctx context.Context, command string) (string, error) {
 
 	response, exists := m.powerShellResponses[command]
 	if exists {
-		return response.stdout, response.stderr, response.err
+		return response.stdout, response.err
 	}
-	return m.defaultPowerShellResponse.stdout, m.defaultPowerShellResponse.stderr, m.defaultPowerShellResponse.err
+	return m.defaultPowerShellResponse.stdout, m.defaultPowerShellResponse.err
 }
 
 func (m *mockTransport) FileSystem() transport.FileSystem {

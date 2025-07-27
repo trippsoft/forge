@@ -107,7 +107,7 @@ func TestNoneTransportExecutePowerShell(t *testing.T) {
 	transport := NewNoneTransport()
 	ctx := context.Background()
 
-	stdout, stderr, err := transport.ExecutePowerShell(ctx, "Write-Host 'hello'")
+	stdout, err := transport.ExecutePowerShell(ctx, "Write-Host 'hello'")
 	if err == nil {
 		t.Error("Expected error for ExecutePowerShell on none transport, but got none")
 	}
@@ -119,10 +119,6 @@ func TestNoneTransportExecutePowerShell(t *testing.T) {
 
 	if stdout != "" {
 		t.Errorf("Expected empty stdout, got '%s'", stdout)
-	}
-
-	if stderr != "" {
-		t.Errorf("Expected empty stderr, got '%s'", stderr)
 	}
 }
 
@@ -133,7 +129,7 @@ func TestNoneTransportExecutePowerShellWithContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	stdout, stderr, err := transport.ExecutePowerShell(ctx, "Write-Host 'hello'")
+	stdout, err := transport.ExecutePowerShell(ctx, "Write-Host 'hello'")
 	if err == nil {
 		t.Error("Expected error for ExecutePowerShell on none transport, but got none")
 	}
@@ -145,10 +141,6 @@ func TestNoneTransportExecutePowerShellWithContext(t *testing.T) {
 
 	if stdout != "" {
 		t.Errorf("Expected empty stdout, got '%s'", stdout)
-	}
-
-	if stderr != "" {
-		t.Errorf("Expected empty stderr, got '%s'", stderr)
 	}
 }
 

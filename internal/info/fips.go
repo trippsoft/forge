@@ -69,7 +69,7 @@ func (f *fipsInfo) populateLinuxFipsInfo(transport transport.Transport) error {
 
 func (f *fipsInfo) populateWindowsFipsInfo(transport transport.Transport) error {
 
-	stdout, _, err := transport.ExecutePowerShell(context.Background(), fipsPowerShellCommand)
+	stdout, err := transport.ExecutePowerShell(context.Background(), fipsPowerShellCommand)
 	if err != nil {
 		return fmt.Errorf("failed to execute PowerShell command: %w", err)
 	}

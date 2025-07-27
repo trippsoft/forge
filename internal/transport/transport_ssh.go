@@ -327,21 +327,28 @@ func (s *sshTransport) ExecuteCommand(ctx context.Context, command string) (stri
 }
 
 // ExecutePowerShell implements Transport.
-func (s *sshTransport) ExecutePowerShell(ctx context.Context, command string) (string, string, error) {
+func (s *sshTransport) ExecutePowerShell(ctx context.Context, command string) (string, error) {
 
 	err := s.Connect() // Ensure we are connected
 	if err != nil {
-		return "", "", fmt.Errorf("failed to connect to SSH transport: %w", err)
+		return "", fmt.Errorf("failed to connect to SSH transport: %w", err)
 	}
 
 	if !s.hasValidatedPowerShell {
 		// Check if PowerShell is available on the remote system
-		powershellCheckCmd := "powershell.exe -Command \"Write-Host 'PowerShell is available'\""
-		_, _, err = s.ExecuteCommand(ctx, powershellCheckCmd)
+		powershellCheckCmd := "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Write-Host 'PowerShell is available'\""
+
+		session, err := s.client.NewSession()
+		if err != nil {
+			return "", fmt.Errorf("failed to create SSH session: %w", err)
+		}
+
+		err = session.Run(powershellCheckCmd)
+		session.Close()
 		if err != nil {
 			s.hasValidatedPowerShell = true
 			s.canRunPowerShell = false
-			return "", "", fmt.Errorf("PowerShell is not available on the remote system: %w", err)
+			return "", fmt.Errorf("PowerShell is not available on the remote system: %w", err)
 		} else {
 			s.hasValidatedPowerShell = true
 			s.canRunPowerShell = true
@@ -349,12 +356,18 @@ func (s *sshTransport) ExecutePowerShell(ctx context.Context, command string) (s
 	}
 
 	if !s.canRunPowerShell {
-		return "", "", fmt.Errorf("PowerShell is not available on the remote system")
+		return "", fmt.Errorf("PowerShell is not available on the remote system")
 	}
+
+	session, err := s.client.NewSession()
+	if err != nil {
+		return "", fmt.Errorf("failed to create SSH session: %w", err)
+	}
+	defer session.Close()
 
 	encodedCommand, err := encodePowerShellAsUTF16LEBase64(command)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to encode PowerShell command: %w", err)
+		return "", fmt.Errorf("failed to encode PowerShell command: %w", err)
 	}
 
 	commandBuilder := &strings.Builder{}
@@ -362,7 +375,29 @@ func (s *sshTransport) ExecutePowerShell(ctx context.Context, command string) (s
 	commandBuilder.WriteString("powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ")
 	commandBuilder.WriteString(encodedCommand)
 
-	return s.ExecuteCommand(ctx, commandBuilder.String())
+	command = commandBuilder.String()
+
+	outputChannel := make(chan *sshResult)
+
+	go func() {
+		var outBuf bytes.Buffer
+		session.Stdout = &outBuf
+
+		err := session.Run(command)
+		outputChannel <- &sshResult{
+			stdout: outBuf.String(),
+			stderr: "",
+			err:    err,
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		session.Signal(ssh.SIGINT) // Send interrupt signal to the session
+		return "", ctx.Err()
+	case result := <-outputChannel:
+		return result.stdout, result.err
+	}
 }
 
 // FileSystem implements Transport.

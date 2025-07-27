@@ -29,7 +29,7 @@ type Transport interface {
 	// ExecuteCommand executes a command on the managed system and returns the output.
 	ExecuteCommand(ctx context.Context, command string) (stdout string, stderr string, err error)
 	// ExecutePowerShell executes a PowerShell command on the managed system and returns the output.
-	ExecutePowerShell(ctx context.Context, command string) (stdout string, stderr string, err error)
+	ExecutePowerShell(ctx context.Context, command string) (stdout string, err error)
 
 	// FileSystem returns a FileSystem interface for interacting with the file system of the managed system.
 	FileSystem() FileSystem

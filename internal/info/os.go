@@ -187,7 +187,7 @@ func (o *osInfo) populateOSInfo(transport transport.Transport, fileSystem transp
 		return o.populatePosixOSInfo(transport, fileSystem)
 	}
 
-	_, _, err = transport.ExecutePowerShell(context.Background(), "Write-Host $PSVersionTable.PSVersion")
+	_, err = transport.ExecutePowerShell(context.Background(), "Write-Host $PSVersionTable.PSVersion")
 	if err == nil {
 		o.families.Add("windows")
 		return o.populateWindowsOSInfo(transport)

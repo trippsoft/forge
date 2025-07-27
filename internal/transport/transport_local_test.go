@@ -218,17 +218,13 @@ func TestLocalTransportExecutePowerShellWindows(t *testing.T) {
 
 	// Test simple PowerShell command
 	command := "Write-Host 'Hello PowerShell'"
-	stdout, stderr, err := transport.ExecutePowerShell(ctx, command)
+	stdout, err := transport.ExecutePowerShell(ctx, command)
 	if err != nil {
 		t.Fatalf("ExecutePowerShell failed: %v", err)
 	}
 
 	if !strings.Contains(stdout, "Hello PowerShell") {
 		t.Errorf("Expected stdout to contain 'Hello PowerShell', got: %s", stdout)
-	}
-
-	if stderr != "" {
-		t.Logf("Stderr (might be empty): %s", stderr)
 	}
 }
 
@@ -246,7 +242,7 @@ func TestLocalTransportExecutePowerShellNonWindows(t *testing.T) {
 
 	// Test PowerShell command on non-Windows (should fail)
 	command := "Write-Host 'Hello PowerShell'"
-	_, _, err = transport.ExecutePowerShell(ctx, command)
+	_, err = transport.ExecutePowerShell(ctx, command)
 	if err == nil {
 		t.Error("Expected error for PowerShell on non-Windows platform, but got none")
 	}

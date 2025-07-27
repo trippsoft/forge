@@ -236,9 +236,9 @@ func testSSHPowerShell(t *testing.T, sshTransport transport.Transport) {
 
 	// Test simple PowerShell command
 	powershellCommand := "Write-Host 'Hello from PowerShell'"
-	stdout, stderr, err := sshTransport.ExecutePowerShell(ctx, powershellCommand)
+	stdout, err := sshTransport.ExecutePowerShell(ctx, powershellCommand)
 	if err != nil {
-		t.Fatalf("ExecutePowerShell failed: %v, stderr: %s", err, stderr)
+		t.Fatalf("ExecutePowerShell failed: %v", err)
 	}
 
 	if !containsIgnoreCase(stdout, "Hello from PowerShell") {
@@ -247,9 +247,9 @@ func testSSHPowerShell(t *testing.T, sshTransport transport.Transport) {
 
 	// Test PowerShell with complex command
 	complexCommand := "Get-Date | Select-Object -Property Year"
-	stdout, stderr, err = sshTransport.ExecutePowerShell(ctx, complexCommand)
+	stdout, err = sshTransport.ExecutePowerShell(ctx, complexCommand)
 	if err != nil {
-		t.Fatalf("ExecutePowerShell complex command failed: %v, stderr: %s", err, stderr)
+		t.Fatalf("ExecutePowerShell complex command failed: %v", err)
 	}
 
 	if !containsIgnoreCase(stdout, "Year") {
@@ -261,7 +261,7 @@ func testSSHPowerShell(t *testing.T, sshTransport transport.Transport) {
 	defer cancel()
 
 	timeoutCommand := "Start-Sleep 5"
-	_, _, err = sshTransport.ExecutePowerShell(ctxTimeout, timeoutCommand)
+	_, err = sshTransport.ExecutePowerShell(ctxTimeout, timeoutCommand)
 	if err == nil {
 		t.Error("Expected timeout error for PowerShell but got none")
 	}
@@ -274,7 +274,7 @@ func testSSHPowerShellFailsOnLinux(t *testing.T, sshTransport transport.Transpor
 
 	// PowerShell should fail on Linux
 	powershellCommand := "Write-Host 'This should fail'"
-	_, _, err := sshTransport.ExecutePowerShell(ctx, powershellCommand)
+	_, err := sshTransport.ExecutePowerShell(ctx, powershellCommand)
 	if err == nil {
 		t.Error("Expected PowerShell to fail on Linux but it succeeded")
 	}

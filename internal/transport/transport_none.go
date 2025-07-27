@@ -37,8 +37,8 @@ func (n *noneTransport) ExecuteCommand(ctx context.Context, command string) (std
 }
 
 // ExecutePowerShell implements Transport.
-func (n *noneTransport) ExecutePowerShell(ctx context.Context, command string) (stdout string, stderr string, err error) {
-	return "", "", errors.New("no transport available for PowerShell execution")
+func (n *noneTransport) ExecutePowerShell(ctx context.Context, command string) (stdout string, err error) {
+	return "", errors.New("no transport available for PowerShell execution")
 }
 
 // FileSystem implements Transport.
