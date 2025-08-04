@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/trippsoft/forge/internal/transport"
-	"github.com/trippsoft/forge/internal/util"
 	"github.com/trippsoft/forge/pkg/diag"
+	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
 

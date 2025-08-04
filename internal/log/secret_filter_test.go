@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/trippsoft/forge/internal/util"
+	"github.com/trippsoft/forge/pkg/util"
 )
 
 func TestLogSecretFilter_AddSecret(t *testing.T) {

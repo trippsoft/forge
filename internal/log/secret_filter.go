@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/trippsoft/forge/internal/util"
+	"github.com/trippsoft/forge/pkg/util"
 )
 
 var (

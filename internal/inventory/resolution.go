@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/trippsoft/forge/internal/log"
 	"github.com/trippsoft/forge/internal/transport"
-	"github.com/trippsoft/forge/internal/util"
+	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
 
