@@ -463,11 +463,18 @@ func TestSSHTransportExecuteCommand_Linux(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	stdout, stderr, err := sshTransport.ExecuteCommand(context.Background(), "echo 'Hello from Linux'")
+	cmd := sshTransport.NewCommand("echo 'Hello from Linux'")
+	var outBuf, errBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+
+	err = cmd.Run(context.Background())
+	stderr := strings.TrimSpace(errBuf.String())
 	if err != nil {
 		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
 	}
 
+	stdout := strings.TrimSpace(outBuf.String())
 	if stdout != "Hello from Linux" {
 		t.Errorf("Expected stdout to be 'Hello from Linux', got: %s", stdout)
 	}
@@ -505,11 +512,18 @@ func TestSSHTransportExecuteCommand_WinPowerShell(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	stdout, stderr, err := sshTransport.ExecuteCommand(context.Background(), `echo "Hello from Windows"`)
+	cmd := sshTransport.NewCommand(`echo "Hello from Windows"`)
+	var outBuf, errBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+
+	err = cmd.Run(context.Background())
+	stderr := strings.TrimSpace(errBuf.String())
 	if err != nil {
 		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
 	}
 
+	stdout := strings.TrimSpace(outBuf.String())
 	if stdout != "Hello from Windows" {
 		t.Errorf("Expected stdout to be 'Hello from Windows', got: %s", stdout)
 	}
@@ -547,11 +561,18 @@ func TestSSHTransportExecuteCommand_WinCmd(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	stdout, stderr, err := sshTransport.ExecuteCommand(context.Background(), "echo Hello from CMD")
+	cmd := sshTransport.NewCommand("echo Hello from CMD")
+	var outBuf, errBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+
+	err = cmd.Run(context.Background())
+	stderr := strings.TrimSpace(errBuf.String())
 	if err != nil {
 		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
 	}
 
+	stdout := strings.TrimSpace(outBuf.String())
 	if stdout != "Hello from CMD" {
 		t.Errorf("Expected stdout to be 'Hello from CMD', got: %s", stdout)
 	}
@@ -589,7 +610,11 @@ func TestSSHTransportExecutePowerShell_Linux(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	stdout, err := sshTransport.ExecutePowerShell(context.Background(), "Write-Host 'Hello from PowerShell'")
+	cmd := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'")
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err = cmd.Run(context.Background())
 	expectedErr := "PowerShell is not available on the remote system"
 	if err == nil {
 		t.Error("Expected PowerShell command to fail on Linux, but it succeeded")
@@ -597,6 +622,7 @@ func TestSSHTransportExecutePowerShell_Linux(t *testing.T) {
 		t.Errorf("Expected error to contain '%s', got: %s", expectedErr, err.Error())
 	}
 
+	stdout := strings.TrimSpace(outBuf.String())
 	if stdout != "" {
 		t.Errorf("Expected PowerShell output to be empty on Linux, got: %s", stdout)
 	}
@@ -630,11 +656,16 @@ func TestSSHTransportExecutePowerShell_WinPowerShell(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	stdout, err := sshTransport.ExecutePowerShell(context.Background(), "Write-Host 'Hello from PowerShell'")
+	cmd := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'")
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err = cmd.Run(context.Background())
 	if err != nil {
 		t.Fatalf("ExecutePowerShell failed: %v", err)
 	}
 
+	stdout := strings.TrimSpace(outBuf.String())
 	if stdout != "Hello from PowerShell" {
 		t.Errorf("Expected PowerShell output to be 'Hello from PowerShell', got: %s", stdout)
 	}
@@ -668,11 +699,16 @@ func TestSSHTransportExecutePowerShell_WinCmd(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	stdout, err := sshTransport.ExecutePowerShell(context.Background(), "Write-Host 'Hello from PowerShell'")
+	cmd := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'")
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err = cmd.Run(context.Background())
 	if err != nil {
 		t.Fatalf("ExecutePowerShell failed: %v", err)
 	}
 
+	stdout := strings.TrimSpace(outBuf.String())
 	if stdout != "Hello from PowerShell" {
 		t.Errorf("Expected PowerShell output to be 'Hello from PowerShell', got: %s", stdout)
 	}

@@ -4,17 +4,17 @@ import (
 	"os"
 	"testing"
 
-	"github.com/trippsoft/forge/internal/transport/mock"
+	"github.com/trippsoft/forge/internal/transport"
 )
 
 func TestServiceManagerInfo_PopulateServiceManagerInfo_NoOS(t *testing.T) {
 
 	osInfo := newOSInfo()
 
-	transport := mock.NewMockTransport()
+	mockTransport := transport.NewMockTransport()
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, transport)
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -99,10 +99,10 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin(t *testing.T) {
 			osInfo.majorVersion = tt.majorVersion
 			osInfo.version = tt.version
 
-			transport := mock.NewMockTransport()
+			mockTransport := transport.NewMockTransport()
 
 			info := newServiceManagerInfo()
-			diags := info.populateServiceManagerInfo(osInfo, transport)
+			diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -126,10 +126,10 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_InvalidMajorVersio
 	osInfo.id = "macos"
 	osInfo.majorVersion = "invalid" // invalid major version
 
-	transport := mock.NewMockTransport()
+	mockTransport := transport.NewMockTransport()
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, transport)
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
@@ -168,10 +168,10 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_NotEnoughVersionPa
 	osInfo.majorVersion = "10"
 	osInfo.version = "invalid" // invalid version format
 
-	transport := mock.NewMockTransport()
+	mockTransport := transport.NewMockTransport()
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, transport)
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
@@ -210,10 +210,10 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_InvalidVersion(t *
 	osInfo.majorVersion = "10"
 	osInfo.version = "10.invalid" // invalid minor version
 
-	transport := mock.NewMockTransport()
+	mockTransport := transport.NewMockTransport()
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, transport)
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
@@ -250,10 +250,10 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Windows(t *testing.T) {
 	osInfo.families.Add("windows")
 	osInfo.id = "windows"
 
-	transport := mock.NewMockTransport()
+	mockTransport := transport.NewMockTransport()
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, transport)
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -462,13 +462,13 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux(t *testing.T) {
 			osInfo.families.Add("linux")
 			osInfo.id = "ubuntu"
 
-			transport := mock.NewMockTransport()
-			transport.CommandResults[linuxServiceManagerDiscoveryScript] = &mock.CommandResult{
+			mockTransport := transport.NewMockTransport()
+			mockTransport.CommandResults[linuxServiceManagerDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
 			info := newServiceManagerInfo()
-			diags := info.populateServiceManagerInfo(osInfo, transport)
+			diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -491,13 +491,13 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_Error(t *testing.T)
 	osInfo.families.Add("linux")
 	osInfo.id = "ubuntu"
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[linuxServiceManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[linuxServiceManagerDiscoveryScript] = &transport.CommandResult{
 		Err: os.ErrPermission,
 	}
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, transport)
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
@@ -533,13 +533,13 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_NoOutput(t *testing
 	osInfo.families.Add("linux")
 	osInfo.id = "ubuntu"
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[linuxServiceManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[linuxServiceManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: "",
 	}
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, transport)
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
@@ -575,8 +575,8 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_NoServiceManager(t 
 	osInfo.families.Add("linux")
 	osInfo.id = "ubuntu"
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[linuxServiceManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[linuxServiceManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			"systemctl_exists": "0",
 			"run_systemd_system_exists": "0",
@@ -593,7 +593,7 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_NoServiceManager(t 
 	}
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, transport)
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
@@ -628,10 +628,10 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_UnknownOS(t *testing.T) {
 	osInfo := newOSInfo()
 	osInfo.id = "generic"
 
-	transport := mock.NewMockTransport()
+	mockTransport := transport.NewMockTransport()
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, transport)
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")

@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -144,15 +145,22 @@ func TestLocalTransportExecuteCommand(t *testing.T) {
 		command = "echo hello"
 	}
 
-	stdout, stderr, err := transport.ExecuteCommand(ctx, command)
+	cmd := transport.NewCommand(command)
+	var outBuf, errBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+
+	err = cmd.Run(ctx)
 	if err != nil {
 		t.Fatalf("ExecuteCommand failed: %v", err)
 	}
 
+	stdout := strings.TrimSpace(outBuf.String())
 	if !strings.Contains(stdout, "hello") {
 		t.Errorf("Expected stdout to contain 'hello', got: %s", stdout)
 	}
 
+	stderr := strings.TrimSpace(errBuf.String())
 	if stderr != "" {
 		t.Logf("Stderr (might be empty): %s", stderr)
 	}
@@ -175,7 +183,9 @@ func TestLocalTransportExecuteCommand_Timeout(t *testing.T) {
 		command = "sleep 1"
 	}
 
-	_, _, err = transport.ExecuteCommand(ctx, command)
+	cmd := transport.NewCommand(command)
+
+	err = cmd.Run(ctx)
 	if err == nil {
 		t.Error("Expected error due to context timeout, but got none")
 	}
@@ -190,8 +200,9 @@ func TestLocalTransportExecuteCommand_Error(t *testing.T) {
 
 	ctx := context.Background()
 
-	command := "nonexistentcommand12345"
-	_, _, err = transport.ExecuteCommand(ctx, command)
+	cmd := transport.NewCommand("nonexistentcommand12345")
+
+	err = cmd.Run(ctx)
 	if err == nil {
 		t.Error("Expected error for nonexistent command, but got none")
 	}
@@ -210,12 +221,16 @@ func TestLocalTransportExecutePowerShell_Windows(t *testing.T) {
 
 	ctx := context.Background()
 
-	command := "Write-Host 'Hello PowerShell'"
-	stdout, err := transport.ExecutePowerShell(ctx, command)
+	cmd := transport.NewPowerShellCommand("Write-Host 'Hello PowerShell'")
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err = cmd.Run(ctx)
 	if err != nil {
 		t.Fatalf("ExecutePowerShell failed: %v", err)
 	}
 
+	stdout := strings.TrimSpace(outBuf.String())
 	if stdout != "Hello PowerShell" {
 		t.Errorf("Expected stdout to contain 'Hello PowerShell', got: %s", stdout)
 	}
@@ -235,8 +250,9 @@ func TestLocalTransportExecutePowerShell_NonWindows(t *testing.T) {
 	ctx := context.Background()
 
 	// Test PowerShell command on non-Windows (should fail)
-	command := "Write-Host 'Hello PowerShell'"
-	_, err = transport.ExecutePowerShell(ctx, command)
+	cmd := transport.NewPowerShellCommand("Write-Host 'Hello PowerShell'")
+
+	err = cmd.Run(ctx)
 	if err == nil {
 		t.Error("Expected error for PowerShell on non-Windows platform, but got none")
 	}

@@ -1,6 +1,7 @@
 package info
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -226,8 +227,12 @@ func (o *OSInfo) ProcArchBits() int {
 
 func (o *OSInfo) populateOSInfo(transport transport.Transport) diag.Diags {
 
-	stdout, _, unameErr := transport.ExecuteCommand(context.Background(), "uname -s")
-	o.kernel = strings.ToLower(stdout)
+	cmd := transport.NewCommand("uname -s")
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	unameErr := cmd.Run(context.Background())
+	o.kernel = strings.ToLower(strings.TrimSpace(outBuf.String()))
 	if unameErr == nil {
 		o.families.Add("posix")
 		o.families.Add(o.kernel)
@@ -240,9 +245,10 @@ func (o *OSInfo) populateOSInfo(transport transport.Transport) diag.Diags {
 		}
 	}
 
-	_, psErr := transport.ExecutePowerShell(context.Background(), "Write-Host $PSVersionTable.PSVersion")
-	if psErr == nil {
+	psCmd := transport.NewPowerShellCommand("Write-Host $PSVersionTable.PSVersion")
 
+	psErr := psCmd.Run(context.Background())
+	if psErr == nil {
 		o.families.Add("windows")
 		o.kernel = "windows"
 		return o.populateWindowsOSInfo(transport)
@@ -260,7 +266,11 @@ func (o *OSInfo) populateDarwinOSInfo(transport transport.Transport) diag.Diags 
 	o.id = "macos"
 	o.families.Add(o.id)
 
-	stdout, _, err := transport.ExecuteCommand(context.Background(), darwinOSDiscoveryScript)
+	cmd := transport.NewCommand(darwinOSDiscoveryScript)
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err := cmd.Run(context.Background())
 	if err != nil {
 		o.friendlyName = "macOS"
 		return diag.Diags{&diag.Diag{
@@ -269,6 +279,8 @@ func (o *OSInfo) populateDarwinOSInfo(transport transport.Transport) diag.Diags 
 			Detail:   fmt.Sprintf("Error executing discovery command: %v", err),
 		}}
 	}
+
+	stdout := strings.TrimSpace(outBuf.String())
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
@@ -314,7 +326,11 @@ func (o *OSInfo) populateDarwinOSInfo(transport transport.Transport) diag.Diags 
 
 func (o *OSInfo) populateLinuxOSInfo(transport transport.Transport) diag.Diags {
 
-	stdout, _, err := transport.ExecuteCommand(context.Background(), linuxOSDiscoveryScript)
+	cmd := transport.NewCommand(linuxOSDiscoveryScript)
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err := cmd.Run(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -322,6 +338,8 @@ func (o *OSInfo) populateLinuxOSInfo(transport transport.Transport) diag.Diags {
 			Detail:   fmt.Sprintf("Error executing Linux discovery script: %v", err),
 		}}
 	}
+
+	stdout := strings.TrimSpace(outBuf.String())
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
@@ -396,7 +414,11 @@ func (o *OSInfo) populateLinuxOSInfo(transport transport.Transport) diag.Diags {
 
 func (o *OSInfo) populateWindowsOSInfo(transport transport.Transport) diag.Diags {
 
-	stdout, err := transport.ExecutePowerShell(context.Background(), windowsOSDiscoveryScript)
+	cmd := transport.NewPowerShellCommand(windowsOSDiscoveryScript)
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err := cmd.Run(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -404,6 +426,8 @@ func (o *OSInfo) populateWindowsOSInfo(transport transport.Transport) diag.Diags
 			Detail:   fmt.Sprintf("Error executing Windows discovery script: %v", err),
 		}}
 	}
+
+	stdout := strings.TrimSpace(outBuf.String())
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)

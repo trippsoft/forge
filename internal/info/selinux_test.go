@@ -4,17 +4,17 @@ import (
 	"os"
 	"testing"
 
-	"github.com/trippsoft/forge/internal/transport/mock"
+	"github.com/trippsoft/forge/internal/transport"
 	"github.com/zclconf/go-cty/cty"
 )
 
 func TestSelinuxInfo_PopulateSelinuxInfo_NoOS(t *testing.T) {
 	osInfo := newOSInfo()
 
-	transport := mock.NewMockTransport()
+	mockTransport := transport.NewMockTransport()
 
 	info := newSELinuxInfo()
-	diags := info.populateSelinuxInfo(osInfo, transport)
+	diags := info.populateSelinuxInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags)
@@ -62,10 +62,10 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Windows(t *testing.T) {
 	osInfo.families.Add("windows")
 	osInfo.id = "windows-server"
 
-	transport := mock.NewWinMockTransport()
+	mockTransport := transport.NewWinMockTransport()
 
 	info := newSELinuxInfo()
-	diags := info.populateSelinuxInfo(osInfo, transport)
+	diags := info.populateSelinuxInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -165,13 +165,13 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Linux(t *testing.T) {
 			osInfo.families.Add("linux")
 			osInfo.id = "ubuntu"
 
-			transport := mock.NewMockTransport()
-			transport.CommandResults[selinuxDiscoveryScript] = &mock.CommandResult{
+			mockTransport := transport.NewMockTransport()
+			mockTransport.CommandResults[selinuxDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
 			info := newSELinuxInfo()
-			diags := info.populateSelinuxInfo(osInfo, transport)
+			diags := info.populateSelinuxInfo(osInfo, mockTransport)
 
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -205,13 +205,13 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Linux_Error(t *testing.T) {
 	osInfo.families.Add("linux")
 	osInfo.id = "ubuntu"
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[selinuxDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[selinuxDiscoveryScript] = &transport.CommandResult{
 		Err: os.ErrPermission,
 	}
 
 	info := newSELinuxInfo()
-	diags := info.populateSelinuxInfo(osInfo, transport)
+	diags := info.populateSelinuxInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")
@@ -258,13 +258,13 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Linux_NotJSON(t *testing.T) {
 	osInfo.families.Add("linux")
 	osInfo.id = "ubuntu"
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[selinuxDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[selinuxDiscoveryScript] = &transport.CommandResult{
 		Stdout: "Not a valid JSON output",
 	}
 
 	info := newSELinuxInfo()
-	diags := info.populateSelinuxInfo(osInfo, transport)
+	diags := info.populateSelinuxInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")

@@ -4,17 +4,17 @@ import (
 	"os"
 	"testing"
 
-	"github.com/trippsoft/forge/internal/transport/mock"
+	"github.com/trippsoft/forge/internal/transport"
 )
 
 func TestFipsInfo_PopulateFipsInfo_NoOS(t *testing.T) {
 
 	osInfo := newOSInfo()
 
-	transport := mock.NewMockTransport()
+	mockTransport := transport.NewMockTransport()
 
 	info := newFipsInfo()
-	diags := info.populateFipsInfo(osInfo, transport)
+	diags := info.populateFipsInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -55,10 +55,10 @@ func TestFipsInfo_PopulateFipsInfo_Darwin(t *testing.T) {
 	osInfo.families.Add("macos")
 	osInfo.id = "macos"
 
-	transport := mock.NewMockTransport()
+	mockTransport := transport.NewMockTransport()
 
 	info := newFipsInfo()
-	diags := info.populateFipsInfo(osInfo, transport)
+	diags := info.populateFipsInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -108,13 +108,13 @@ func TestFipsInfo_PopulateFipsInfo_Linux(t *testing.T) {
 			osInfo.families.Add("linux")
 			osInfo.id = "ubuntu"
 
-			transport := mock.NewMockTransport()
-			transport.CommandResults[fipsLinuxDiscoveryScript] = &mock.CommandResult{
+			mockTransport := transport.NewMockTransport()
+			mockTransport.CommandResults[fipsLinuxDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
 			info := newFipsInfo()
-			diags := info.populateFipsInfo(osInfo, transport)
+			diags := info.populateFipsInfo(osInfo, mockTransport)
 
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -140,13 +140,13 @@ func TestFipsInfo_PopulateFipsInfo_Linux_Error(t *testing.T) {
 	osInfo.families.Add("linux")
 	osInfo.id = "ubuntu"
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[fipsLinuxDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[fipsLinuxDiscoveryScript] = &transport.CommandResult{
 		Err: os.ErrPermission,
 	}
 
 	info := newFipsInfo()
-	diags := info.populateFipsInfo(osInfo, transport)
+	diags := info.populateFipsInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
@@ -211,13 +211,13 @@ func TestFipsInfo_PopulateFipsInfo_Windows(t *testing.T) {
 			osInfo.families.Add("windows")
 			osInfo.id = "windows-server"
 
-			transport := mock.NewWinMockTransport()
-			transport.PowerShellResults[fipsWindowsDiscoveryScript] = &mock.CommandResult{
+			mockTransport := transport.NewWinMockTransport()
+			mockTransport.PowerShellResults[fipsWindowsDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
 			info := newFipsInfo()
-			diags := info.populateFipsInfo(osInfo, transport)
+			diags := info.populateFipsInfo(osInfo, mockTransport)
 
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -243,13 +243,13 @@ func TestFipsInfo_PopulateFipsInfo_Windows_Error(t *testing.T) {
 	osInfo.families.Add("windows")
 	osInfo.id = "windows-server"
 
-	transport := mock.NewWinMockTransport()
-	transport.PowerShellResults[fipsWindowsDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewWinMockTransport()
+	mockTransport.PowerShellResults[fipsWindowsDiscoveryScript] = &transport.CommandResult{
 		Err: os.ErrPermission,
 	}
 
 	info := newFipsInfo()
-	diags := info.populateFipsInfo(osInfo, transport)
+	diags := info.populateFipsInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
 	}

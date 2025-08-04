@@ -15,6 +15,52 @@ const (
 	TransportTypeWinRM TransportType = "winrm"
 )
 
+type Cmd struct {
+	transport Transport // Transport on which the command will be executed
+
+	command string // Command to be executed
+
+	Stdout io.Writer // Stdout writer for command output
+	Stderr io.Writer // Stderr writer for command errors
+}
+
+func NewCmd(transport Transport, command string) *Cmd {
+	return &Cmd{
+		transport: transport,
+		command:   command,
+		Stdout:    io.Discard,
+		Stderr:    io.Discard,
+	}
+}
+
+func (c *Cmd) Run(ctx context.Context) error {
+	err := c.transport.executeCommand(ctx, c)
+	return err
+}
+
+type PowerShellCmd struct {
+	transport Transport // Transport on which the PowerShell command will be executed
+
+	command string // PowerShell command to be executed
+
+	Stdout io.Writer // Stdout writer for command output
+	Stderr io.Writer // Stderr writer for command errors
+}
+
+func NewPowerShellCmd(transport Transport, command string) *PowerShellCmd {
+	return &PowerShellCmd{
+		transport: transport,
+		command:   command,
+		Stdout:    io.Discard,
+		Stderr:    io.Discard,
+	}
+}
+
+func (c *PowerShellCmd) Run(ctx context.Context) error {
+	err := c.transport.executePowerShell(ctx, c)
+	return err
+}
+
 // Transport interface defines the methods for interacting with a managed system.
 type Transport interface {
 	// Type returns the type of transport.
@@ -22,14 +68,18 @@ type Transport interface {
 
 	// Connect establishes a connection to the managed system.
 	Connect() error
-
 	// Close closes the connection to the managed system.
 	Close() error
 
-	// ExecuteCommand executes a command on the managed system and returns the output.
-	ExecuteCommand(ctx context.Context, command string) (stdout string, stderr string, err error)
-	// ExecutePowerShell executes a PowerShell command on the managed system and returns the output.
-	ExecutePowerShell(ctx context.Context, command string) (stdout string, err error)
+	// NewCommand creates a new command to be executed on the managed system.
+	NewCommand(command string) *Cmd
+	// NewPowerShellCommand creates a new PowerShell command to be executed on the managed system.
+	NewPowerShellCommand(command string) *PowerShellCmd
+
+	// executeCommand executes a command on the managed system and returns the output.
+	executeCommand(ctx context.Context, cmd *Cmd) error
+	// executePowerShell executes a PowerShell command on the managed system and returns the output.
+	executePowerShell(ctx context.Context, cmd *PowerShellCmd) error
 
 	// Stat retrieves the file information for the given path on the managed system.
 	Stat(path string) (os.FileInfo, error)

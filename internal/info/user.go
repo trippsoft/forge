@@ -1,6 +1,7 @@
 package info
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -102,7 +103,11 @@ func (u *UserInfo) populateUserInfo(osInfo *OSInfo, transport transport.Transpor
 
 func (u *UserInfo) populatePosixUserInfo(transport transport.Transport) diag.Diags {
 
-	stdout, _, err := transport.ExecuteCommand(context.Background(), userPosixDiscoveryScript)
+	cmd := transport.NewCommand(userPosixDiscoveryScript)
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err := cmd.Run(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -110,6 +115,8 @@ func (u *UserInfo) populatePosixUserInfo(transport transport.Transport) diag.Dia
 			Detail:   fmt.Sprintf("Error getting user information on POSIX host: %v", err),
 		}}
 	}
+
+	stdout := strings.TrimSpace(outBuf.String())
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
@@ -133,7 +140,11 @@ func (u *UserInfo) populatePosixUserInfo(transport transport.Transport) diag.Dia
 
 func (u *UserInfo) populateWindowsUserInfo(transport transport.Transport) diag.Diags {
 
-	stdout, err := transport.ExecutePowerShell(context.Background(), userWindowsDiscoveryScript)
+	cmd := transport.NewPowerShellCommand(userWindowsDiscoveryScript)
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err := cmd.Run(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -141,6 +152,8 @@ func (u *UserInfo) populateWindowsUserInfo(transport transport.Transport) diag.D
 			Detail:   fmt.Sprintf("Error getting user information on Windows host: %v", err),
 		}}
 	}
+
+	stdout := strings.TrimSpace(outBuf.String())
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)

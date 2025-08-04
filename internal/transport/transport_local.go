@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -90,55 +89,61 @@ func (l *localTransport) Close() error {
 	return nil // No connection needed for local transport
 }
 
-// ExecuteCommand implements Transport.
-func (l *localTransport) ExecuteCommand(ctx context.Context, command string) (string, string, error) {
-
-	args := slices.Clone(l.shellArgs)
-	args = append(args, command)
-
-	cmd := exec.CommandContext(ctx, l.shellCommand, args...)
-
-	var outBuf, errBuf bytes.Buffer
-	cmd.Stdout = &outBuf
-	cmd.Stderr = &errBuf
-
-	err := cmd.Run()
-	stdout := strings.TrimSpace(outBuf.String())
-	stderr := strings.TrimSpace(errBuf.String())
-	if err != nil {
-		return stdout, stderr, fmt.Errorf("failed to execute command: %w", err)
-	}
-
-	return stdout, stderr, nil
+// NewCommand creates a new command to be executed on the managed system.
+func (l *localTransport) NewCommand(command string) *Cmd {
+	return NewCmd(l, command)
 }
 
-// ExecutePowerShell implements Transport.
-func (l *localTransport) ExecutePowerShell(ctx context.Context, command string) (string, error) {
+// NewPowerShellCommand creates a new PowerShell command to be executed on the managed system.
+func (l *localTransport) NewPowerShellCommand(command string) *PowerShellCmd {
+	return NewPowerShellCmd(l, command)
+}
+
+// executeCommand implements Transport.
+func (l *localTransport) executeCommand(ctx context.Context, cmd *Cmd) error {
+
+	args := slices.Clone(l.shellArgs)
+	args = append(args, cmd.command)
+
+	execCmd := exec.CommandContext(ctx, l.shellCommand, args...)
+
+	execCmd.Stdout = cmd.Stdout
+	execCmd.Stderr = cmd.Stderr
+
+	err := execCmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to execute command: %w", err)
+	}
+
+	return nil
+}
+
+// executePowerShell implements Transport.
+func (l *localTransport) executePowerShell(ctx context.Context, cmd *PowerShellCmd) error {
 
 	if runtime.GOOS != "windows" {
-		return "", fmt.Errorf("PowerShell execution is only supported on Windows")
+		return fmt.Errorf("PowerShell execution is only supported on Windows")
 	}
 
 	args := slices.Clone(l.powershellArgs)
-	encodedCommand, err := encodePowerShellAsUTF16LEBase64(command)
+	encodedCommand, err := encodePowerShellAsUTF16LEBase64(cmd.command)
 	if err != nil {
-		return "", fmt.Errorf("failed to encode PowerShell command: %w", err)
+		return fmt.Errorf("failed to encode PowerShell command: %w", err)
 	}
 
 	args = append(args, encodedCommand)
 
-	cmd := exec.CommandContext(ctx, l.powershellCommand, args...)
+	execCmd := exec.CommandContext(ctx, l.powershellCommand, args...)
 
-	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	execCmd.Stdout = cmd.Stdout
+	execCmd.Stderr = cmd.Stderr
 
-	err = cmd.Run()
-	stdout := strings.TrimSpace(outBuf.String())
+	err = execCmd.Run()
 	if err != nil {
-		return stdout, fmt.Errorf("failed to execute PowerShell command: %w", err)
+		return fmt.Errorf("failed to execute PowerShell command: %w", err)
 	}
 
-	return stdout, nil
+	return nil
 }
 
 // Stat implements Transport.

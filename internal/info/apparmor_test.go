@@ -4,14 +4,14 @@ import (
 	"os"
 	"testing"
 
-	"github.com/trippsoft/forge/internal/transport/mock"
+	"github.com/trippsoft/forge/internal/transport"
 )
 
 func TestAppArmorInfo_PopulateAppArmorInfo_NoOS(t *testing.T) {
 
 	osInfo := newOSInfo()
 
-	transport := mock.NewMockTransport()
+	transport := transport.NewMockTransport()
 
 	info := newAppArmorInfo()
 	diags := info.populateAppArmorInfo(osInfo, transport)
@@ -79,13 +79,13 @@ func TestAppArmorInfo_PopulateAppArmorInfo_Linux(t *testing.T) {
 			osInfo.families.Add("linux")
 			osInfo.id = "ubuntu"
 
-			transport := mock.NewMockTransport()
-			transport.CommandResults[appArmorDiscoveryScript] = &mock.CommandResult{
+			mockTransport := transport.NewMockTransport()
+			mockTransport.CommandResults[appArmorDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
 			info := newAppArmorInfo()
-			diags := info.populateAppArmorInfo(osInfo, transport)
+			diags := info.populateAppArmorInfo(osInfo, mockTransport)
 
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -112,13 +112,13 @@ func TestAppArmorInfo_PopulateAppArmorInfo_Linux_Error(t *testing.T) {
 	osInfo.families.Add("linux")
 	osInfo.id = "ubuntu"
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[appArmorDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[appArmorDiscoveryScript] = &transport.CommandResult{
 		Err: os.ErrPermission,
 	}
 
 	info := newAppArmorInfo()
-	diags := info.populateAppArmorInfo(osInfo, transport)
+	diags := info.populateAppArmorInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Error("expected errors, got none")
@@ -158,7 +158,7 @@ func TestAppArmorInfo_PopulateAppArmorInfo_Windows(t *testing.T) {
 	osInfo.families.Add("windows")
 	osInfo.id = "windows-server"
 
-	transport := mock.NewMockTransport()
+	transport := transport.NewMockTransport()
 
 	info := newAppArmorInfo()
 	diags := info.populateAppArmorInfo(osInfo, transport)

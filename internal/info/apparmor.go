@@ -1,8 +1,10 @@
 package info
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/trippsoft/forge/internal/transport"
 	"github.com/trippsoft/forge/pkg/diag"
@@ -54,7 +56,11 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, transport transport.
 
 	a.supported = true
 
-	stdout, _, err := transport.ExecuteCommand(context.Background(), appArmorDiscoveryScript)
+	cmd := transport.NewCommand(appArmorDiscoveryScript)
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err := cmd.Run(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -62,6 +68,8 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, transport transport.
 			Detail:   fmt.Sprintf("Error executing command: %v", err),
 		}}
 	}
+
+	stdout := strings.TrimSpace(outBuf.String())
 
 	if stdout == "" {
 		a.enabled = false

@@ -1,6 +1,7 @@
 package info
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -95,7 +96,11 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, transport transport.Tr
 
 	s.supported = true
 
-	stdout, _, err := transport.ExecuteCommand(context.Background(), selinuxDiscoveryScript)
+	cmd := transport.NewCommand(selinuxDiscoveryScript)
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err := cmd.Run(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -103,6 +108,8 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, transport transport.Tr
 			Detail:   fmt.Sprintf("Error executing SELinux discovery script: %v", err),
 		}}
 	}
+
+	stdout := strings.TrimSpace(outBuf.String())
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)

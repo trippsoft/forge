@@ -25,14 +25,24 @@ func (n *noneTransport) Close() error {
 	return nil
 }
 
-// ExecuteCommand implements Transport.
-func (n *noneTransport) ExecuteCommand(ctx context.Context, command string) (stdout string, stderr string, err error) {
-	return "", "", errors.New("no transport available for command execution")
+// NewCommand creates a new command to be executed on the managed system.
+func (n *noneTransport) NewCommand(command string) *Cmd {
+	return NewCmd(n, command)
 }
 
-// ExecutePowerShell implements Transport.
-func (n *noneTransport) ExecutePowerShell(ctx context.Context, command string) (stdout string, err error) {
-	return "", errors.New("no transport available for PowerShell execution")
+// NewPowerShellCommand creates a new PowerShell command to be executed on the managed system.
+func (n *noneTransport) NewPowerShellCommand(command string) *PowerShellCmd {
+	return NewPowerShellCmd(n, command)
+}
+
+// executeCommand implements Transport.
+func (n *noneTransport) executeCommand(ctx context.Context, cmd *Cmd) error {
+	return errors.New("no transport available for command execution")
+}
+
+// executePowerShell implements Transport.
+func (n *noneTransport) executePowerShell(ctx context.Context, cmd *PowerShellCmd) error {
+	return errors.New("no transport available for PowerShell execution")
 }
 
 // Stat implements Transport.

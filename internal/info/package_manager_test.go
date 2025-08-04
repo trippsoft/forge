@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/trippsoft/forge/internal/transport/mock"
+	"github.com/trippsoft/forge/internal/transport"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -12,10 +12,10 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_NoOS(t *testing.T) {
 
 	osInfo := newOSInfo()
 
-	transport := mock.NewMockTransport()
+	mockTransport := transport.NewMockTransport()
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -55,10 +55,10 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Windows(t *testing.T) {
 	osInfo.id = "windows-server"
 	osInfo.families.Add("windows")
 
-	transport := mock.NewMockTransport()
+	mockTransport := transport.NewMockTransport()
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -203,13 +203,13 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Darwin(t *testing.T) {
 			osInfo.families.Add("darwin")
 			osInfo.families.Add("macos")
 
-			transport := mock.NewMockTransport()
-			transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+			mockTransport := transport.NewMockTransport()
+			mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
 			info := newPackageManagerInfo()
-			diags := info.populatePackageManagerInfo(osInfo, transport)
+			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 			if diags.HasErrors() {
 				t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -237,9 +237,9 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Darwin_NotFound(t *testin
 	osInfo.families.Add("darwin")
 	osInfo.families.Add("macos")
 
-	transport := mock.NewMockTransport()
+	mockTransport := transport.NewMockTransport()
 
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -274,7 +274,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Darwin_NotFound(t *testin
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -314,8 +314,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux(t *testing.T) {
 	osInfo.id = "archlinux"
 	osInfo.families.Add("archlinux")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -350,7 +350,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux(t *testing.T) {
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -377,8 +377,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux_NotPacman(t *te
 	osInfo.id = "archlinux"
 	osInfo.families.Add("archlinux")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -413,7 +413,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux_NotPacman(t *te
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -455,8 +455,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux_NotFound(t *tes
 	osInfo.id = "archlinux"
 	osInfo.families.Add("archlinux")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -491,7 +491,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux_NotFound(t *tes
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -624,13 +624,13 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian(t *testing.T) {
 			osInfo.id = "debian"
 			osInfo.families.Add("debian")
 
-			transport := mock.NewMockTransport()
-			transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+			mockTransport := transport.NewMockTransport()
+			mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
 			info := newPackageManagerInfo()
-			diags := info.populatePackageManagerInfo(osInfo, transport)
+			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 			if diags.HasErrors() {
 				t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -657,8 +657,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian_NotApt(t *testing.
 	osInfo.id = "debian"
 	osInfo.families.Add("debian")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -693,7 +693,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian_NotApt(t *testing.
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -735,8 +735,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian_NotFound(t *testin
 	osInfo.id = "debian"
 	osInfo.families.Add("debian")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -771,7 +771,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian_NotFound(t *testin
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -904,13 +904,13 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux(t *testing.T) {
 			osInfo.id = "altlinux"
 			osInfo.families.Add("altlinux")
 
-			transport := mock.NewMockTransport()
-			transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+			mockTransport := transport.NewMockTransport()
+			mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
 			info := newPackageManagerInfo()
-			diags := info.populatePackageManagerInfo(osInfo, transport)
+			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 			if diags.HasErrors() {
 				t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -937,8 +937,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux_NotApt(t *testin
 	osInfo.id = "altlinux"
 	osInfo.families.Add("altlinux")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -973,7 +973,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux_NotApt(t *testin
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -1015,8 +1015,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux_NotFound(t *test
 	osInfo.id = "altlinux"
 	osInfo.families.Add("altlinux")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -1051,7 +1051,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux_NotFound(t *test
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -1256,13 +1256,13 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL(t *testing.T) {
 			osInfo.id = "rhel"
 			osInfo.families.Add("el")
 
-			transport := mock.NewMockTransport()
-			transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+			mockTransport := transport.NewMockTransport()
+			mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
 			info := newPackageManagerInfo()
-			diags := info.populatePackageManagerInfo(osInfo, transport)
+			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 			if diags.HasErrors() {
 				t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -1289,8 +1289,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL_NotDnfOrYum(t *testing
 	osInfo.id = "rhel"
 	osInfo.families.Add("el")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -1325,7 +1325,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL_NotDnfOrYum(t *testing
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -1367,8 +1367,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL_NotFound(t *testing.T)
 	osInfo.id = "rhel"
 	osInfo.families.Add("el")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -1403,7 +1403,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL_NotFound(t *testing.T)
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -1453,8 +1453,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo(t *testing.T) {
 	osInfo.id = "gentoo"
 	osInfo.families.Add("gentoo")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -1489,7 +1489,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo(t *testing.T) {
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -1516,8 +1516,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo_NotPortage(t *test
 	osInfo.id = "gentoo"
 	osInfo.families.Add("gentoo")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -1552,7 +1552,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo_NotPortage(t *test
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -1594,8 +1594,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo_NotFound(t *testin
 	osInfo.id = "gentoo"
 	osInfo.families.Add("gentoo")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -1630,7 +1630,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo_NotFound(t *testin
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -1680,8 +1680,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE(t *testing.T) {
 	osInfo.id = "suse"
 	osInfo.families.Add("suse")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -1716,7 +1716,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE(t *testing.T) {
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -1743,8 +1743,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE_NotZypper(t *testing
 	osInfo.id = "suse"
 	osInfo.families.Add("suse")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -1779,7 +1779,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE_NotZypper(t *testing
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -1821,8 +1821,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE_NotFound(t *testing.
 	osInfo.id = "suse"
 	osInfo.families.Add("suse")
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -1857,7 +1857,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE_NotFound(t *testing.
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -2925,13 +2925,13 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic(t *testing.T) {
 			osInfo := newOSInfo()
 			osInfo.id = "generic"
 
-			transport := mock.NewMockTransport()
-			transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+			mockTransport := transport.NewMockTransport()
+			mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
 			info := newPackageManagerInfo()
-			diags := info.populatePackageManagerInfo(osInfo, transport)
+			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 			if diags.HasErrors() {
 				t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -2957,8 +2957,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_NotFound(t *testi
 	osInfo := newOSInfo()
 	osInfo.id = "generic"
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -2993,7 +2993,7 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_NotFound(t *testi
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
@@ -3032,13 +3032,13 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_Error(t *testing.
 	osInfo := newOSInfo()
 	osInfo.id = "generic"
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Err: os.ErrPermission,
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Errorf("Expected errors, got none")
@@ -3077,13 +3077,13 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_NotJSON(t *testin
 	osInfo := newOSInfo()
 	osInfo.id = "generic"
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.CommandResult{
 		Stdout: `This is not JSON output`,
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, transport)
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Errorf("Expected errors, got none")

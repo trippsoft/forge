@@ -1,149 +1,85 @@
-package mock
+package transport
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"time"
-
-	"github.com/trippsoft/forge/internal/transport"
 )
 
 var (
-	posixPathPrefixes = []string{
-		"/usr/local/bin/",
-		"/usr/bin/",
-		"/bin/",
-		"/usr/local/sbin/",
-		"/usr/sbin/",
-		"/sbin/",
+	winPathPrefixes = []string{
+		"C:\\Windows\\System32\\",
+		"C:\\Windows\\",
+		"C:\\Windows\\System32\\Wbem\\",
+		"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\",
 	}
 )
 
-type FileInfo struct {
-	FileName     string
-	FileSize     int64
-	FileMode     os.FileMode
-	ModifiedTime time.Time
-	IsDirectory  bool
-	Target       string // For symlinks, if applicable
-}
+type MockWinTransport struct {
+	TransportType TransportType
 
-func (m *FileInfo) Name() string       { return m.FileName }
-func (m *FileInfo) Size() int64        { return m.FileSize }
-func (m *FileInfo) Mode() os.FileMode  { return m.FileMode }
-func (m *FileInfo) ModTime() time.Time { return m.ModifiedTime }
-func (m *FileInfo) IsDir() bool        { return m.IsDirectory }
-func (m *FileInfo) Sys() any           { return nil }
-
-type File struct {
-	Info    *FileInfo
-	Content []byte
-	mutex   sync.RWMutex
-	reader  *bytes.Reader
-}
-
-// Name implements transport.File.
-func (m *File) Name() string {
-	return m.Info.Name()
-}
-
-// Close implements transport.File.
-func (m *File) Close() error {
-	m.reader = nil
-	return nil
-}
-
-// Read implements transport.File.
-func (m *File) Read(p []byte) (n int, err error) {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-
-	if m.reader == nil {
-		return 0, errors.New("file reader is not initialized")
-	}
-
-	return m.reader.Read(p)
-}
-
-// Sync implements transport.File.
-func (m *File) Sync() error {
-	return nil
-}
-
-// Write implements transport.File.
-func (m *File) Write(p []byte) (n int, err error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-
-	if m.Content == nil {
-		m.Content = make([]byte, 0)
-	}
-
-	m.Content = append(m.Content, p...)
-	n = len(p)
-	m.Info.ModifiedTime = time.Now()
-	m.Info.FileSize += int64(n)
-	return n, nil
-}
-
-type CommandResult struct {
-	Stdout string
-	Stderr string
-	Err    error
-}
-
-type Transport struct {
-	TransportType transport.TransportType
-
-	CommandResults map[string]*CommandResult
+	CommandResults    map[string]*CommandResult
+	PowerShellResults map[string]*CommandResult
 
 	ErrorPaths map[string]error
-	Files      map[string]*File
-	Dirs       map[string]*FileInfo
+	Files      map[string]*MockFile
+	Dirs       map[string]*MockFileInfo
 }
 
-func NewMockTransport() *Transport {
-	return &Transport{
-		TransportType:  transport.TransportTypeSSH,
-		CommandResults: make(map[string]*CommandResult),
-		ErrorPaths:     make(map[string]error),
-		Files:          make(map[string]*File),
-		Dirs:           make(map[string]*FileInfo),
+func NewWinMockTransport() *MockWinTransport {
+	return &MockWinTransport{
+		TransportType:     TransportTypeSSH,
+		CommandResults:    make(map[string]*CommandResult),
+		PowerShellResults: make(map[string]*CommandResult),
 	}
 }
 
-func (w *Transport) Type() transport.TransportType {
+func (w *MockWinTransport) Type() TransportType {
 	return w.TransportType
 }
 
-func (w *Transport) Connect() error {
+func (w *MockWinTransport) Connect() error {
 	return nil
 }
 
-func (w *Transport) Close() error {
+func (w *MockWinTransport) Close() error {
 	return nil
 }
 
-func (w *Transport) ExecuteCommand(ctx context.Context, command string) (string, string, error) {
+func (w *MockWinTransport) NewCommand(command string) *Cmd {
+	return NewCmd(w, command)
+}
 
-	if result, exists := w.CommandResults[command]; exists {
-		return result.Stdout, result.Stderr, result.Err
+func (w *MockWinTransport) NewPowerShellCommand(command string) *PowerShellCmd {
+	return NewPowerShellCmd(w, command)
+}
+
+func (w *MockWinTransport) executeCommand(ctx context.Context, cmd *Cmd) error {
+
+	if result, exists := w.CommandResults[cmd.command]; exists {
+		cmd.Stdout.Write([]byte(result.Stdout))
+		cmd.Stderr.Write([]byte(result.Stderr))
+		return result.Err
 	}
 
-	return "", "", fmt.Errorf("command not found in mock transport: %s", command)
+	return fmt.Errorf("command not found in mock transport: %s", cmd.command)
 }
 
-func (w *Transport) ExecutePowerShell(ctx context.Context, command string) (string, error) {
-	return "", errors.New("PowerShell execution not supported in mock transport")
+func (w *MockWinTransport) executePowerShell(ctx context.Context, cmd *PowerShellCmd) error {
+
+	if result, exists := w.PowerShellResults[cmd.command]; exists {
+		cmd.Stdout.Write([]byte(result.Stdout))
+		cmd.Stderr.Write([]byte(result.Stderr))
+		return result.Err
+	}
+
+	return fmt.Errorf("PowerShell command not found in mock transport: %s", cmd.command)
 }
 
-// Stat implements transport.Transport.
-func (w *Transport) Stat(path string) (os.FileInfo, error) {
+// Stat implements Transport.
+func (w *MockWinTransport) Stat(path string) (os.FileInfo, error) {
 
 	if err, exists := w.ErrorPaths[path]; exists {
 		return nil, err
@@ -160,11 +96,11 @@ func (w *Transport) Stat(path string) (os.FileInfo, error) {
 		return file.Info, nil
 	}
 
-	return nil, nil
+	return nil, os.ErrNotExist
 }
 
-// Create implements transport.Transport.
-func (w *Transport) Create(path string) (transport.File, error) {
+// Create implements Transport.
+func (w *MockWinTransport) Create(path string) (File, error) {
 
 	if err, exists := w.ErrorPaths[path]; exists {
 		return nil, err
@@ -174,11 +110,13 @@ func (w *Transport) Create(path string) (transport.File, error) {
 		return nil, os.ErrExist
 	}
 
-	file := &File{
-		Info: &FileInfo{
+	file := &MockFile{
+		Info: &MockFileInfo{
 			FileName:     path,
+			FileSize:     0,
 			FileMode:     0644,
 			ModifiedTime: time.Now(),
+			IsDirectory:  false,
 		},
 		Content: nil,
 	}
@@ -186,8 +124,8 @@ func (w *Transport) Create(path string) (transport.File, error) {
 	return file, nil
 }
 
-// Open implements transport.Transport.
-func (w *Transport) Open(path string) (transport.File, error) {
+// Open implements Transport.
+func (w *MockWinTransport) Open(path string) (File, error) {
 
 	if err, exists := w.ErrorPaths[path]; exists {
 		return nil, err
@@ -201,15 +139,14 @@ func (w *Transport) Open(path string) (transport.File, error) {
 		if file.Info.Target != "" {
 			return w.Open(file.Info.Target) // Follow symlink if it exists
 		}
-		file.reader = bytes.NewReader(file.Content) // Initialize reader for file content
 		return file, nil
 	}
 
-	return nil, nil
+	return nil, os.ErrNotExist
 }
 
-// Mkdir implements transport.Transport.
-func (w *Transport) Mkdir(path string) error {
+// Mkdir implements Transport.
+func (w *MockWinTransport) Mkdir(path string) error {
 
 	if err, exists := w.ErrorPaths[path]; exists {
 		return err
@@ -223,7 +160,7 @@ func (w *Transport) Mkdir(path string) error {
 		return nil // Directory already exists
 	}
 
-	w.Dirs[path] = &FileInfo{
+	w.Dirs[path] = &MockFileInfo{
 		FileName:     path,
 		FileSize:     0,
 		FileMode:     0755,
@@ -233,13 +170,13 @@ func (w *Transport) Mkdir(path string) error {
 	return nil
 }
 
-// MkdirAll implements transport.Transport.
-func (w *Transport) MkdirAll(path string) error {
+// MkdirAll implements Transport.
+func (w *MockWinTransport) MkdirAll(path string) error {
 	return w.Mkdir(path) // For mock, we treat MkdirAll the same as Mkdir
 }
 
-// Remove implements transport.Transport.
-func (w *Transport) Remove(path string) error {
+// Remove implements Transport.
+func (w *MockWinTransport) Remove(path string) error {
 
 	if err, exists := w.ErrorPaths[path]; exists {
 		return err
@@ -249,13 +186,13 @@ func (w *Transport) Remove(path string) error {
 
 	if dirExists {
 		for filePath := range w.Files {
-			if strings.HasPrefix(filePath, path+"/") {
+			if strings.HasPrefix(filePath, path+"\\") {
 				return os.ErrInvalid // Cannot remove directory with files inside
 			}
 		}
 
 		for dirPath := range w.Dirs {
-			if strings.HasPrefix(dirPath, path+"/") {
+			if strings.HasPrefix(dirPath, path+"\\") {
 				return os.ErrInvalid // Cannot remove directory with subdirectories
 			}
 		}
@@ -273,8 +210,8 @@ func (w *Transport) Remove(path string) error {
 	return os.ErrNotExist
 }
 
-// RemoveAll implements transport.Transport.
-func (w *Transport) RemoveAll(path string) error {
+// RemoveAll implements Transport.
+func (w *MockWinTransport) RemoveAll(path string) error {
 
 	if err, exists := w.ErrorPaths[path]; exists {
 		return err
@@ -285,7 +222,7 @@ func (w *Transport) RemoveAll(path string) error {
 	if dirExists {
 		toDelete := make([]string, 0)
 		for filePath := range w.Files {
-			if strings.HasPrefix(filePath, path+"/") {
+			if strings.HasPrefix(filePath, path+"\\") {
 				toDelete = append(toDelete, filePath)
 			}
 		}
@@ -295,7 +232,7 @@ func (w *Transport) RemoveAll(path string) error {
 
 		toDelete = make([]string, 0)
 		for dirPath := range w.Dirs {
-			if strings.HasPrefix(dirPath, path+"/") {
+			if strings.HasPrefix(dirPath, path+"\\") {
 				toDelete = append(toDelete, dirPath)
 			}
 		}
@@ -315,27 +252,27 @@ func (w *Transport) RemoveAll(path string) error {
 	return nil
 }
 
-// Join implements transport.Transport.
-func (w *Transport) Join(elem ...string) string {
+// Join implements Transport.
+func (w *MockWinTransport) Join(elem ...string) string {
 
 	stringBuilder := &strings.Builder{}
 	for i, e := range elem {
 		if i > 0 {
-			stringBuilder.WriteString("/")
+			stringBuilder.WriteString("\\")
 		}
-		stringBuilder.WriteString(strings.Trim(e, "/"))
+		stringBuilder.WriteString(strings.Trim(e, "\\"))
 	}
 
 	return stringBuilder.String()
 }
 
-// TempDir implements transport.Transport.
-func (w *Transport) TempDir() (string, error) {
-	return "/tmp", nil
+// TempDir implements Transport.
+func (w *MockWinTransport) TempDir() (string, error) {
+	return "C:\\Users\\mock\\AppData\\Local\\Temp", nil
 }
 
-// CreateTemp implements transport.Transport.
-func (w *Transport) CreateTemp(dir string, pattern string) (transport.File, error) {
+// CreateTemp implements Transport.
+func (w *MockWinTransport) CreateTemp(dir string, pattern string) (File, error) {
 
 	if dir == "" {
 		dir, _ = w.TempDir()
@@ -358,7 +295,7 @@ func (w *Transport) CreateTemp(dir string, pattern string) (transport.File, erro
 
 	stringBuilder := &strings.Builder{}
 	stringBuilder.WriteString(dir)
-	stringBuilder.WriteRune('/')
+	stringBuilder.WriteRune('\\')
 	stringBuilder.WriteString(prefix)
 
 	randomNumber := fmt.Sprintf("%d", time.Now().UnixNano()%1000000) // Simple random number based on current time
@@ -368,8 +305,8 @@ func (w *Transport) CreateTemp(dir string, pattern string) (transport.File, erro
 	return w.Create(stringBuilder.String())
 }
 
-// MkdirTemp implements transport.Transport.
-func (w *Transport) MkdirTemp(dir string, pattern string) (string, error) {
+// MkdirTemp implements Transport.
+func (w *MockWinTransport) MkdirTemp(dir string, pattern string) (string, error) {
 
 	if dir == "" {
 		dir, _ = w.TempDir()
@@ -392,7 +329,7 @@ func (w *Transport) MkdirTemp(dir string, pattern string) (string, error) {
 
 	stringBuilder := &strings.Builder{}
 	stringBuilder.WriteString(dir)
-	stringBuilder.WriteRune('/')
+	stringBuilder.WriteRune('\\')
 	stringBuilder.WriteString(prefix)
 
 	randomNumber := fmt.Sprintf("%d", time.Now().UnixNano()%1000000) // Simple random number based on current time
@@ -407,8 +344,8 @@ func (w *Transport) MkdirTemp(dir string, pattern string) (string, error) {
 	return stringBuilder.String(), nil
 }
 
-// Symlink implements transport.Transport.
-func (w *Transport) Symlink(target string, path string) error {
+// Symlink implements Transport.
+func (w *MockWinTransport) Symlink(target string, path string) error {
 
 	if err, exists := w.ErrorPaths[path]; exists {
 		return err
@@ -422,8 +359,8 @@ func (w *Transport) Symlink(target string, path string) error {
 		return os.ErrExist // Cannot create symlink to an existing directory
 	}
 
-	w.Files[path] = &File{
-		Info: &FileInfo{
+	w.Files[path] = &MockFile{
+		Info: &MockFileInfo{
 			FileName:     path,
 			FileSize:     0,
 			FileMode:     0777, // Symlinks are typically executable
@@ -436,8 +373,8 @@ func (w *Transport) Symlink(target string, path string) error {
 	return nil
 }
 
-// ReadLink implements transport.Transport.
-func (w *Transport) ReadLink(path string) (string, error) {
+// ReadLink implements Transport.
+func (w *MockWinTransport) ReadLink(path string) (string, error) {
 	if file, exists := w.Files[path]; exists {
 		if file.Info.Target != "" {
 			return file.Info.Target, nil // Return the target of the symlink
@@ -447,8 +384,8 @@ func (w *Transport) ReadLink(path string) (string, error) {
 	return "", os.ErrNotExist
 }
 
-// RealPath implements transport.Transport.
-func (w *Transport) RealPath(path string) (string, error) {
+// RealPath implements Transport.
+func (w *MockWinTransport) RealPath(path string) (string, error) {
 
 	if _, exists := w.Files[path]; exists {
 		return path, nil // Return the path as is for mock transport
@@ -458,7 +395,7 @@ func (w *Transport) RealPath(path string) (string, error) {
 		return path, nil // Return the path as is for mock transport
 	}
 
-	for _, prefix := range posixPathPrefixes {
+	for _, prefix := range winPathPrefixes {
 		newPath := prefix + path
 		if err, exists := w.ErrorPaths[newPath]; exists {
 			return "", err // Return error if path is in error map

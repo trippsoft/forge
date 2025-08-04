@@ -225,12 +225,6 @@ func (b *SSHTransportBuilder) Build() (Transport, error) {
 	}, nil
 }
 
-type sshResult struct {
-	stdout string
-	stderr string
-	err    error
-}
-
 type sshTransport struct {
 	host string
 	port uint16
@@ -317,65 +311,70 @@ func (s *sshTransport) Close() error {
 	return nil
 }
 
-// ExecuteCommand implements Transport.
-func (s *sshTransport) ExecuteCommand(ctx context.Context, command string) (string, string, error) {
+// NewCommand creates a new command to be executed on the managed system.
+func (s *sshTransport) NewCommand(command string) *Cmd {
+	return NewCmd(s, command)
+}
+
+// NewPowerShellCommand creates a new PowerShell command to be executed on the managed system.
+func (s *sshTransport) NewPowerShellCommand(command string) *PowerShellCmd {
+	return NewPowerShellCmd(s, command)
+}
+
+// executeCommand implements Transport.
+func (s *sshTransport) executeCommand(ctx context.Context, cmd *Cmd) error {
 
 	err := s.Connect() // Ensure we are connected
 	if err != nil {
-		return "", "", fmt.Errorf("failed to connect to SSH transport: %w", err)
+		return fmt.Errorf("failed to connect to SSH transport: %w", err)
 	}
 
 	session, err := s.client.NewSession()
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create SSH session: %w", err)
+		return fmt.Errorf("failed to create SSH session: %w", err)
 	}
 	defer session.Close()
 
-	outputChannel := make(chan *sshResult)
+	outputChannel := make(chan error)
 
 	go func() {
-		var outBuf, errBuf bytes.Buffer
-		session.Stdout = &outBuf
-		session.Stderr = &errBuf
+		session.Stdout = cmd.Stdout
+		session.Stderr = cmd.Stderr
 
-		err := session.Run(command)
-		outputChannel <- &sshResult{
-			stdout: strings.TrimSpace(outBuf.String()),
-			stderr: strings.TrimSpace(errBuf.String()),
-			err:    err,
-		}
+		err := session.Run(cmd.command)
+		outputChannel <- err
 	}()
 
 	select {
 	case <-ctx.Done():
 		session.Signal(ssh.SIGINT) // Send interrupt signal to the session
-		return "", "", ctx.Err()
-	case result := <-outputChannel:
-		return result.stdout, result.stderr, result.err
+		return ctx.Err()
+	case err = <-outputChannel:
+		return err
 	}
 }
 
-// ExecutePowerShell implements Transport.
-func (s *sshTransport) ExecutePowerShell(ctx context.Context, command string) (string, error) {
+// executePowerShell implements Transport.
+func (s *sshTransport) executePowerShell(ctx context.Context, cmd *PowerShellCmd) error {
 
 	err := s.Connect() // Ensure we are connected
 	if err != nil {
-		return "", fmt.Errorf("failed to connect to SSH transport: %w", err)
+		return fmt.Errorf("failed to connect to SSH transport: %w", err)
 	}
 
 	if !s.canRunPowerShell {
-		return "", errors.New("PowerShell is not available on the remote system")
+		return errors.New("PowerShell is not available on the remote system")
 	}
 
 	session, err := s.client.NewSession()
 	if err != nil {
-		return "", fmt.Errorf("failed to create SSH session: %w", err)
+		return fmt.Errorf("failed to create SSH session: %w", err)
 	}
 	defer session.Close()
 
-	encodedCommand, err := encodePowerShellAsUTF16LEBase64(command)
+	encodedCommand, err := encodePowerShellAsUTF16LEBase64(cmd.command)
 	if err != nil {
-		return "", fmt.Errorf("failed to encode PowerShell command: %w", err)
+		return fmt.Errorf("failed to encode PowerShell command: %w", err)
 	}
 
 	commandBuilder := &strings.Builder{}
@@ -383,28 +382,24 @@ func (s *sshTransport) ExecutePowerShell(ctx context.Context, command string) (s
 	commandBuilder.WriteString("powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ")
 	commandBuilder.WriteString(encodedCommand)
 
-	command = commandBuilder.String()
+	command := commandBuilder.String()
 
-	outputChannel := make(chan *sshResult)
+	outputChannel := make(chan error)
 
 	go func() {
-		var outBuf bytes.Buffer
-		session.Stdout = &outBuf
+		session.Stdout = cmd.Stdout
+		session.Stderr = cmd.Stderr
 
 		err := session.Run(command)
-		outputChannel <- &sshResult{
-			stdout: strings.TrimSpace(outBuf.String()),
-			stderr: "",
-			err:    err,
-		}
+		outputChannel <- err
 	}()
 
 	select {
 	case <-ctx.Done():
 		session.Signal(ssh.SIGINT) // Send interrupt signal to the session
-		return "", ctx.Err()
-	case result := <-outputChannel:
-		return result.stdout, result.err
+		return ctx.Err()
+	case err := <-outputChannel:
+		return err
 	}
 }
 
@@ -561,8 +556,12 @@ func (s *sshTransport) TempDir() (string, error) {
 		return "", fmt.Errorf("failed to connect to SSH transport: %w", err)
 	}
 
-	stdout, err := s.ExecutePowerShell(context.Background(), "$path = [System.IO.Path]::GetTempPath(); Write-Host $path")
-	stdout = strings.TrimRight(stdout, string(s.pathSeparator))
+	cmd := s.NewPowerShellCommand("$path = [System.IO.Path]::GetTempPath(); Write-Host $path")
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err = cmd.Run(context.Background())
+	stdout := strings.TrimRight(strings.TrimSpace(outBuf.String()), string(s.pathSeparator))
 	if err != nil {
 		return "", fmt.Errorf("failed to get temp dir: %w", err)
 	}
@@ -735,9 +734,17 @@ func (s *sshTransport) populatePathPrefixes() error {
 	var stdout string
 	var err error
 	if s.canRunPowerShell {
-		stdout, err = s.ExecutePowerShell(context.Background(), "Write-Host $env:PATH")
+		cmd := s.NewPowerShellCommand("Write-Host $env:PATH")
+		var outBuf bytes.Buffer
+		cmd.Stdout = &outBuf
+		err = cmd.Run(context.Background())
+		stdout = strings.TrimSpace(outBuf.String())
 	} else {
-		stdout, _, err = s.ExecuteCommand(context.Background(), "echo $PATH")
+		cmd := s.NewCommand("echo $PATH")
+		var outBuf bytes.Buffer
+		cmd.Stdout = &outBuf
+		err = cmd.Run(context.Background())
+		stdout = strings.TrimSpace(outBuf.String())
 	}
 
 	if err != nil {

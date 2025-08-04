@@ -1,6 +1,7 @@
 package info
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -216,7 +217,11 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, transpor
 		return diag.Diags{} // Windows does not have a traditional package manager like other OS families
 	}
 
-	stdout, _, err := transport.ExecuteCommand(context.Background(), packageManagerDiscoveryScript)
+	cmd := transport.NewCommand(packageManagerDiscoveryScript)
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err := cmd.Run(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -224,6 +229,8 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, transpor
 			Detail:   fmt.Sprintf("Error checking package manager status: %v", err),
 		}}
 	}
+
+	stdout := strings.TrimSpace(outBuf.String())
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)

@@ -4,17 +4,17 @@ import (
 	"os"
 	"testing"
 
-	"github.com/trippsoft/forge/internal/transport/mock"
+	"github.com/trippsoft/forge/internal/transport"
 )
 
 func TestUserInfo_PopulateUserInfo_NoOS(t *testing.T) {
 
 	osInfo := newOSInfo()
 
-	transport := mock.NewMockTransport()
+	mockTransport := transport.NewMockTransport()
 
 	info := newUserInfo()
-	diags := info.populateUserInfo(osInfo, transport)
+	diags := info.populateUserInfo(osInfo, mockTransport)
 
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got %v", diags.Errors())
@@ -97,12 +97,12 @@ func TestUserInfo_PopulateUserInfo_Posix(t *testing.T) {
 
 			info := newUserInfo()
 
-			transport := mock.NewMockTransport()
-			transport.CommandResults[userPosixDiscoveryScript] = &mock.CommandResult{
+			mockTransport := transport.NewMockTransport()
+			mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
-			diags := info.populateUserInfo(osInfo, transport)
+			diags := info.populateUserInfo(osInfo, mockTransport)
 
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got %v", diags.Errors())
@@ -142,12 +142,12 @@ func TestUserInfo_PopulateUserInfo_Posix_Error(t *testing.T) {
 
 	info := newUserInfo()
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[userPosixDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.CommandResult{
 		Err: os.ErrPermission,
 	}
 
-	diags := info.populateUserInfo(osInfo, transport)
+	diags := info.populateUserInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatalf("expected error, got none")
@@ -205,12 +205,12 @@ func TestUserInfo_PopulateUserInfo_Posix_NotJSON(t *testing.T) {
 
 	info := newUserInfo()
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults[userPosixDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.CommandResult{
 		Stdout: "Not a valid JSON output",
 	}
 
-	diags := info.populateUserInfo(osInfo, transport)
+	diags := info.populateUserInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatalf("expected error, got none")
@@ -302,12 +302,12 @@ func TestUserInfo_PopulateUserInfo_Windows(t *testing.T) {
 
 			info := newUserInfo()
 
-			transport := mock.NewWinMockTransport()
-			transport.PowerShellResults[userWindowsDiscoveryScript] = &mock.CommandResult{
+			mockTransport := transport.NewWinMockTransport()
+			mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
-			diags := info.populateUserInfo(osInfo, transport)
+			diags := info.populateUserInfo(osInfo, mockTransport)
 			if diags.HasErrors() {
 				t.Fatalf("expected no error, got %v", diags.Errors())
 			}
@@ -336,12 +336,12 @@ func TestUserInfo_PopulateUserInfo_Windows_Error(t *testing.T) {
 
 	info := newUserInfo()
 
-	transport := mock.NewWinMockTransport()
-	transport.PowerShellResults[userWindowsDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewWinMockTransport()
+	mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.CommandResult{
 		Err: os.ErrPermission,
 	}
 
-	diags := info.populateUserInfo(osInfo, transport)
+	diags := info.populateUserInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatalf("expected error, got none")
@@ -384,12 +384,12 @@ func TestUserInfo_PopulateUserInfo_Windows_NotJSON(t *testing.T) {
 
 	info := newUserInfo()
 
-	transport := mock.NewWinMockTransport()
-	transport.PowerShellResults[userWindowsDiscoveryScript] = &mock.CommandResult{
+	mockTransport := transport.NewWinMockTransport()
+	mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.CommandResult{
 		Stdout: "Not a valid JSON output",
 	}
 
-	diags := info.populateUserInfo(osInfo, transport)
+	diags := info.populateUserInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatalf("expected error, got none")
@@ -432,9 +432,9 @@ func TestUserInfo_PopulateUserInfo_UnknownOS(t *testing.T) {
 
 	info := newUserInfo()
 
-	transport := mock.NewMockTransport()
+	mockTransport := transport.NewMockTransport()
 
-	diags := info.populateUserInfo(osInfo, transport)
+	diags := info.populateUserInfo(osInfo, mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatalf("expected error, got none")

@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/trippsoft/forge/internal/transport/mock"
+	"github.com/trippsoft/forge/internal/transport"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -181,16 +181,16 @@ func TestOSInfo_PopulateOSInfo_Darwin(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			transport := mock.NewMockTransport()
-			transport.CommandResults["uname -s"] = &mock.CommandResult{
+			mockTransport := transport.NewMockTransport()
+			mockTransport.CommandResults["uname -s"] = &transport.CommandResult{
 				Stdout: "Darwin",
 			}
-			transport.CommandResults[darwinOSDiscoveryScript] = &mock.CommandResult{
+			mockTransport.CommandResults[darwinOSDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
 			info := newOSInfo()
-			diags := info.populateOSInfo(transport)
+			diags := info.populateOSInfo(mockTransport)
 
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -271,16 +271,16 @@ func TestOSInfo_PopulateOSInfo_Darwin(t *testing.T) {
 
 func TestOSInfo_PopulateOSInfo_Darwin_Error(t *testing.T) {
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults["uname -s"] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults["uname -s"] = &transport.CommandResult{
 		Stdout: "Darwin",
 	}
-	transport.CommandResults[darwinOSDiscoveryScript] = &mock.CommandResult{
+	mockTransport.CommandResults[darwinOSDiscoveryScript] = &transport.CommandResult{
 		Err: os.ErrPermission,
 	}
 
 	info := newOSInfo()
-	diags := info.populateOSInfo(transport)
+	diags := info.populateOSInfo(mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")
@@ -375,16 +375,16 @@ func TestOSInfo_PopulateOSInfo_Darwin_Error(t *testing.T) {
 
 func TestOSInfo_PopulateOSInfo_Darwin_NotJSON(t *testing.T) {
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults["uname -s"] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults["uname -s"] = &transport.CommandResult{
 		Stdout: "Darwin",
 	}
-	transport.CommandResults[darwinOSDiscoveryScript] = &mock.CommandResult{
+	mockTransport.CommandResults[darwinOSDiscoveryScript] = &transport.CommandResult{
 		Stdout: "Not a JSON output",
 	}
 
 	info := newOSInfo()
-	diags := info.populateOSInfo(transport)
+	diags := info.populateOSInfo(mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")
@@ -479,11 +479,11 @@ func TestOSInfo_PopulateOSInfo_Darwin_NotJSON(t *testing.T) {
 
 func TestOSInfo_PopulateOSInfo_Darwin_UnknownArchitecture(t *testing.T) {
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults["uname -s"] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults["uname -s"] = &transport.CommandResult{
 		Stdout: "Darwin",
 	}
-	transport.CommandResults[darwinOSDiscoveryScript] = &mock.CommandResult{
+	mockTransport.CommandResults[darwinOSDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			"os_arch": "newarch",
 			"os_version": "26.0.0"
@@ -493,7 +493,7 @@ func TestOSInfo_PopulateOSInfo_Darwin_UnknownArchitecture(t *testing.T) {
 
 	info := newOSInfo()
 
-	diags := info.populateOSInfo(transport)
+	diags := info.populateOSInfo(mockTransport)
 
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -555,11 +555,11 @@ func TestOSInfo_PopulateOSInfo_Darwin_UnknownArchitecture(t *testing.T) {
 }
 
 func TestOSInfo_PopulateOSInfo_Darwin_UnknownVersion(t *testing.T) {
-	transport := mock.NewMockTransport()
-	transport.CommandResults["uname -s"] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults["uname -s"] = &transport.CommandResult{
 		Stdout: "Darwin",
 	}
-	transport.CommandResults[darwinOSDiscoveryScript] = &mock.CommandResult{
+	mockTransport.CommandResults[darwinOSDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			"os_arch": "amd64",
 			"os_version": "99.0.0"
@@ -568,7 +568,7 @@ func TestOSInfo_PopulateOSInfo_Darwin_UnknownVersion(t *testing.T) {
 
 	info := newOSInfo()
 
-	diags := info.populateOSInfo(transport)
+	diags := info.populateOSInfo(mockTransport)
 
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -1792,16 +1792,16 @@ func TestOSInfo_PopulateOSInfo_Linux(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			transport := mock.NewMockTransport()
-			transport.CommandResults["uname -s"] = &mock.CommandResult{
+			mockTransport := transport.NewMockTransport()
+			mockTransport.CommandResults["uname -s"] = &transport.CommandResult{
 				Stdout: "Linux",
 			}
-			transport.CommandResults[linuxOSDiscoveryScript] = &mock.CommandResult{
+			mockTransport.CommandResults[linuxOSDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
 			info := newOSInfo()
-			diags := info.populateOSInfo(transport)
+			diags := info.populateOSInfo(mockTransport)
 
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -1870,16 +1870,16 @@ func TestOSInfo_PopulateOSInfo_Linux(t *testing.T) {
 
 func TestOSInfo_PopulateOSInfo_Linux_Error(t *testing.T) {
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults["uname -s"] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults["uname -s"] = &transport.CommandResult{
 		Stdout: "Linux",
 	}
-	transport.CommandResults[linuxOSDiscoveryScript] = &mock.CommandResult{
+	mockTransport.CommandResults[linuxOSDiscoveryScript] = &transport.CommandResult{
 		Err: os.ErrPermission,
 	}
 
 	info := newOSInfo()
-	diags := info.populateOSInfo(transport)
+	diags := info.populateOSInfo(mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")
@@ -1963,16 +1963,16 @@ func TestOSInfo_PopulateOSInfo_Linux_Error(t *testing.T) {
 
 func TestOSInfo_PopulateOSInfo_Linux_NotJSON(t *testing.T) {
 
-	transport := mock.NewMockTransport()
-	transport.CommandResults["uname -s"] = &mock.CommandResult{
+	mockTransport := transport.NewMockTransport()
+	mockTransport.CommandResults["uname -s"] = &transport.CommandResult{
 		Stdout: "Linux",
 	}
-	transport.CommandResults[linuxOSDiscoveryScript] = &mock.CommandResult{
+	mockTransport.CommandResults[linuxOSDiscoveryScript] = &transport.CommandResult{
 		Stdout: "Not JSON",
 	}
 
 	info := newOSInfo()
-	diags := info.populateOSInfo(transport)
+	diags := info.populateOSInfo(mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")
@@ -2152,16 +2152,16 @@ func TestOSInfo_PopulateOSInfo_Windows_Architecture(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transport := mock.NewWinMockTransport()
-			transport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &mock.CommandResult{
+			mockTransport := transport.NewWinMockTransport()
+			mockTransport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &transport.CommandResult{
 				Stdout: "5.1.19041.1237",
 			}
-			transport.PowerShellResults[windowsOSDiscoveryScript] = &mock.CommandResult{
+			mockTransport.PowerShellResults[windowsOSDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
 			info := newOSInfo()
-			diags := info.populateOSInfo(transport)
+			diags := info.populateOSInfo(mockTransport)
 
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -2214,11 +2214,11 @@ func TestOSInfo_PopulateOSInfo_Windows_Architecture(t *testing.T) {
 
 func TestOSInfo_PopulateOSInfo_Windows_Architecture_Unknown(t *testing.T) {
 
-	transport := mock.NewWinMockTransport()
-	transport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &mock.CommandResult{
+	mockTransport := transport.NewWinMockTransport()
+	mockTransport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &transport.CommandResult{
 		Stdout: "5.1.19041.1237",
 	}
-	transport.PowerShellResults[windowsOSDiscoveryScript] = &mock.CommandResult{
+	mockTransport.PowerShellResults[windowsOSDiscoveryScript] = &transport.CommandResult{
 		Stdout: `{
 			"os_friendly_name": "Microsoft Windows 10 Pro",
 			"os_version": "10.0.19041.0",
@@ -2229,7 +2229,7 @@ func TestOSInfo_PopulateOSInfo_Windows_Architecture_Unknown(t *testing.T) {
 	}
 
 	info := newOSInfo()
-	diags := info.populateOSInfo(transport)
+	diags := info.populateOSInfo(mockTransport)
 
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags)
@@ -2927,15 +2927,15 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 
 			info := newOSInfo()
 
-			transport := mock.NewWinMockTransport()
-			transport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &mock.CommandResult{
+			mockTransport := transport.NewWinMockTransport()
+			mockTransport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &transport.CommandResult{
 				Stdout: "5.1.19041.1237",
 			}
-			transport.PowerShellResults[windowsOSDiscoveryScript] = &mock.CommandResult{
+			mockTransport.PowerShellResults[windowsOSDiscoveryScript] = &transport.CommandResult{
 				Stdout: tt.output,
 			}
 
-			diags := info.populateOSInfo(transport)
+			diags := info.populateOSInfo(mockTransport)
 
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
@@ -2993,15 +2993,15 @@ func TestOSInfo_PopulateOSInfo_Windows_Error(t *testing.T) {
 
 	info := newOSInfo()
 
-	transport := mock.NewWinMockTransport()
-	transport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &mock.CommandResult{
+	mockTransport := transport.NewWinMockTransport()
+	mockTransport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &transport.CommandResult{
 		Stdout: "5.1.19041.1237",
 	}
-	transport.PowerShellResults[windowsOSDiscoveryScript] = &mock.CommandResult{
+	mockTransport.PowerShellResults[windowsOSDiscoveryScript] = &transport.CommandResult{
 		Err: os.ErrPermission,
 	}
 
-	diags := info.populateOSInfo(transport)
+	diags := info.populateOSInfo(mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")
@@ -3064,15 +3064,15 @@ func TestOSInfo_PopulateOSInfo_Windows_NotJSON(t *testing.T) {
 
 	info := newOSInfo()
 
-	transport := mock.NewWinMockTransport()
-	transport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &mock.CommandResult{
+	mockTransport := transport.NewWinMockTransport()
+	mockTransport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &transport.CommandResult{
 		Stdout: "5.1.19041.1237",
 	}
-	transport.PowerShellResults[windowsOSDiscoveryScript] = &mock.CommandResult{
+	mockTransport.PowerShellResults[windowsOSDiscoveryScript] = &transport.CommandResult{
 		Stdout: "This is not JSON output",
 	}
 
-	diags := info.populateOSInfo(transport)
+	diags := info.populateOSInfo(mockTransport)
 
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")

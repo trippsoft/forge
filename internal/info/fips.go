@@ -1,6 +1,7 @@
 package info
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -66,7 +67,11 @@ func (f *FIPSInfo) populateFipsInfo(osInfo *OSInfo, transport transport.Transpor
 
 func (f *FIPSInfo) populateLinuxFipsInfo(transport transport.Transport) diag.Diags {
 
-	stdout, _, err := transport.ExecuteCommand(context.Background(), fipsLinuxDiscoveryScript)
+	cmd := transport.NewCommand(fipsLinuxDiscoveryScript)
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err := cmd.Run(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -74,6 +79,8 @@ func (f *FIPSInfo) populateLinuxFipsInfo(transport transport.Transport) diag.Dia
 			Detail:   fmt.Sprintf("Error checking FIPS status: %v", err),
 		}}
 	}
+
+	stdout := strings.TrimSpace(outBuf.String())
 
 	if stdout == "" {
 		f.enabled = false
@@ -87,7 +94,11 @@ func (f *FIPSInfo) populateLinuxFipsInfo(transport transport.Transport) diag.Dia
 
 func (f *FIPSInfo) populateWindowsFipsInfo(transport transport.Transport) diag.Diags {
 
-	stdout, err := transport.ExecutePowerShell(context.Background(), fipsWindowsDiscoveryScript)
+	cmd := transport.NewPowerShellCommand(fipsWindowsDiscoveryScript)
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err := cmd.Run(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -96,7 +107,7 @@ func (f *FIPSInfo) populateWindowsFipsInfo(transport transport.Transport) diag.D
 		}}
 	}
 
-	stdout = strings.TrimSpace(stdout)
+	stdout := strings.TrimSpace(outBuf.String())
 
 	f.known = true
 	f.enabled = stdout == "1"

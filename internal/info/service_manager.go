@@ -1,6 +1,7 @@
 package info
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -184,7 +185,11 @@ func (s *ServiceManagerInfo) populateDarwinServiceManagerInfo(osInfo *OSInfo) di
 
 func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(transport transport.Transport) diag.Diags {
 
-	stdout, _, err := transport.ExecuteCommand(context.Background(), linuxServiceManagerDiscoveryScript)
+	cmd := transport.NewCommand(linuxServiceManagerDiscoveryScript)
+	var outBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+
+	err := cmd.Run(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -192,6 +197,8 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(transport transport
 			Detail:   fmt.Sprintf("Error executing service manager discovery script: %v", err),
 		}}
 	}
+
+	stdout := strings.TrimSpace(outBuf.String())
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
