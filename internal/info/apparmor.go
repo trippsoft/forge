@@ -1,60 +1,78 @@
 package info
 
 import (
-	"errors"
+	"context"
 	"fmt"
-	"os"
-	"syscall"
 
 	"github.com/trippsoft/forge/internal/transport"
+	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/zclconf/go-cty/cty"
 )
 
-type appArmorInfo struct {
+const (
+	appArmorDiscoveryScript = `if [ -d /sys/kernel/security/apparmor ]; then apparmor_enabled=1; ` +
+		`else apparmor_enabled=0; ` +
+		`fi; ` +
+		`echo "$apparmor_enabled"`
+)
+
+type AppArmorInfo struct {
 	supported bool
 	enabled   bool
 }
 
-func newAppArmorInfo() *appArmorInfo {
-	return &appArmorInfo{
+func newAppArmorInfo() *AppArmorInfo {
+	return &AppArmorInfo{
 		supported: false,
 		enabled:   false,
 	}
 }
 
-func (a *appArmorInfo) Supported() bool {
+func (a *AppArmorInfo) Supported() bool {
 	return a.supported
 }
 
-func (a *appArmorInfo) Enabled() bool {
+func (a *AppArmorInfo) Enabled() bool {
 	return a.enabled
 }
 
-func (a *appArmorInfo) populateAppArmorInfo(osInfo *osInfo, fileSystem transport.FileSystem) error {
+func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, transport transport.Transport) diag.Diags {
+
+	if osInfo == nil || osInfo.id == "" {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagWarning,
+			Summary:  "Missing OS information",
+			Detail:   "Skipping AppArmor information collection due to missing or invalid OS info",
+		}}
+	}
 
 	if !osInfo.families.Contains("linux") {
 		a.supported = false
 		a.enabled = false
-		return nil
+		return diag.Diags{}
 	}
 
 	a.supported = true
 
-	_, err := fileSystem.Stat("/sys/kernel/security/apparmor")
-	if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOENT) {
-		a.enabled = false
-		return nil
-	}
-
+	stdout, _, err := transport.ExecuteCommand(context.Background(), appArmorDiscoveryScript)
 	if err != nil {
-		return fmt.Errorf("failed to stat AppArmor directory: %w", err)
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to execute AppArmor discovery script",
+			Detail:   fmt.Sprintf("Error executing command: %v", err),
+		}}
 	}
 
-	a.enabled = true
-	return nil
+	if stdout == "" {
+		a.enabled = false
+		return diag.Diags{}
+	}
+
+	a.enabled = stdout == "1"
+	return diag.Diags{}
 }
 
-func (a *appArmorInfo) toMapOfCtyValues() map[string]cty.Value {
+func (a *AppArmorInfo) toMapOfCtyValues() map[string]cty.Value {
 
 	if !a.supported {
 		return map[string]cty.Value{
@@ -69,7 +87,7 @@ func (a *appArmorInfo) toMapOfCtyValues() map[string]cty.Value {
 
 // String returns a string representation of the AppArmor information.
 // This is useful for logging or debugging purposes.
-func (a *appArmorInfo) String() string {
+func (a *AppArmorInfo) String() string {
 
 	if !a.supported {
 		return "apparmor_enabled: not supported"

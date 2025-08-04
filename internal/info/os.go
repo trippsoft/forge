@@ -2,13 +2,67 @@ package info
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/trippsoft/forge/internal/transport"
 	"github.com/trippsoft/forge/internal/util"
+	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/zclconf/go-cty/cty"
+)
+
+const (
+	darwinOSDiscoveryScript = `os_arch="$(uname -m || echo \"\")"; ` +
+		`os_version="$(sw_vers -productVersion || echo \"\")"; ` +
+		`echo "{\"os_arch\": \"$os_arch\", \"os_version\": \"$os_version\"}"`
+
+	linuxOSDiscoveryScript = `os_arch="$(uname -m || echo \"\")"; ` +
+		`if [ -e /etc/os-release ]; then source /etc/os-release; ` +
+		`elif [ -L /etc/os-release ]; then source "$(readlink -f /etc/os-release || echo \"\")"; ` +
+		`elif [ -e /usr/lib/os-release ]; then source /usr/lib/os-release; ` +
+		`elif [ -L /usr/lib/os-release ]; then source "$(readlink -f /usr/lib/os-release || echo \"\")"; ` +
+		`fi; ` +
+		`if [ -n "$ID" ]; then os_id="$ID"; ` +
+		`else os_id="$(lsb_release -si || echo \"\")"; ` +
+		`fi; ` +
+		`if [ -n "$PRETTY_NAME" ]; then os_friendly_name="$PRETTY_NAME"; ` +
+		`else os_friendly_name="$(lsb_release -sd || echo \"\")"; ` +
+		`fi; ` +
+		`if [ -n "$VERSION_ID" ]; then  os_version="$VERSION_ID"; ` +
+		`else os_version="$(lsb_release -sr || echo \"\")"; ` +
+		`fi; ` +
+		`if [ -n "$VERSION_CODENAME" ]; then os_release="$VERSION_CODENAME"; ` +
+		`else os_release="$(lsb_release -sc || echo \"\")"; ` +
+		`fi; ` +
+		`if [ -n "$VARIANT" ]; then os_edition="$VARIANT"; ` +
+		`fi; ` +
+		`if [ -n "$VARIANT_ID" ]; then os_edition_id="$VARIANT_ID"; ` +
+		`fi; ` +
+		`output=$(jq -n ` +
+		`--arg os_arch "$os_arch" ` +
+		`--arg os_id "$os_id" ` +
+		`--arg os_friendly_name "$os_friendly_name" ` +
+		`--arg os_release "$os_release" ` +
+		`--arg os_version "$os_version" ` +
+		`--arg os_edition "$os_edition" ` +
+		`--arg os_edition_id "$os_edition_id" ` +
+		`'{os_arch: $os_arch, os_id: $os_id, os_friendly_name: $os_friendly_name, os_release: $os_release, os_version: $os_version, os_edition: $os_edition, os_edition_id: $os_edition_id}'); ` +
+		`echo "$output"`
+
+	windowsOSDiscoveryScript = `Import-Module -Name Dism; ` +
+		`$friendlyName = (Get-CimInstance -ClassName Win32_OperatingSystem).Caption; ` +
+		`$version = [System.Environment]::OSVersion.Version.ToString(); ` +
+		`$osArch = (Get-CimInstance -ClassName Win32_OperatingSystem).OSArchitecture; ` +
+		`$procArch = $env:PROCESSOR_ARCHITECTURE; ` +
+		`$output = @{` +
+		`os_friendly_name = $friendlyName; ` +
+		`os_version = $version; ` +
+		`os_bits = $osArch; ` +
+		`processor_arch = $procArch; ` +
+		`}; ` +
+		`$json = $output | ConvertTo-Json -Depth 3; ` +
+		`Write-Host $json`
 )
 
 var (
@@ -91,21 +145,19 @@ var (
 		"opensuse-leap":  "opensuse",
 		"sles_sap":       "sles",
 	}
-
-	osUnknownError       = errors.New("unknown OS family")
-	osNoReleaseFileError = errors.New("neither /etc/os-release nor /usr/lib/os-release found")
 )
 
-type osInfo struct {
+type OSInfo struct {
 	families *util.Set[string]
 
+	kernel       string
 	id           string
 	friendlyName string
 	release      string
 	majorVersion string
 	version      string
 	edition      string
-	editionId    string
+	editionID    string
 
 	osArch     string
 	osArchBits int
@@ -114,89 +166,566 @@ type osInfo struct {
 	procArchBits int
 }
 
-func newOSInfo() *osInfo {
-	return &osInfo{
-		families:     util.NewSet[string](),
-		id:           "",
-		friendlyName: "",
-		release:      "",
-		majorVersion: "",
-		version:      "",
-		edition:      "",
-		editionId:    "",
-		osArch:       "",
-		osArchBits:   0,
-		procArch:     "",
-		procArchBits: 0,
+func newOSInfo() *OSInfo {
+	return &OSInfo{
+		families: util.NewSet[string](),
 	}
 }
 
-func (o *osInfo) Families() *util.Set[string] {
+func (o *OSInfo) Families() util.ReadOnlySet[string] {
 	return o.families
 }
 
-func (o *osInfo) Id() string {
+func (o *OSInfo) Kernel() string {
+	return o.kernel
+}
+
+func (o *OSInfo) ID() string {
 	return o.id
 }
 
-func (o *osInfo) FriendlyName() string {
+func (o *OSInfo) FriendlyName() string {
 	return o.friendlyName
 }
 
-func (o *osInfo) Release() string {
+func (o *OSInfo) Release() string {
 	return o.release
 }
 
-func (o *osInfo) MajorVersion() string {
+func (o *OSInfo) MajorVersion() string {
 	return o.majorVersion
 }
 
-func (o *osInfo) Version() string {
+func (o *OSInfo) Version() string {
 	return o.version
 }
 
-func (o *osInfo) Edition() string {
+func (o *OSInfo) Edition() string {
 	return o.edition
 }
 
-func (o *osInfo) EditionId() string {
-	return o.editionId
+func (o *OSInfo) EditionID() string {
+	return o.editionID
 }
 
-func (o *osInfo) OsArch() string {
+func (o *OSInfo) OSArch() string {
 	return o.osArch
 }
 
-func (o *osInfo) OsArchBits() int {
+func (o *OSInfo) OSArchBits() int {
 	return o.osArchBits
 }
 
-func (o *osInfo) ProcArch() string {
+func (o *OSInfo) ProcArch() string {
 	return o.procArch
 }
 
-func (o *osInfo) ProcArchBits() int {
+func (o *OSInfo) ProcArchBits() int {
 	return o.procArchBits
 }
 
-func (o *osInfo) populateOSInfo(transport transport.Transport, fileSystem transport.FileSystem) error {
+func (o *OSInfo) populateOSInfo(transport transport.Transport) diag.Diags {
 
-	_, _, err := transport.ExecuteCommand(context.Background(), "uname -s")
-	if err == nil {
+	stdout, _, unameErr := transport.ExecuteCommand(context.Background(), "uname -s")
+	o.kernel = strings.ToLower(stdout)
+	if unameErr == nil {
 		o.families.Add("posix")
-		return o.populatePosixOSInfo(transport, fileSystem)
+		o.families.Add(o.kernel)
+
+		switch o.kernel {
+		case "darwin":
+			return o.populateDarwinOSInfo(transport)
+		case "linux":
+			return o.populateLinuxOSInfo(transport)
+		}
 	}
 
-	_, err = transport.ExecutePowerShell(context.Background(), "Write-Host $PSVersionTable.PSVersion")
-	if err == nil {
+	_, psErr := transport.ExecutePowerShell(context.Background(), "Write-Host $PSVersionTable.PSVersion")
+	if psErr == nil {
+
 		o.families.Add("windows")
+		o.kernel = "windows"
 		return o.populateWindowsOSInfo(transport)
 	}
 
-	return osUnknownError // Return an error if the shell type is not recognized as POSIX or Windows, subject to future expansion
+	return diag.Diags{&diag.Diag{
+		Severity: diag.DiagError,
+		Summary:  "Unsupported OS family",
+		Detail:   fmt.Sprintf("uname error: %v, PowerShell error: %v", unameErr, psErr),
+	}}
 }
 
-func (o *osInfo) toMapOfCtyValues() map[string]cty.Value {
+func (o *OSInfo) populateDarwinOSInfo(transport transport.Transport) diag.Diags {
+
+	o.id = "macos"
+	o.families.Add(o.id)
+
+	stdout, _, err := transport.ExecuteCommand(context.Background(), darwinOSDiscoveryScript)
+	if err != nil {
+		o.friendlyName = "macOS"
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to get macOS version",
+			Detail:   fmt.Sprintf("Error executing discovery command: %v", err),
+		}}
+	}
+
+	discoveredData := make(map[string]string)
+	err = json.Unmarshal([]byte(stdout), &discoveredData)
+	if err != nil {
+		o.friendlyName = "macOS"
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to parse macOS discovery output",
+			Detail:   fmt.Sprintf("Error parsing JSON output: %v", err),
+		}}
+	}
+
+	diags := o.populatePosixArchitectureInfo(discoveredData)
+
+	moreDiags := o.populateVersionInfo(discoveredData)
+	diags = diags.AppendAll(moreDiags)
+
+	o.friendlyName = fmt.Sprintf("macOS %s", o.version)
+
+	switch o.majorVersion {
+	case "26":
+		o.release = "Tahoe"
+	case "15":
+		o.release = "Sequoia"
+	case "14":
+		o.release = "Sonoma"
+	case "13":
+		o.release = "Ventura"
+	case "12":
+		o.release = "Monterey"
+	case "11":
+		o.release = "Big Sur"
+	default:
+		diags = diags.Append(&diag.Diag{
+			Severity: diag.DiagWarning,
+			Summary:  "Unknown macOS release",
+			Detail:   fmt.Sprintf("Unknown macOS release detected for major version %s", o.majorVersion),
+		})
+	}
+
+	return diags
+}
+
+func (o *OSInfo) populateLinuxOSInfo(transport transport.Transport) diag.Diags {
+
+	stdout, _, err := transport.ExecuteCommand(context.Background(), linuxOSDiscoveryScript)
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to get Linux OS information",
+			Detail:   fmt.Sprintf("Error executing Linux discovery script: %v", err),
+		}}
+	}
+
+	discoveredData := make(map[string]string)
+	err = json.Unmarshal([]byte(stdout), &discoveredData)
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to parse Linux discovery output",
+			Detail:   fmt.Sprintf("Error parsing JSON output: %v", err),
+		}}
+	}
+
+	diags := o.populatePosixArchitectureInfo(discoveredData)
+
+	moreDiags := o.populateVersionInfo(discoveredData)
+	diags = diags.AppendAll(moreDiags)
+
+	o.id, _ = discoveredData["os_id"]
+
+	o.id = strings.Trim(strings.ToLower(o.id), "\"")
+
+	if o.id == "n/a" {
+		o.id = ""
+	}
+
+	if correctedID, exists := osIDCorrectionMap[o.id]; exists {
+		o.id = correctedID
+	}
+
+	o.families.Add(o.id)
+
+	additionalFamilies, exists := osFamiliesMap[o.id]
+	if exists {
+		for _, family := range additionalFamilies {
+			o.families.Add(family)
+		}
+	}
+
+	o.friendlyName, _ = discoveredData["os_friendly_name"]
+
+	o.friendlyName = strings.Trim(strings.TrimSpace(o.friendlyName), "\"")
+
+	if o.friendlyName == "n/a" || o.friendlyName == "" {
+		o.friendlyName = o.id
+	}
+
+	o.release, _ = discoveredData["os_release"]
+
+	o.release = strings.Trim(strings.TrimSpace(o.release), "\"")
+
+	if o.release == "n/a" {
+		o.release = ""
+	}
+
+	o.edition, _ = discoveredData["os_edition"]
+
+	o.edition = strings.Trim(strings.TrimSpace(o.edition), "\"")
+
+	if o.edition == "n/a" {
+		o.edition = ""
+	}
+
+	o.editionID, _ = discoveredData["os_edition_id"]
+
+	o.editionID = strings.Trim(strings.ToLower(strings.TrimSpace(o.editionID)), "\"")
+
+	if o.editionID == "n/a" {
+		o.editionID = ""
+	}
+
+	return diags
+}
+
+func (o *OSInfo) populateWindowsOSInfo(transport transport.Transport) diag.Diags {
+
+	stdout, err := transport.ExecutePowerShell(context.Background(), windowsOSDiscoveryScript)
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to get Windows OS information",
+			Detail:   fmt.Sprintf("Error executing Windows discovery script: %v", err),
+		}}
+	}
+
+	discoveredData := make(map[string]string)
+	err = json.Unmarshal([]byte(stdout), &discoveredData)
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to parse Windows discovery output",
+			Detail:   fmt.Sprintf("Error parsing JSON output: %v", err),
+		}}
+	}
+
+	diags := o.populateVersionInfo(discoveredData)
+
+	moreDiags := o.populateWindowsArchitectureInfo(discoveredData)
+	diags = diags.AppendAll(moreDiags)
+
+	o.friendlyName, _ = discoveredData["os_friendly_name"]
+
+	isServer := strings.Contains(strings.ToLower(o.friendlyName), "server")
+
+	if isServer {
+		o.id = "windows-server"
+	} else {
+		o.id = "windows-client"
+	}
+
+	o.families.Add(o.id)
+
+	var friendlyNamePrefix string
+
+	switch {
+	case strings.HasPrefix(o.version, "6.1.7600") && isServer:
+		o.release = "server-2008-r2"
+		friendlyNamePrefix = "Microsoft Windows Server 2008 R2"
+	case strings.HasPrefix(o.version, "6.1.7600") && !isServer:
+		o.release = "7"
+		friendlyNamePrefix = "Microsoft Windows 7"
+	case strings.HasPrefix(o.version, "6.1.7601") && isServer:
+		o.release = "server-2008-r2-sp1"
+		friendlyNamePrefix = "Microsoft Windows Server 2008 R2 SP1"
+	case strings.HasPrefix(o.version, "6.1.7601") && !isServer:
+		o.release = "7-sp1"
+		friendlyNamePrefix = "Microsoft Windows 7 SP1"
+	case strings.HasPrefix(o.version, "6.2.9200") && isServer:
+		o.release = "server-2012"
+		friendlyNamePrefix = "Microsoft Windows Server 2012"
+	case strings.HasPrefix(o.version, "6.2.9200") && !isServer:
+		o.release = "8"
+		friendlyNamePrefix = "Microsoft Windows 8"
+	case strings.HasPrefix(o.version, "6.3.9600") && isServer:
+		o.release = "server-2012-r2"
+		friendlyNamePrefix = "Microsoft Windows Server 2012 R2"
+	case strings.HasPrefix(o.version, "6.3.9600") && !isServer:
+		o.release = "8.1"
+		friendlyNamePrefix = "Microsoft Windows 8.1"
+	case strings.HasPrefix(o.version, "10.0.10240"):
+		o.release = "10-1507"
+		friendlyNamePrefix = "Microsoft Windows 10 1507"
+	case strings.HasPrefix(o.version, "10.0.10586"):
+		o.release = "10-1511"
+		friendlyNamePrefix = "Microsoft Windows 10 1511"
+	case strings.HasPrefix(o.version, "10.0.14393") && isServer:
+		o.release = "server-2016"
+		friendlyNamePrefix = "Microsoft Windows Server 2016"
+	case strings.HasPrefix(o.version, "10.0.14393") && !isServer:
+		o.release = "10-1607"
+		friendlyNamePrefix = "Microsoft Windows 10 1607"
+	case strings.HasPrefix(o.version, "10.0.15063"):
+		o.release = "10-1703"
+		friendlyNamePrefix = "Microsoft Windows 10 1703"
+	case strings.HasPrefix(o.version, "10.0.16299"):
+		o.release = "10-1709"
+		friendlyNamePrefix = "Microsoft Windows 10 1709"
+	case strings.HasPrefix(o.version, "10.0.17134"):
+		o.release = "10-1803"
+		friendlyNamePrefix = "Microsoft Windows 10 1803"
+	case strings.HasPrefix(o.version, "10.0.17763") && isServer:
+		o.release = "server-2019"
+		friendlyNamePrefix = "Microsoft Windows Server 2019"
+	case strings.HasPrefix(o.version, "10.0.17763") && !isServer:
+		o.release = "10-1809"
+		friendlyNamePrefix = "Microsoft Windows 10 1809"
+	case strings.HasPrefix(o.version, "10.0.18362"):
+		o.release = "10-1903"
+		friendlyNamePrefix = "Microsoft Windows 10 1903"
+	case strings.HasPrefix(o.version, "10.0.18363") && isServer:
+		o.release = "server-1909"
+		friendlyNamePrefix = "Microsoft Windows Server 1909"
+	case strings.HasPrefix(o.version, "10.0.18363") && !isServer:
+		o.release = "10-1909"
+		friendlyNamePrefix = "Microsoft Windows 10 1909"
+	case strings.HasPrefix(o.version, "10.0.19041") && isServer:
+		o.release = "server-2004"
+		friendlyNamePrefix = "Microsoft Windows Server 2004"
+	case strings.HasPrefix(o.version, "10.0.19041") && !isServer:
+		o.release = "10-2004"
+		friendlyNamePrefix = "Microsoft Windows 10 2004"
+	case strings.HasPrefix(o.version, "10.0.19042") && isServer:
+		o.release = "server-20h2"
+		friendlyNamePrefix = "Microsoft Windows Server 20H2"
+	case strings.HasPrefix(o.version, "10.0.19042") && !isServer:
+		o.release = "10-20h2"
+		friendlyNamePrefix = "Microsoft Windows 10 20H2"
+	case strings.HasPrefix(o.version, "10.0.19043"):
+		o.release = "10-21h1"
+		friendlyNamePrefix = "Microsoft Windows 10 21H1"
+	case strings.HasPrefix(o.version, "10.0.19044"):
+		o.release = "10-21h2"
+		friendlyNamePrefix = "Microsoft Windows 10 21H2"
+	case strings.HasPrefix(o.version, "10.0.19045"):
+		o.release = "10-22h2"
+		friendlyNamePrefix = "Microsoft Windows 10 22H2"
+	case strings.HasPrefix(o.version, "10.0.20348"):
+		o.release = "server-2022"
+		friendlyNamePrefix = "Microsoft Windows Server 2022"
+	case strings.HasPrefix(o.version, "10.0.22000"):
+		o.release = "11-21h2"
+		friendlyNamePrefix = "Microsoft Windows 11 21H2"
+	case strings.HasPrefix(o.version, "10.0.22621"):
+		o.release = "11-22h2"
+		friendlyNamePrefix = "Microsoft Windows 11 22H2"
+	case strings.HasPrefix(o.version, "10.0.22631"):
+		o.release = "11-23h2"
+		friendlyNamePrefix = "Microsoft Windows 11 23H2"
+	case strings.HasPrefix(o.version, "10.0.25398"):
+		o.release = "server-23h2"
+		friendlyNamePrefix = "Microsoft Windows Server 23H2"
+	case strings.HasPrefix(o.version, "10.0.26100") && isServer:
+		o.release = "server-2025"
+		friendlyNamePrefix = "Microsoft Windows Server 2025"
+	case strings.HasPrefix(o.version, "10.0.26100") && !isServer:
+		o.release = "11-24h2"
+		friendlyNamePrefix = "Microsoft Windows 11 24H2"
+	}
+
+	friendlyNameParts := strings.Split(o.friendlyName, " ")
+	for len(friendlyNameParts) > 0 && strings.Contains(friendlyNamePrefix, friendlyNameParts[0]) {
+		friendlyNameParts = friendlyNameParts[1:]
+	}
+
+	friendlyNameBuilder := strings.Builder{}
+	friendlyNameBuilder.WriteString(friendlyNamePrefix)
+
+	editionBuilder := strings.Builder{}
+	editionIdBuilder := strings.Builder{}
+
+	for _, part := range friendlyNameParts {
+		if strings.Contains(part, "Edition") || strings.Contains(part, "Evaluation") {
+			continue
+		}
+
+		friendlyNameBuilder.WriteString(" " + part)
+		if editionBuilder.Len() == 0 {
+			editionBuilder.WriteString(part)
+			editionIdBuilder.WriteString(strings.ToLower(part))
+		} else {
+			editionBuilder.WriteString(" " + part)
+			editionIdBuilder.WriteString("-" + strings.ToLower(part))
+		}
+	}
+
+	o.friendlyName = strings.TrimSpace(friendlyNameBuilder.String())
+	o.edition = strings.TrimSpace(editionBuilder.String())
+	o.editionID = strings.TrimSpace(editionIdBuilder.String())
+
+	return diags
+}
+
+func (o *OSInfo) populatePosixArchitectureInfo(data map[string]string) diag.Diags {
+
+	archString, exists := data["os_arch"]
+	if !exists {
+		o.procArch = ""
+		o.procArchBits = 0
+		o.osArch = ""
+		o.osArchBits = 0
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagWarning,
+			Summary:  "Unknown architecture",
+			Detail:   "No architecture information found in discovery output",
+		}}
+	}
+
+	archString = strings.Trim(strings.ToLower(strings.TrimSpace(archString)), "\"")
+
+	arch, exists := architectureMap[archString]
+	if !exists {
+		o.procArch = archString
+		o.procArchBits = 0
+		o.osArch = archString
+		o.osArchBits = 0
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagWarning,
+			Summary:  "Unknown architecture",
+			Detail:   fmt.Sprintf("Unknown architecture %q detected, using it as is", archString),
+		}}
+	}
+
+	o.procArch = arch
+	o.osArch = arch
+
+	archBits, exists := architectureBitsMap[arch]
+	if !exists {
+		o.procArchBits = 0
+		o.osArchBits = 0
+
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagWarning,
+			Summary:  "Unknown architecture bits",
+			Detail:   fmt.Sprintf("Unknown architecture bits for %q detected", arch),
+		}}
+	}
+
+	o.procArchBits = archBits
+	o.osArchBits = archBits
+
+	return diag.Diags{}
+}
+
+func (o *OSInfo) populateWindowsArchitectureInfo(data map[string]string) diag.Diags {
+
+	procArchString, exists := data["processor_arch"]
+	if !exists {
+		o.procArch = ""
+		o.procArchBits = 0
+		o.osArch = ""
+		o.osArchBits = 0
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagWarning,
+			Summary:  "Unknown architecture",
+			Detail:   "No architecture information found in discovery output",
+		}}
+	}
+
+	procArchString = strings.ToLower(strings.TrimSpace(procArchString))
+
+	procArch, exists := architectureMap[procArchString]
+	if !exists {
+		o.procArch = procArchString
+		o.procArchBits = 0
+		o.osArch = procArchString
+		o.osArchBits = 0
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagWarning,
+			Summary:  "Unknown architecture",
+			Detail:   fmt.Sprintf("Unknown architecture %q detected, using it as is", procArchString),
+		}}
+	}
+
+	o.procArch = procArch
+
+	procArchBits, exists := architectureBitsMap[procArch]
+	if !exists {
+		o.procArchBits = 0
+		o.osArch = procArch
+		o.osArchBits = 0
+
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagWarning,
+			Summary:  "Unknown architecture bits",
+			Detail:   fmt.Sprintf("Unknown architecture bits for %q detected", procArch),
+		}}
+	}
+
+	o.procArchBits = procArchBits
+
+	osArchString, exists := data["os_bits"]
+	if !exists {
+		o.osArch = procArch
+		o.osArchBits = procArchBits
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagWarning,
+			Summary:  "Unknown OS architecture",
+			Detail:   "No OS architecture found in discovery output, using processor architecture",
+		}}
+	}
+
+	switch {
+	case o.procArch == "amd64" && osArchString == "64-bit":
+		o.osArch = "amd64"
+		o.osArchBits = 64
+	case o.procArch == "amd64" && osArchString == "32-bit":
+		o.osArch = "386"
+		o.osArchBits = 32
+	case o.procArch == "386" && osArchString == "32-bit":
+		o.osArch = "386"
+		o.osArchBits = 32
+	case o.procArch == "arm64" && osArchString == "64-bit":
+		o.osArch = "arm64"
+		o.osArchBits = 64
+	case o.procArch == "arm64" && osArchString == "32-bit":
+		o.osArch = "arm"
+		o.osArchBits = 32
+	case o.procArch == "arm" && osArchString == "32-bit":
+		o.osArch = "arm"
+		o.osArchBits = 32
+	default:
+		o.osArch = procArch
+		o.osArchBits = procArchBits
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagWarning,
+			Summary:  "Unknown OS architecture",
+			Detail:   fmt.Sprintf("Unknown OS architecture %q detected, using processor architecture", procArch),
+		}}
+	}
+
+	return diag.Diags{}
+}
+
+func (o *OSInfo) populateVersionInfo(data map[string]string) diag.Diags {
+
+	o.version, _ = data["os_version"]
+
+	o.version = strings.Trim(strings.TrimSpace(o.version), "\"")
+
+	versionParts := strings.Split(o.version, ".")
+	o.majorVersion = versionParts[0]
+
+	return diag.Diags{}
+}
+
+func (o *OSInfo) toMapOfCtyValues() map[string]cty.Value {
 
 	values := make(map[string]cty.Value)
 
@@ -211,6 +740,12 @@ func (o *osInfo) toMapOfCtyValues() map[string]cty.Value {
 
 	} else {
 		values["os_families"] = cty.NullVal(cty.Set(cty.String))
+	}
+
+	if o.kernel == "" {
+		values["os_kernel"] = cty.NullVal(cty.String)
+	} else {
+		values["os_kernel"] = cty.StringVal(o.kernel)
 	}
 
 	if o.id == "" {
@@ -249,10 +784,10 @@ func (o *osInfo) toMapOfCtyValues() map[string]cty.Value {
 		values["os_edition"] = cty.StringVal(o.edition)
 	}
 
-	if o.editionId == "" {
+	if o.editionID == "" {
 		values["os_edition_id"] = cty.NullVal(cty.String)
 	} else {
-		values["os_edition_id"] = cty.StringVal(o.editionId)
+		values["os_edition_id"] = cty.StringVal(o.editionID)
 	}
 
 	if o.osArch == "" {
@@ -284,7 +819,7 @@ func (o *osInfo) toMapOfCtyValues() map[string]cty.Value {
 
 // String returns a string representation of the OS information.
 // This is useful for logging or debugging purposes.
-func (o *osInfo) String() string {
+func (o *OSInfo) String() string {
 
 	stringBuilder := &strings.Builder{}
 
@@ -304,6 +839,10 @@ func (o *osInfo) String() string {
 
 		stringBuilder.WriteString("\n")
 	}
+
+	stringBuilder.WriteString("os_kernel: ")
+	stringBuilder.WriteString(o.kernel)
+	stringBuilder.WriteString("\n")
 
 	stringBuilder.WriteString("os_id: ")
 	stringBuilder.WriteString(o.id)
@@ -330,7 +869,7 @@ func (o *osInfo) String() string {
 	stringBuilder.WriteString("\n")
 
 	stringBuilder.WriteString("os_edition_id: ")
-	stringBuilder.WriteString(o.editionId)
+	stringBuilder.WriteString(o.editionID)
 	stringBuilder.WriteString("\n")
 
 	stringBuilder.WriteString("os_architecture: ")

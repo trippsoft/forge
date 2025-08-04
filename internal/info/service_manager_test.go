@@ -1,593 +1,457 @@
 package info
 
 import (
-	"errors"
-	"io"
-	"maps"
-	"strings"
+	"os"
 	"testing"
 
-	"github.com/zclconf/go-cty/cty"
+	"github.com/trippsoft/forge/internal/transport/mock"
 )
 
-func TestNewServiceManagerInfo(t *testing.T) {
+func TestServiceManagerInfo_PopulateServiceManagerInfo_NoOS(t *testing.T) {
+
+	osInfo := newOSInfo()
+
+	transport := mock.NewMockTransport()
+
 	info := newServiceManagerInfo()
-	if info == nil {
-		t.Fatal("expected non-nil service manager info")
+	diags := info.populateServiceManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
-	if info.name != "" {
-		t.Errorf("expected empty name, got %q", info.name)
+
+	if !diags.HasWarnings() {
+		t.Fatal("expected warnings, got none")
+	}
+
+	if info.Name() != "" {
+		t.Error("expected service manager name to be empty with missing OS info")
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Missing OS information"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "Skipping service manager information collection due to missing or invalid OS info"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+}
+
+func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin(t *testing.T) {
+
+	tests := []struct {
+		name         string
+		majorVersion string
+		version      string
+		expected     string
+	}{
+		{
+			name:         "macOS 12",
+			majorVersion: "12",
+			version:      "", // not used in this test
+			expected:     "launchd",
+		},
+		{
+			name:         "macOS 11",
+			majorVersion: "11",
+			version:      "", // not used in this test
+			expected:     "launchd",
+		},
+		{
+			name:         "macOS 10.0",
+			majorVersion: "10",
+			version:      "10.0",
+			expected:     "systemstarter",
+		},
+		{
+			name:         "macOS 10.3",
+			majorVersion: "10",
+			version:      "10.3",
+			expected:     "systemstarter",
+		},
+		{
+			name:         "macOS 10.4",
+			majorVersion: "10",
+			version:      "10.4",
+			expected:     "launchd",
+		},
+		{
+			name:         "macOS 9",
+			majorVersion: "9",
+			version:      "", // not used in this test
+			expected:     "systemstarter",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			osInfo := newOSInfo()
+			osInfo.families.Add("darwin") // macOS
+			osInfo.id = "macos"
+			osInfo.majorVersion = tt.majorVersion
+			osInfo.version = tt.version
+
+			transport := mock.NewMockTransport()
+
+			info := newServiceManagerInfo()
+			diags := info.populateServiceManagerInfo(osInfo, transport)
+
+			if diags.HasErrors() {
+				t.Fatalf("expected no errors, got: %v", diags.Errors())
+			}
+
+			if diags.HasWarnings() {
+				t.Fatal("expected no warnings, got some")
+			}
+
+			if info.Name() != tt.expected {
+				t.Errorf("expected service manager name to be %q, got: %q", tt.expected, info.Name())
+			}
+		})
+	}
+}
+
+func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_InvalidMajorVersion(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.families.Add("darwin") // macOS
+	osInfo.id = "macos"
+	osInfo.majorVersion = "invalid" // invalid major version
+
+	transport := mock.NewMockTransport()
+
+	info := newServiceManagerInfo()
+	diags := info.populateServiceManagerInfo(osInfo, transport)
+
+	if !diags.HasErrors() {
+		t.Fatal("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	expectedName := "launchd" // default name before error handling
+	if info.Name() != expectedName {
+		t.Errorf("expected service manager name to be %q, got: %q", expectedName, info.Name())
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Invalid OS major version"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error parsing OS major version: strconv.Atoi: parsing \"invalid\": invalid syntax"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, errors[0].Detail)
+	}
+}
+
+func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_NotEnoughVersionParts(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.families.Add("darwin") // macOS
+	osInfo.id = "macos"
+	osInfo.majorVersion = "10"
+	osInfo.version = "invalid" // invalid version format
+
+	transport := mock.NewMockTransport()
+
+	info := newServiceManagerInfo()
+	diags := info.populateServiceManagerInfo(osInfo, transport)
+
+	if !diags.HasErrors() {
+		t.Fatal("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	expectedName := "launchd" // default name before error handling
+	if info.Name() != expectedName {
+		t.Errorf("expected service manager name to be %q, got: %q", expectedName, info.Name())
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Invalid OS version format"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "OS version does not contain enough parts to determine service manager"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, errors[0].Detail)
+	}
+}
+
+func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_InvalidVersion(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.families.Add("darwin") // macOS
+	osInfo.id = "macos"
+	osInfo.majorVersion = "10"
+	osInfo.version = "10.invalid" // invalid minor version
+
+	transport := mock.NewMockTransport()
+
+	info := newServiceManagerInfo()
+	diags := info.populateServiceManagerInfo(osInfo, transport)
+
+	if !diags.HasErrors() {
+		t.Fatal("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	expectedName := "launchd" // default name before error handling
+	if info.Name() != expectedName {
+		t.Errorf("expected service manager name to be %q, got: %q", expectedName, info.Name())
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Invalid OS minor version"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error parsing OS minor version: strconv.Atoi: parsing \"invalid\": invalid syntax"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, errors[0].Detail)
 	}
 }
 
 func TestServiceManagerInfo_PopulateServiceManagerInfo_Windows(t *testing.T) {
-	info := newServiceManagerInfo()
 
 	osInfo := newOSInfo()
 	osInfo.families.Add("windows")
+	osInfo.id = "windows"
 
-	transport := newMockTransport()
-	fileSystem := transport.fileSystem
+	transport := mock.NewMockTransport()
 
-	err := info.populateServiceManagerInfo(osInfo, transport, fileSystem)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if info.name != "windows-service-manager" {
-		t.Errorf("expected name %q, got %q", "windows-service-manager", info.name)
-	}
-}
-
-func TestServiceManagerInfo_Process1FromVirtualFile(t *testing.T) {
-	tests := []struct {
-		name          string
-		commandOutput string
-		expectedName  string
-		shouldError   bool
-		expectedError string
-	}{
-		{
-			name:          "systemd",
-			commandOutput: "systemd\n",
-			expectedName:  "systemd",
-		},
-		{
-			name:          "systemd with whitespace",
-			commandOutput: "  systemd  \n",
-			expectedName:  "systemd",
-		},
-		{
-			name:          "runit-init (corrected)",
-			commandOutput: "runit-init",
-			expectedName:  "runit",
-		},
-		{
-			name:          "openrc-init (corrected)",
-			commandOutput: "openrc-init",
-			expectedName:  "openrc",
-		},
-		{
-			name:          "path with systemd",
-			commandOutput: "/usr/lib/systemd/systemd",
-			expectedName:  "systemd",
-		},
-		{
-			name:          "COMMAND (imprecise)",
-			commandOutput: "COMMAND",
-			shouldError:   true,
-			expectedError: "got imprecise or unexpected value in /proc/1/comm: COMMAND",
-		},
-		{
-			name:          "init (imprecise)",
-			commandOutput: "init",
-			shouldError:   true,
-			expectedError: "got imprecise or unexpected value in /proc/1/comm: init",
-		},
-		{
-			name:          "shell ending",
-			commandOutput: "bash",
-			shouldError:   true,
-			expectedError: "got imprecise or unexpected value in /proc/1/comm: bash",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			info := newServiceManagerInfo()
-
-			transport := newMockTransport()
-			transport.commandResponses["cat /proc/1/comm"] = &commandResponse{
-				stdout: tt.commandOutput,
-			}
-
-			err := info.getProcess1FromVirtualFile(transport)
-
-			if tt.shouldError {
-
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-
-				if !strings.Contains(err.Error(), tt.expectedError) {
-					t.Errorf("expected error containing %q, got %q", tt.expectedError, err.Error())
-				}
-
-			} else {
-
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
-
-				if info.name != tt.expectedName {
-					t.Errorf("expected name %q, got %q", tt.expectedName, info.name)
-				}
-			}
-		})
-	}
-}
-
-func TestServiceManagerInfo_GetProcess1FromVirtualFile_CommandError(t *testing.T) {
 	info := newServiceManagerInfo()
-	transport := newMockTransport()
-	transport.defaultCommandResponse = &commandResponse{
-		err: io.EOF,
+	diags := info.populateServiceManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
 
-	err := info.getProcess1FromVirtualFile(transport)
-	if err == nil {
-		t.Fatal("expected error, got nil")
+	if diags.HasWarnings() {
+		t.Fatal("expected no warnings, got some")
 	}
 
-	expectedError := "failed to read /proc/1/comm:"
-	if !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("expected error containing %q, got %q", expectedError, err.Error())
-	}
-}
-
-func TestServiceManagerInfo_PopulateServiceManagerInfo_Process1FromVirtualFile(t *testing.T) {
-	tests := []struct {
-		name          string
-		commandOutput string
-		expectedName  string
-	}{
-		{
-			name:          "systemd",
-			commandOutput: "systemd\n",
-			expectedName:  "systemd",
-		},
-		{
-			name:          "systemd with whitespace",
-			commandOutput: "  systemd  \n",
-			expectedName:  "systemd",
-		},
-		{
-			name:          "runit-init (corrected)",
-			commandOutput: "runit-init",
-			expectedName:  "runit",
-		},
-		{
-			name:          "openrc-init (corrected)",
-			commandOutput: "openrc-init",
-			expectedName:  "openrc",
-		},
-		{
-			name:          "path with systemd",
-			commandOutput: "/usr/lib/systemd/systemd",
-			expectedName:  "systemd",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			osInfo := newOSInfo()
-
-			info := newServiceManagerInfo()
-
-			transport := newMockTransport()
-			transport.commandResponses["cat /proc/1/comm"] = &commandResponse{
-				stdout: tt.commandOutput,
-			}
-
-			fileSystem := transport.fileSystem
-
-			err := info.populateServiceManagerInfo(osInfo, transport, fileSystem)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if info.name != tt.expectedName {
-				t.Errorf("expected name %q, got %q", tt.expectedName, info.name)
-			}
-		})
+	expectedName := "windows-service-manager"
+	if info.Name() != expectedName {
+		t.Errorf("expected service manager name to be %q, got: %q", expectedName, info.Name())
 	}
 }
 
-func TestServiceManagerInfo_PopulateServiceManagerInfo_Process1FromInitLink(t *testing.T) {
-	tests := []struct {
-		name          string
-		commandOutput string
-		expectedName  string
-	}{
-		{
-			name:          "systemd path",
-			commandOutput: "/usr/lib/systemd/systemd\n",
-			expectedName:  "systemd",
-		},
-		{
-			name:          "runit-init (corrected)",
-			commandOutput: "/sbin/runit-init\n",
-			expectedName:  "runit",
-		},
-		{
-			name:          "openrc-init (corrected)",
-			commandOutput: "/sbin/openrc-init\n",
-			expectedName:  "openrc",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			osInfo := newOSInfo()
-
-			info := newServiceManagerInfo()
-
-			transport := newMockTransport()
-			transport.commandResponses["cat /proc/1/comm"] = &commandResponse{
-				stdout: "init\n",
-			}
-			transport.commandResponses["realpath /sbin/init"] = &commandResponse{
-				stdout: tt.commandOutput,
-			}
-
-			fileSystem := transport.fileSystem
-
-			err := info.populateServiceManagerInfo(osInfo, transport, fileSystem)
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if info.name != tt.expectedName {
-				t.Errorf("expected name %q, got %q", tt.expectedName, info.name)
-			}
-		})
-	}
-}
-
-func TestServiceManagerInfo_GetProcess1FromInitLink(t *testing.T) {
-	tests := []struct {
-		name          string
-		commandOutput string
-		expectedName  string
-		shouldError   bool
-		expectedError string
-	}{
-		{
-			name:          "systemd path",
-			commandOutput: "/usr/lib/systemd/systemd\n",
-			expectedName:  "systemd",
-		},
-		{
-			name:          "runit-init (corrected)",
-			commandOutput: "/sbin/runit-init\n",
-			expectedName:  "runit",
-		},
-		{
-			name:          "openrc-init (corrected)",
-			commandOutput: "/sbin/openrc-init\n",
-			expectedName:  "openrc",
-		},
-		{
-			name:          "init (imprecise)",
-			commandOutput: "init\n",
-			shouldError:   true,
-			expectedError: "got imprecise or unexpected value in /sbin/init link: init",
-		},
-		{
-			name:          "shell ending",
-			commandOutput: "/bin/sh\n",
-			shouldError:   true,
-			expectedError: "got imprecise or unexpected value in /sbin/init link: /bin/sh",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			info := newServiceManagerInfo()
-
-			transport := newMockTransport()
-			transport.commandResponses["realpath /sbin/init"] = &commandResponse{
-				stdout: tt.commandOutput,
-			}
-
-			err := info.getProcess1FromInitLink(transport)
-
-			if tt.shouldError {
-
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-
-				if !strings.Contains(err.Error(), tt.expectedError) {
-					t.Errorf("expected error containing %q, got %q", tt.expectedError, err.Error())
-				}
-
-			} else {
-
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
-
-				if info.name != tt.expectedName {
-					t.Errorf("expected name %q, got %q", tt.expectedName, info.name)
-				}
-			}
-		})
-	}
-}
-
-func TestServiceManagerInfo_GetProcess1FromInitLink_CommandError(t *testing.T) {
-	info := newServiceManagerInfo()
-	transport := newMockTransport()
-	transport.defaultCommandResponse = &commandResponse{
-		err: errors.New("command failed"),
-	}
-
-	err := info.getProcess1FromInitLink(transport)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	expectedError := "failed to read /sbin/init link:"
-	if !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("expected error containing %q, got %q", expectedError, err.Error())
-	}
-}
-
-func TestServiceManagerInfo_PopulateServiceManagerInfo_GetDarwinServiceManager(t *testing.T) {
+func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux(t *testing.T) {
 
 	tests := []struct {
-		name         string
-		majorVersion string
-		version      string
-		expectedName string
+		name     string
+		output   string
+		expected string
 	}{
 		{
-			name:         "macOS 11.0",
-			majorVersion: "11",
-			version:      "11.0",
-			expectedName: "launchd",
-		},
-		{
-			name:         "macOS 12.0",
-			majorVersion: "12",
-			version:      "12.0",
-			expectedName: "launchd",
-		},
-		{
-			name:         "macOS 10.15",
-			majorVersion: "10",
-			version:      "10.15",
-			expectedName: "launchd",
-		},
-		{
-			name:         "macOS 10.4",
-			majorVersion: "10",
-			version:      "10.4",
-			expectedName: "launchd",
-		},
-		{
-			name:         "macOS 10.3",
-			majorVersion: "10",
-			version:      "10.3",
-			expectedName: "systemstarter",
-		},
-		{
-			name:         "macOS 9.0",
-			majorVersion: "9",
-			version:      "9.0",
-			expectedName: "systemstarter",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			osInfo := newOSInfo()
-			osInfo.majorVersion = tt.majorVersion
-			osInfo.version = tt.version
-			osInfo.families.Add("darwin")
-
-			info := newServiceManagerInfo()
-
-			transport := newMockTransport()
-			transport.commandResponses["cat /proc/1/comm"] = &commandResponse{
-				err: errors.New("command failed"),
-			}
-			transport.commandResponses["realpath /sbin/init"] = &commandResponse{
-				err: errors.New("command failed"),
-			}
-
-			fileSystem := transport.fileSystem
-
-			err := info.populateServiceManagerInfo(osInfo, transport, fileSystem)
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if info.name != tt.expectedName {
-				t.Errorf("expected name %q, got %q", tt.expectedName, info.name)
-			}
-		})
-	}
-}
-
-func TestServiceManagerInfo_GetDarwinServiceManager(t *testing.T) {
-
-	tests := []struct {
-		name         string
-		majorVersion string
-		version      string
-		expectedName string
-		shouldError  bool
-		errorMsg     string
-	}{
-		{
-			name:         "macOS 11.0",
-			majorVersion: "11",
-			version:      "11.0",
-			expectedName: "launchd",
-		},
-		{
-			name:         "macOS 12.0",
-			majorVersion: "12",
-			version:      "12.0",
-			expectedName: "launchd",
-		},
-		{
-			name:         "macOS 10.15",
-			majorVersion: "10",
-			version:      "10.15",
-			expectedName: "launchd",
-		},
-		{
-			name:         "macOS 10.4",
-			majorVersion: "10",
-			version:      "10.4",
-			expectedName: "launchd",
-		},
-		{
-			name:         "macOS 10.3",
-			majorVersion: "10",
-			version:      "10.3",
-			expectedName: "systemstarter",
-		},
-		{
-			name:         "macOS 9.0",
-			majorVersion: "9",
-			version:      "9.0",
-			expectedName: "systemstarter",
-		},
-		{
-			name:         "invalid major version",
-			majorVersion: "invalid",
-			version:      "invalid",
-			shouldError:  true,
-			errorMsg:     "failed to parse macOS major version:",
-		},
-		{
-			name:         "invalid version format",
-			majorVersion: "10",
-			version:      "10",
-			shouldError:  true,
-			errorMsg:     "failed to parse macOS version: 10",
-		},
-		{
-			name:         "invalid minor version",
-			majorVersion: "10",
-			version:      "10.invalid",
-			shouldError:  true,
-			errorMsg:     "failed to parse macOS minor version:",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			info := newServiceManagerInfo()
-			osInfo := newOSInfo()
-			osInfo.majorVersion = tt.majorVersion
-			osInfo.version = tt.version
-
-			err := info.getDarwinServiceManager(osInfo)
-
-			if tt.shouldError {
-				if err == nil {
-					t.Fatal("expected error, got nil")
+			name: "systemd - /run/systemd/system",
+			output: `{
+				"systemctl_exists": "1",
+				"run_systemd_system_exists": "1",
+				"dev_run_systemd_exists": "0",
+				"dev_systemd_exists": "0",
+				"initctl_exists": "0",
+				"etc_init_exists": "0",
+				"openrc_exists": "0",
+				"init_link_target": "",
+				"etc_init_d_exists": "0",
+				"proc1_comm": "systemd"
 				}
-				if !strings.Contains(err.Error(), tt.errorMsg) {
-					t.Errorf("expected error containing %q, got %q", tt.errorMsg, err.Error())
-				}
-			} else {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
-				if info.name != tt.expectedName {
-					t.Errorf("expected name %q, got %q", tt.expectedName, info.name)
-				}
-			}
-		})
-	}
-}
-
-func TestServiceManagerInfo_PopulateServiceManagerInfo_GetLinuxServiceManager(t *testing.T) {
-
-	tests := []struct {
-		name             string
-		commandResponses map[string]*commandResponse
-		fileSystemDirs   []string
-		expectedName     string
-	}{
-		{
-			name: "systemd with /run/systemd/system",
-			commandResponses: map[string]*commandResponse{
-				"realpath systemctl": {
-					stdout: "/usr/bin/systemctl",
-				},
-			},
-			fileSystemDirs: []string{"/run/systemd/system"},
-			expectedName:   "systemd",
+				`,
+			expected: "systemd",
 		},
 		{
-			name: "systemd with /dev/.run/systemd",
-			commandResponses: map[string]*commandResponse{
-				"realpath systemctl": {
-					stdout: "/usr/bin/systemctl",
-				},
-			},
-			fileSystemDirs: []string{"/dev/.run/systemd"},
-			expectedName:   "systemd",
+			name: "systemd - /dev/.run/systemd",
+			output: `{
+				"systemctl_exists": "1",
+				"run_systemd_system_exists": "0",
+				"dev_run_systemd_exists": "1",
+				"dev_systemd_exists": "0",
+				"initctl_exists": "0",
+				"etc_init_exists": "0",
+				"openrc_exists": "0",
+				"init_link_target": "",
+				"etc_init_d_exists": "0",
+				"proc1_comm": "systemd"
+			}`,
+			expected: "systemd",
 		},
 		{
-			name: "systemd with /dev/.systemd",
-			commandResponses: map[string]*commandResponse{
-				"realpath systemctl": {
-					stdout: "/usr/bin/systemctl",
-				},
-			},
-			fileSystemDirs: []string{"/dev/.systemd"},
-			expectedName:   "systemd",
+			name: "systemd - /dev/.systemd",
+			output: `{
+				"systemctl_exists": "1",
+				"run_systemd_system_exists": "0",
+				"dev_run_systemd_exists": "0",
+				"dev_systemd_exists": "1",
+				"initctl_exists": "0",
+				"etc_init_exists": "0",
+				"openrc_exists": "0",
+				"init_link_target": "",
+				"etc_init_d_exists": "0",
+				"proc1_comm": "systemd"
+			}`,
+			expected: "systemd",
 		},
 		{
 			name: "upstart",
-			commandResponses: map[string]*commandResponse{
-				"realpath initctl": {
-					stdout: "/sbin/initctl",
-				},
-			},
-			fileSystemDirs: []string{"/etc/init"},
-			expectedName:   "upstart",
+			output: `{
+				"systemctl_exists": "0",
+				"run_systemd_system_exists": "0",
+				"dev_run_systemd_exists": "0",
+				"dev_systemd_exists": "0",
+				"initctl_exists": "1",
+				"etc_init_exists": "1",
+				"openrc_exists": "0",
+				"init_link_target": "",
+				"etc_init_d_exists": "0",
+				"proc1_comm": "init"
+			}`,
+			expected: "upstart",
 		},
 		{
-			name:           "openrc",
-			fileSystemDirs: []string{"/sbin/openrc"},
-			expectedName:   "openrc",
+			name: "openrc",
+			output: `{
+				"systemctl_exists": "0",
+				"run_systemd_system_exists": "0",
+				"dev_run_systemd_exists": "0",
+				"dev_systemd_exists": "0",
+				"initctl_exists": "0",
+				"etc_init_exists": "0",
+				"openrc_exists": "1",
+				"init_link_target": "",
+				"etc_init_d_exists": "0",
+				"proc1_comm": "openrc"
+			}`,
+			expected: "openrc",
 		},
 		{
-			name:           "sysvinit",
-			fileSystemDirs: []string{"/etc/init.d"},
-			expectedName:   "sysvinit",
+			name: "systemd - init link target",
+			output: `{
+				"systemctl_exists": "1",
+				"run_systemd_system_exists": "0",
+				"dev_run_systemd_exists": "0",
+				"dev_systemd_exists": "0",
+				"initctl_exists": "0",
+				"etc_init_exists": "0",
+				"openrc_exists": "0",
+				"init_link_target": "/lib/systemd",
+				"etc_init_d_exists": "0",
+				"proc1_comm": "systemd"
+			}`,
+			expected: "systemd",
 		},
 		{
-			name:           "dinit",
-			fileSystemDirs: []string{"/etc/dinit.d"},
-			expectedName:   "dinit",
+			name: "sysvinit",
+			output: `{
+				"systemctl_exists": "0",
+				"run_systemd_system_exists": "0",
+				"dev_run_systemd_exists": "0",
+				"dev_systemd_exists": "0",
+				"initctl_exists": "0",
+				"etc_init_exists": "0",
+				"openrc_exists": "0",
+				"init_link_target": "",
+				"etc_init_d_exists": "1",
+				"proc1_comm": "sysvinit"
+			}`,
+			expected: "sysvinit",
+		},
+		{
+			name: "systemd - /proc/1/comm",
+			output: `{
+				"systemctl_exists": "1",
+				"run_systemd_system_exists": "0",
+				"dev_run_systemd_exists": "0",
+				"dev_systemd_exists": "0",
+				"initctl_exists": "0",
+				"etc_init_exists": "0",
+				"openrc_exists": "0",
+				"init_link_target": "",
+				"etc_init_d_exists": "0",
+				"proc1_comm": "systemd"
+			}`,
+			expected: "systemd",
+		},
+		{
+			name: "openrc-init - /proc/1/comm",
+			output: `{
+				"systemctl_exists": "1",
+				"run_systemd_system_exists": "0",
+				"dev_run_systemd_exists": "0",
+				"dev_systemd_exists": "0",
+				"initctl_exists": "0",
+				"etc_init_exists": "0",
+				"openrc_exists": "0",
+				"init_link_target": "",
+				"etc_init_d_exists": "0",
+				"proc1_comm": "openrc-init"
+			}`,
+			expected: "openrc",
+		},
+		{
+			name: "openrc-init - init link target",
+			output: `{
+				"systemctl_exists": "1",
+				"run_systemd_system_exists": "0",
+				"dev_run_systemd_exists": "0",
+				"dev_systemd_exists": "0",
+				"initctl_exists": "0",
+				"etc_init_exists": "0",
+				"openrc_exists": "0",
+				"init_link_target": "/sbin/openrc-init",
+				"etc_init_d_exists": "0",
+				"proc1_comm": ""
+			}`,
+			expected: "openrc",
+		},
+		{
+			name: "sysvinit - init link target",
+			output: `{
+				"systemctl_exists": "1",
+				"run_systemd_system_exists": "0",
+				"dev_run_systemd_exists": "0",
+				"dev_systemd_exists": "0",
+				"initctl_exists": "0",
+				"etc_init_exists": "0",
+				"openrc_exists": "0",
+				"init_link_target": "/sbin/sysvinit",
+				"etc_init_d_exists": "0",
+				"proc1_comm": ""
+			}`,
+			expected: "sysvinit",
 		},
 	}
 
@@ -596,246 +460,249 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_GetLinuxServiceManager(t 
 
 			osInfo := newOSInfo()
 			osInfo.families.Add("linux")
+			osInfo.id = "ubuntu"
+
+			transport := mock.NewMockTransport()
+			transport.CommandResults[linuxServiceManagerDiscoveryScript] = &mock.CommandResult{
+				Stdout: tt.output,
+			}
 
 			info := newServiceManagerInfo()
+			diags := info.populateServiceManagerInfo(osInfo, transport)
 
-			transport := newMockTransport()
-
-			fileSystem := transport.fileSystem
-
-			if len(tt.commandResponses) > 0 {
-				maps.Copy(transport.commandResponses, tt.commandResponses)
+			if diags.HasErrors() {
+				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
 
-			transport.commandResponses["cat /proc/1/comm"] = &commandResponse{
-				err: errors.New("command failed"),
-			}
-			transport.commandResponses["realpath /sbin/init"] = &commandResponse{
-				err: errors.New("command failed"),
+			if diags.HasWarnings() {
+				t.Fatalf("expected no warnings, got: %v", diags.Warnings())
 			}
 
-			if len(tt.fileSystemDirs) > 0 {
-				for _, dir := range tt.fileSystemDirs {
-					fileSystem.dirs[dir] = &mockFileInfo{
-						name:  dir,
-						mode:  0755,
-						isDir: true,
-					}
-				}
-			}
-
-			err := info.populateServiceManagerInfo(osInfo, transport, fileSystem)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if info.name != tt.expectedName {
-				t.Errorf("expected name %q, got %q", tt.expectedName, info.name)
+			if info.Name() != tt.expected {
+				t.Errorf("expected service manager name to be %q, got: %q", tt.expected, info.Name())
 			}
 		})
 	}
 }
 
-func TestServiceManagerInfo_GetLinuxServiceManager(t *testing.T) {
-
-	tests := []struct {
-		name             string
-		commandResponses map[string]*commandResponse
-		fileSystemDirs   []string
-		expectedName     string
-		expectedError    bool
-	}{
-		{
-			name: "systemd with /run/systemd/system",
-			commandResponses: map[string]*commandResponse{
-				"realpath systemctl": {
-					stdout: "/usr/bin/systemctl",
-				},
-			},
-			fileSystemDirs: []string{"/run/systemd/system"},
-			expectedName:   "systemd",
-		},
-		{
-			name: "systemd with /dev/.run/systemd",
-			commandResponses: map[string]*commandResponse{
-				"realpath systemctl": {
-					stdout: "/usr/bin/systemctl",
-				},
-			},
-			fileSystemDirs: []string{"/dev/.run/systemd"},
-			expectedName:   "systemd",
-		},
-		{
-			name: "systemd with /dev/.systemd",
-			commandResponses: map[string]*commandResponse{
-				"realpath systemctl": {
-					stdout: "/usr/bin/systemctl",
-				},
-			},
-			fileSystemDirs: []string{"/dev/.systemd"},
-			expectedName:   "systemd",
-		},
-		{
-			name: "systemctl with no directories",
-			commandResponses: map[string]*commandResponse{
-				"realpath systemctl": {
-					stdout: "/usr/bin/systemctl",
-				},
-			},
-			expectedError: true,
-		},
-		{
-			name: "upstart",
-			commandResponses: map[string]*commandResponse{
-				"realpath initctl": {
-					stdout: "/sbin/initctl",
-				},
-			},
-			fileSystemDirs: []string{"/etc/init"},
-			expectedName:   "upstart",
-		},
-		{
-			name:           "openrc",
-			fileSystemDirs: []string{"/sbin/openrc"},
-			expectedName:   "openrc",
-		},
-		{
-			name:           "sysvinit",
-			fileSystemDirs: []string{"/etc/init.d"},
-			expectedName:   "sysvinit",
-		},
-		{
-			name:           "dinit",
-			fileSystemDirs: []string{"/etc/dinit.d"},
-			expectedName:   "dinit",
-		},
-		{
-			name:          "unknown service manager",
-			expectedError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			info := newServiceManagerInfo()
-
-			transport := newMockTransport()
-
-			fileSystem := transport.fileSystem
-
-			if len(tt.commandResponses) > 0 {
-				maps.Copy(transport.commandResponses, tt.commandResponses)
-			}
-
-			if len(tt.fileSystemDirs) > 0 {
-				for _, dir := range tt.fileSystemDirs {
-					fileSystem.dirs[dir] = &mockFileInfo{
-						name:  dir,
-						mode:  0755,
-						isDir: true,
-					}
-				}
-			}
-
-			err := info.getLinuxServiceManager(transport, fileSystem)
-
-			if tt.expectedError {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-
-				if !strings.Contains(err.Error(), "could not determine Linux service manager") {
-					t.Errorf("expected error containing 'could not determine Linux service manager', got %q", err.Error())
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if info.name != tt.expectedName {
-				t.Errorf("expected name %q, got %q", tt.expectedName, info.name)
-			}
-		})
-	}
-}
-
-func TestServiceManagerInfo_PopulateServiceManagerInfo_UnsupportedOS(t *testing.T) {
+func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_Error(t *testing.T) {
 
 	osInfo := newOSInfo()
+	osInfo.families.Add("linux")
+	osInfo.id = "ubuntu"
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[linuxServiceManagerDiscoveryScript] = &mock.CommandResult{
+		Err: os.ErrPermission,
+	}
+
 	info := newServiceManagerInfo()
+	diags := info.populateServiceManagerInfo(osInfo, transport)
 
-	transport := newMockTransport()
-	transport.defaultCommandResponse = &commandResponse{
-		err: errors.New("command failed"),
+	if !diags.HasErrors() {
+		t.Fatal("expected errors, got none")
 	}
 
-	fileSystem := transport.fileSystem
-
-	err := info.populateServiceManagerInfo(osInfo, transport, fileSystem)
-	if err == nil {
-		t.Fatal("expected error for unsupported OS, got nil")
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
 	}
 
-	expectedError := "could not determine service manager"
-	if !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("expected error containing %q, got %q", expectedError, err.Error())
+	if info.Name() != "" {
+		t.Error("expected service manager name to be empty with no output")
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to execute service manager discovery script"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error executing service manager discovery script: permission denied"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, errors[0].Detail)
+	}
+}
+
+func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_NoOutput(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.families.Add("linux")
+	osInfo.id = "ubuntu"
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[linuxServiceManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: "",
+	}
+
+	info := newServiceManagerInfo()
+	diags := info.populateServiceManagerInfo(osInfo, transport)
+
+	if !diags.HasErrors() {
+		t.Fatal("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if info.Name() != "" {
+		t.Error("expected service manager name to be empty with no output")
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to parse service manager discovery script output"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error parsing service manager discovery script output: unexpected end of JSON input"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, errors[0].Detail)
+	}
+}
+
+func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_NoServiceManager(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.families.Add("linux")
+	osInfo.id = "ubuntu"
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[linuxServiceManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			"systemctl_exists": "0",
+			"run_systemd_system_exists": "0",
+			"dev_run_systemd_exists": "0",
+			"dev_systemd_exists": "0",
+			"initctl_exists": "0",
+			"etc_init_exists": "0",
+			"openrc_exists": "0",
+			"init_link_target": "",
+			"etc_init_d_exists": "0",
+			"proc1_comm": "/bin/bash"
+			}
+			`,
+	}
+
+	info := newServiceManagerInfo()
+	diags := info.populateServiceManagerInfo(osInfo, transport)
+
+	if !diags.HasErrors() {
+		t.Fatal("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if info.Name() != "" {
+		t.Error("expected service manager name to be empty with no service manager found")
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to determine service manager"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Could not identify the service manager for the current Linux system"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, errors[0].Detail)
+	}
+}
+
+func TestServiceManagerInfo_PopulateServiceManagerInfo_UnknownOS(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "generic"
+
+	transport := mock.NewMockTransport()
+
+	info := newServiceManagerInfo()
+	diags := info.populateServiceManagerInfo(osInfo, transport)
+
+	if !diags.HasErrors() {
+		t.Fatal("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if info.Name() != "" {
+		t.Errorf("expected service manager name to be empty for unknown OS, got: %s", info.Name())
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Unsupported OS family"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Service manager information collection is not supported for this OS family"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, errors[0].Detail)
 	}
 }
 
 func TestServiceManagerInfo_ToMapOfCtyValues(t *testing.T) {
+
 	tests := []struct {
-		name         string
-		serviceName  string
-		expectedType cty.Type
-		expectedVal  interface{}
+		name        string
+		serviceName string
 	}{
 		{
-			name:         "with service manager name",
-			serviceName:  "systemd",
-			expectedType: cty.String,
-			expectedVal:  "systemd",
+			name:        "systemd",
+			serviceName: "systemd",
 		},
 		{
-			name:         "empty service manager name",
-			serviceName:  "",
-			expectedType: cty.String,
-			expectedVal:  nil, // null value
+			name:        "upstart",
+			serviceName: "upstart",
+		},
+		{
+			name:        "openrc",
+			serviceName: "openrc",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			info := &serviceManagerInfo{name: tt.serviceName}
-			result := info.toMapOfCtyValues()
 
-			if len(result) != 1 {
-				t.Fatalf("expected 1 key in result, got %d", len(result))
-			}
+			info := newServiceManagerInfo()
+			info.name = tt.serviceName
 
-			value, exists := result["service_manager"]
-			if !exists {
-				t.Fatal("expected 'service_manager' key in result")
-			}
+			values := info.toMapOfCtyValues()
 
-			if !value.Type().Equals(tt.expectedType) {
-				t.Errorf("expected type %s, got %s", tt.expectedType.FriendlyName(), value.Type().FriendlyName())
-			}
-
-			if tt.expectedVal == nil {
-				if !value.IsNull() {
-					t.Errorf("expected null value, got %s", value.AsString())
-				}
-			} else {
-				if value.IsNull() {
-					t.Errorf("expected non-null value, got null")
-				}
-				if value.AsString() != tt.expectedVal {
-					t.Errorf("expected value %q, got %q", tt.expectedVal, value.AsString())
-				}
+			if tt.serviceName != values["service_manager"].AsString() {
+				t.Errorf("expected service_manager to be %q, got: %q", tt.serviceName, values["service_manager"].AsString())
 			}
 		})
+	}
+}
+
+func TestServiceManagerInfo_ToMapOfCtyValues_Empty(t *testing.T) {
+
+	info := newServiceManagerInfo()
+
+	values := info.toMapOfCtyValues()
+
+	if !values["service_manager"].IsNull() {
+		t.Error("expected service_manager to be null, got a value")
 	}
 }

@@ -1,5 +1,17 @@
 package util
 
+type ReadOnlySet[T comparable] interface {
+	// Contains checks if the set contains the specified item.
+	Contains(item T) bool
+	// Size returns the number of unique items in the set.
+	Size() int
+	// Items returns a slice of all items in the set.
+	// The order of items in the slice is not guaranteed to be consistent.
+	Items() []T
+	// IsEmpty checks if the set is empty.
+	IsEmpty() bool
+}
+
 // Set is a generic set data structure that holds unique items of type T.
 // It provides methods to add, remove, check for existence, and perform set operations.
 type Set[T comparable] struct {

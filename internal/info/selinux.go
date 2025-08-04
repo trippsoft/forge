@@ -1,131 +1,144 @@
 package info
 
 import (
-	"bufio"
-	"errors"
+	"context"
+	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
-	"syscall"
 
 	"github.com/trippsoft/forge/internal/transport"
+	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/zclconf/go-cty/cty"
 )
 
-type selinuxStatus string
-type selinuxType string
+const (
+	selinuxDiscoveryScript = `if [ ! -f /etc/selinux/config ]; then	selinux_installed=0; ` +
+		`else selinux_installed=1; ` +
+		`selinux_status=$(grep -E '^SELINUX=' /etc/selinux/config | cut -d '=' -f 2); ` +
+		`selinux_type=$(grep -E '^SELINUXTYPE=' /etc/selinux/config | cut -d '=' -f 2); ` +
+		`fi; ` +
+		`output=$(jq -n ` +
+		`--arg selinux_installed "$selinux_installed" ` +
+		`--arg selinux_status "$selinux_status" ` +
+		`--arg selinux_type "$selinux_type" ` +
+		`'{selinux_installed: $selinux_installed, selinux_status: $selinux_status, selinux_type: $selinux_type}'); ` +
+		`echo "$output"`
+)
+
+type SELinuxStatus string
+type SELinuxType string
 
 const (
-	SelinuxEnforcing    selinuxStatus = "enforcing"
-	SelinuxDisabled     selinuxStatus = "disabled"
-	SelinuxPermissive   selinuxStatus = "permissive"
-	SelinuxNotSupported selinuxStatus = ""
+	SELinuxEnforcing    SELinuxStatus = "enforcing"
+	SELinuxDisabled     SELinuxStatus = "disabled"
+	SELinuxPermissive   SELinuxStatus = "permissive"
+	SELinuxNotSupported SELinuxStatus = ""
 )
 
 const (
-	SelinuxTypeTargeted     selinuxType = "targeted"
-	SelinuxTypeMinimum      selinuxType = "minimum"
-	SelinuxTypeMLS          selinuxType = "mls"
-	SelinuxTypeNotSupported selinuxType = ""
+	SELinuxTypeTargeted     SELinuxType = "targeted"
+	SELinuxTypeMinimum      SELinuxType = "minimum"
+	SELinuxTypeMLS          SELinuxType = "mls"
+	SELinuxTypeNotSupported SELinuxType = ""
 )
 
-type selinuxInfo struct {
+type SELinuxInfo struct {
 	supported   bool
 	installed   bool
-	status      selinuxStatus
-	selinuxType selinuxType
+	status      SELinuxStatus
+	selinuxType SELinuxType
 }
 
-func newSELinuxInfo() *selinuxInfo {
-	return &selinuxInfo{
+func newSELinuxInfo() *SELinuxInfo {
+	return &SELinuxInfo{
 		supported:   false,
 		installed:   false,
-		status:      SelinuxNotSupported,
-		selinuxType: SelinuxTypeNotSupported,
+		status:      SELinuxNotSupported,
+		selinuxType: SELinuxTypeNotSupported,
 	}
 }
 
-func (s *selinuxInfo) Supported() bool {
+func (s *SELinuxInfo) Supported() bool {
 	return s.supported
 }
 
-func (s *selinuxInfo) Installed() bool {
+func (s *SELinuxInfo) Installed() bool {
 	return s.installed
 }
 
-func (s *selinuxInfo) Status() selinuxStatus {
+func (s *SELinuxInfo) Status() SELinuxStatus {
 	return s.status
 }
 
-func (s *selinuxInfo) SelinuxType() selinuxType {
+func (s *SELinuxInfo) SelinuxType() SELinuxType {
 	return s.selinuxType
 }
 
-func (s *selinuxInfo) populateSelinuxInfo(osInfo *osInfo, fileSystem transport.FileSystem) error {
+func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, transport transport.Transport) diag.Diags {
+
+	if osInfo == nil || osInfo.id == "" {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagWarning,
+			Summary:  "Missing OS information",
+			Detail:   "Skipping SELinux information collection due to missing or invalid OS info",
+		}}
+	}
 
 	if !osInfo.families.Contains("linux") {
 		s.supported = false
 		s.installed = false
-		s.status = SelinuxNotSupported
-		s.selinuxType = SelinuxTypeNotSupported
-		return nil
+		s.status = SELinuxNotSupported
+		s.selinuxType = SELinuxTypeNotSupported
+
+		return diag.Diags{}
 	}
 
 	s.supported = true
 
-	selinuxConfigFile, err := fileSystem.Open("/etc/selinux/config")
-	if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOENT) {
-		s.installed = false
-		s.status = SelinuxNotSupported
-		s.selinuxType = SelinuxTypeNotSupported
-		return nil
-	}
+	stdout, _, err := transport.ExecuteCommand(context.Background(), selinuxDiscoveryScript)
 	if err != nil {
-		return fmt.Errorf("failed to open SELinux config file: %w", err)
-	}
-	if selinuxConfigFile == nil {
-		return fmt.Errorf("SELinux config file is nil, expected a valid file handle") // This should not happen, but handle it gracefully
-	}
-
-	defer selinuxConfigFile.Close()
-
-	s.installed = true
-
-	scanner := bufio.NewScanner(selinuxConfigFile)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "" || line[0] == '#' {
-			continue // Skip empty lines and comments
-		}
-
-		line = strings.TrimSpace(line)
-
-		switch line {
-		case "SELINUX=disabled":
-			s.status = SelinuxDisabled
-			s.selinuxType = SelinuxTypeNotSupported
-			return nil
-		case "SELINUX=enforcing":
-			s.status = SelinuxEnforcing
-		case "SELINUX=permissive":
-			s.status = SelinuxPermissive
-		case "SELINUXTYPE=targeted":
-			s.selinuxType = SelinuxTypeTargeted
-		case "SELINUXTYPE=minimum":
-			s.selinuxType = SelinuxTypeMinimum
-		case "SELINUXTYPE=mls":
-			s.selinuxType = SelinuxTypeMLS
-		}
-
-		if s.status != "" && s.selinuxType != "" {
-			break // Stop scanning once we find SELINUX status and type
-		}
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to execute SELinux discovery script",
+			Detail:   fmt.Sprintf("Error executing SELinux discovery script: %v", err),
+		}}
 	}
 
-	return nil
+	discoveredData := make(map[string]string)
+	err = json.Unmarshal([]byte(stdout), &discoveredData)
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to parse SELinux discovery script output",
+			Detail:   fmt.Sprintf("Error parsing SELinux discovery script output: %v", err),
+		}}
+	}
+
+	installed, _ := discoveredData["selinux_installed"]
+	s.installed = installed == "1"
+
+	if !s.installed {
+		s.status = SELinuxNotSupported
+		s.selinuxType = SELinuxTypeNotSupported
+
+		return diag.Diags{}
+	}
+
+	status, _ := discoveredData["selinux_status"]
+	s.status = SELinuxStatus(status)
+
+	if s.status == SELinuxDisabled {
+		s.selinuxType = SELinuxTypeNotSupported
+		return diag.Diags{}
+	}
+
+	selinuxType, _ := discoveredData["selinux_type"]
+	s.selinuxType = SELinuxType(selinuxType)
+
+	return diag.Diags{}
 }
 
-func (s *selinuxInfo) toMapOfCtyValues() map[string]cty.Value {
+func (s *SELinuxInfo) toMapOfCtyValues() map[string]cty.Value {
 
 	if !s.supported {
 		return map[string]cty.Value{
@@ -152,7 +165,7 @@ func (s *selinuxInfo) toMapOfCtyValues() map[string]cty.Value {
 
 // String returns a string representation of the SELinux information.
 // This is useful for logging or debugging purposes.
-func (s *selinuxInfo) String() string {
+func (s *SELinuxInfo) String() string {
 
 	stringBuilder := &strings.Builder{}
 	if !s.supported {

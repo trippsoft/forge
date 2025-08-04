@@ -1,10 +1,11 @@
 package test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -13,7 +14,8 @@ import (
 	"github.com/trippsoft/forge/internal/transport"
 )
 
-func TestSSHTransportIntegrationLinux(t *testing.T) {
+func TestSSHTransportConnect_Linux_Password(t *testing.T) {
+
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -29,15 +31,19 @@ func TestSSHTransportIntegrationLinux(t *testing.T) {
 		DontUseKnownHosts().
 		ConnectionTimeout(30 * time.Second).
 		Build()
-
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport: %v", err)
 	}
 
-	testSSHTransportBasicFunctionality(t, sshTransport, "linux")
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
 }
 
-func TestSSHTransportIntegrationLinuxWithPrivateKey(t *testing.T) {
+func TestSSHTransportConnect_Linux_PrivateKey(t *testing.T) {
+
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -53,15 +59,19 @@ func TestSSHTransportIntegrationLinuxWithPrivateKey(t *testing.T) {
 		DontUseKnownHosts().
 		ConnectionTimeout(30 * time.Second).
 		Build()
-
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport with private key: %v", err)
 	}
 
-	testSSHTransportBasicFunctionality(t, sshTransport, "linux")
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect with private key: %v", err)
+	}
+	defer sshTransport.Close()
 }
 
-func TestSSHTransportIntegrationWindows(t *testing.T) {
+func TestSSHTransportConnect_WinPowerShell_Password(t *testing.T) {
+
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -77,15 +87,19 @@ func TestSSHTransportIntegrationWindows(t *testing.T) {
 		DontUseKnownHosts().
 		ConnectionTimeout(30 * time.Second).
 		Build()
-
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport: %v", err)
 	}
 
-	testSSHTransportBasicFunctionality(t, sshTransport, "windows")
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
 }
 
-func TestSSHTransportIntegrationWindowsWithPrivateKey(t *testing.T) {
+func TestSSHTransportConnect_WinPowerShell_PrivateKey(t *testing.T) {
+
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -101,15 +115,19 @@ func TestSSHTransportIntegrationWindowsWithPrivateKey(t *testing.T) {
 		DontUseKnownHosts().
 		ConnectionTimeout(30 * time.Second).
 		Build()
-
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport with private key: %v", err)
 	}
 
-	testSSHTransportBasicFunctionality(t, sshTransport, "windows")
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect with private key: %v", err)
+	}
+	defer sshTransport.Close()
 }
 
-func TestSSHTransportIntegrationCmd(t *testing.T) {
+func TestSSHTransportConnect_WinCmd_Password(t *testing.T) {
+
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -125,167 +143,19 @@ func TestSSHTransportIntegrationCmd(t *testing.T) {
 		DontUseKnownHosts().
 		ConnectionTimeout(30 * time.Second).
 		Build()
-
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport: %v", err)
 	}
 
-	testSSHTransportBasicFunctionality(t, sshTransport, "cmd")
-}
-
-func testSSHTransportBasicFunctionality(t *testing.T, sshTransport transport.Transport, platform string) {
-	t.Helper()
-
-	// Test Type
-	if sshTransport.Type() != "ssh" {
-		t.Errorf("Expected transport type SSH, got %s", sshTransport.Type())
-	}
-
-	// Test Connect
-	err := sshTransport.Connect()
+	err = sshTransport.Connect()
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
-
-	// Test ExecuteCommand
-	ctx := context.Background()
-	var testCommand string
-	var expectedOutput string
-
-	switch platform {
-	case "linux":
-		testCommand = "echo 'Hello from Linux'"
-		expectedOutput = "Hello from Linux"
-	case "windows":
-		testCommand = `echo "Hello from Windows"`
-		expectedOutput = "Hello from Windows"
-	case "cmd":
-		testCommand = `echo "Hello from CMD"`
-		expectedOutput = "Hello from CMD"
-	}
-
-	stdout, stderr, err := sshTransport.ExecuteCommand(ctx, testCommand)
-	if err != nil {
-		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
-	}
-
-	if !containsIgnoreCase(stdout, expectedOutput) {
-		t.Errorf("Expected stdout to contain '%s', got: %s", expectedOutput, stdout)
-	}
-
-	// Test ExecuteCommand with context timeout
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-
-	var sleepCommand string
-	switch platform {
-	case "linux":
-		sleepCommand = "sleep 2"
-	case "windows", "cmd":
-		sleepCommand = "timeout 2"
-	}
-
-	_, _, err = sshTransport.ExecuteCommand(ctxTimeout, sleepCommand)
-	if err == nil {
-		t.Error("Expected timeout error but got none")
-	}
-
-	// Test FileSystem
-	fs := sshTransport.FileSystem()
-	if fs == nil {
-		t.Fatal("FileSystem returned nil")
-	}
-
-	// Test PowerShell on Windows platforms
-	if platform == "windows" {
-		testSSHPowerShell(t, sshTransport)
-	}
-
-	// Test that PowerShell fails on non-Windows platforms
-	if platform == "linux" {
-		testSSHPowerShellFailsOnLinux(t, sshTransport)
-	}
-
-	// Test Close
-	err = sshTransport.Close()
-	if err != nil {
-		t.Errorf("Close failed: %v", err)
-	}
-
-	// Test that operations still work after Close (should reconnect automatically)
-	stdout, stderr, err = sshTransport.ExecuteCommand(ctx, testCommand)
-	if err != nil {
-		t.Fatalf("ExecuteCommand after Close failed: %v, stderr: %s", err, stderr)
-	}
-
-	if !containsIgnoreCase(stdout, expectedOutput) {
-		t.Errorf("Expected stdout after reconnect to contain '%s', got: %s", expectedOutput, stdout)
-	}
-
-	// Final cleanup
-	err = sshTransport.Close()
-	if err != nil {
-		t.Errorf("Final Close failed: %v", err)
-	}
+	defer sshTransport.Close()
 }
 
-func testSSHPowerShell(t *testing.T, sshTransport transport.Transport) {
-	t.Helper()
+func TestSSHTransportConnect_WinCmd_PrivateKey(t *testing.T) {
 
-	ctx := context.Background()
-
-	// Test simple PowerShell command
-	powershellCommand := "Write-Host 'Hello from PowerShell'"
-	stdout, err := sshTransport.ExecutePowerShell(ctx, powershellCommand)
-	if err != nil {
-		t.Fatalf("ExecutePowerShell failed: %v", err)
-	}
-
-	if !containsIgnoreCase(stdout, "Hello from PowerShell") {
-		t.Errorf("Expected PowerShell output to contain 'Hello from PowerShell', got: %s", stdout)
-	}
-
-	// Test PowerShell with complex command
-	complexCommand := "Get-Date | Select-Object -Property Year"
-	stdout, err = sshTransport.ExecutePowerShell(ctx, complexCommand)
-	if err != nil {
-		t.Fatalf("ExecutePowerShell complex command failed: %v", err)
-	}
-
-	if !containsIgnoreCase(stdout, "Year") {
-		t.Errorf("Expected PowerShell complex output to contain 'Year', got: %s", stdout)
-	}
-
-	// Test PowerShell with timeout
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-
-	timeoutCommand := "Start-Sleep 5"
-	_, err = sshTransport.ExecutePowerShell(ctxTimeout, timeoutCommand)
-	if err == nil {
-		t.Error("Expected timeout error for PowerShell but got none")
-	}
-}
-
-func testSSHPowerShellFailsOnLinux(t *testing.T, sshTransport transport.Transport) {
-	t.Helper()
-
-	ctx := context.Background()
-
-	// PowerShell should fail on Linux
-	powershellCommand := "Write-Host 'This should fail'"
-	_, err := sshTransport.ExecutePowerShell(ctx, powershellCommand)
-	if err == nil {
-		t.Error("Expected PowerShell to fail on Linux but it succeeded")
-	}
-
-	expectedError := "PowerShell is not available on the remote system"
-	if !containsIgnoreCase(err.Error(), expectedError) {
-		t.Errorf("Expected error to contain '%s', got: %s", expectedError, err.Error())
-	}
-}
-
-func TestSSHTransportIntegrationFileSystem(t *testing.T) {
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -294,106 +164,26 @@ func TestSSHTransportIntegrationFileSystem(t *testing.T) {
 	}
 
 	sshTransport, err := builder.
-		Host(linuxHost).
-		Port(linuxPort).
-		User(linuxUser).
-		PasswordAuth(linuxPassword).
+		Host(cmdHost).
+		Port(cmdPort).
+		User(cmdUser).
+		PublicKeyAuth(cmdPrivateKey).
 		DontUseKnownHosts().
 		ConnectionTimeout(30 * time.Second).
 		Build()
-
 	if err != nil {
-		t.Fatalf("Failed to build SSH transport: %v", err)
+		t.Fatalf("Failed to build SSH transport with private key: %v", err)
 	}
 
-	// Ensure we're connected
 	err = sshTransport.Connect()
 	if err != nil {
-		t.Fatalf("Failed to connect: %v", err)
+		t.Fatalf("Failed to connect with private key: %v", err)
 	}
-
-	fs := sshTransport.FileSystem()
-	if fs == nil {
-		t.Fatal("FileSystem returned nil")
-	}
-
-	err = fs.Connect()
-	if err != nil {
-		t.Fatalf("Failed to connect to file system: %v", err)
-	}
-
-	defer fs.Close()
-
-	// Create a test file first via SSH command
-	ctx := context.Background()
-	testContent := "Hello from SSH file system test"
-	createFileCmd := `echo "` + testContent + `" > /tmp/ssh_test_file.txt`
-	_, _, err = sshTransport.ExecuteCommand(ctx, createFileCmd)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	// Test Stat
-	info, err := fs.Stat("/tmp/ssh_test_file.txt")
-	if err != nil {
-		t.Fatalf("Failed to stat test file: %v", err)
-	}
-
-	if info.IsDir() {
-		t.Error("Expected file to not be a directory")
-	}
-
-	if info.Name() != "ssh_test_file.txt" {
-		t.Errorf("Expected file name 'ssh_test_file.txt', got '%s'", info.Name())
-	}
-
-	// Test Stat on non-existent file
-	_, err = fs.Stat("/tmp/non_existent_file.txt")
-	if err == nil {
-		t.Error("Expected error when stating non-existent file")
-	}
-
-	// Test Open
-	file, err := fs.Open("/tmp/ssh_test_file.txt")
-	if err != nil {
-		// This is expected with the current implementation
-		t.Fatalf("Open failed as expected due to SFTP session closure: %v", err)
-	}
-
-	if file == nil {
-		t.Fatal("Open returned nil file")
-	}
-
-	// Read the content of the file
-	content := make([]byte, len(testContent))
-	n, err := file.Read(content)
-	if err != nil {
-		t.Fatalf("Failed to read from test file: %v", err)
-	}
-	file.Close()
-
-	if n != len(testContent) {
-		t.Errorf("Expected to read %d bytes, got %d", len(testContent), n)
-	}
-
-	if string(content) != testContent {
-		t.Errorf("Expected file content '%s', got '%s'", testContent, string(content))
-	}
-
-	// Clean up
-	cleanupCmd := "rm -f /tmp/ssh_test_file.txt"
-	_, _, err = sshTransport.ExecuteCommand(ctx, cleanupCmd)
-	if err != nil {
-		t.Logf("Failed to clean up test file: %v", err)
-	}
-
-	err = sshTransport.Close()
-	if err != nil {
-		t.Errorf("Close failed: %v", err)
-	}
+	defer sshTransport.Close()
 }
 
-func TestSSHTransportIntegrationConnectionFailure(t *testing.T) {
+func TestSSHTransportConnect_Failure(t *testing.T) {
+
 	builder, err := transport.NewSSHBuilder()
 	if err != nil {
 		t.Fatalf("NewSSHBuilder failed: %v", err)
@@ -416,20 +206,15 @@ func TestSSHTransportIntegrationConnectionFailure(t *testing.T) {
 	err = sshTransport.Connect()
 	if err == nil {
 		t.Error("Expected connection to fail to unreachable host")
-		// If connection somehow succeeded, close it to avoid leaving it open
 		sshTransport.Close()
 	}
-
-	// Note: We don't test ExecuteCommand here because the current implementation
-	// has a bug where it doesn't check the Connect() error, causing a panic.
-	// This should be tested once the implementation bug is fixed.
 }
 
-func TestSSHTransportIntegrationKnownHostsStrict(t *testing.T) {
+func TestSSHTransportKnownHosts_Strict(t *testing.T) {
+
 	setupVagrantEnvironment(t)
 
-	// Create a temporary empty known_hosts file for strict checking
-	tmpKnownHosts := createEmptyTempKnownHostsFile(t)
+	tmpKnownHosts := createTempKnownHostsFile(t)
 	defer cleanupTempFile(t, tmpKnownHosts)
 
 	builder, err := transport.NewSSHBuilder()
@@ -437,38 +222,35 @@ func TestSSHTransportIntegrationKnownHostsStrict(t *testing.T) {
 		t.Fatalf("NewSSHBuilder failed: %v", err)
 	}
 
-	// Configure SSH transport to use strict known hosts checking (no auto-add)
 	sshTransport, err := builder.
 		Host(linuxHost).
 		Port(linuxPort).
 		User(linuxUser).
 		PasswordAuth(linuxPassword).
-		UseKnownHosts(tmpKnownHosts, false). // Strict checking, don't add unknown hosts
+		UseStrictKnownHosts(tmpKnownHosts).
 		ConnectionTimeout(30 * time.Second).
 		Build()
-
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport: %v", err)
 	}
 
-	// Connection should fail because the host key is unknown and we're not auto-adding
 	err = sshTransport.Connect()
 	if err == nil {
 		t.Error("Expected connection to fail with strict known hosts checking and unknown host")
 		sshTransport.Close()
 	} else {
 		// Verify it's a known hosts related error
-		if !containsIgnoreCase(err.Error(), "host key") && !containsIgnoreCase(err.Error(), "known") {
-			t.Logf("Got expected error (though message could be more specific): %v", err)
+		if !strings.Contains(err.Error(), "key is unknown") {
+			t.Errorf("Got expected error (though message could be more specific): %v", err)
 		}
 	}
 }
 
-func TestSSHTransportIntegrationKnownHostsAutoAdd(t *testing.T) {
+func TestSSHTransportKnownHosts_Strict_RejectNotMatchingKey(t *testing.T) {
+
 	setupVagrantEnvironment(t)
 
-	// Create a temporary empty known_hosts file
-	tmpKnownHosts := createEmptyTempKnownHostsFile(t)
+	tmpKnownHosts := createTempKnownHostsFile(t)
 	defer cleanupTempFile(t, tmpKnownHosts)
 
 	builder, err := transport.NewSSHBuilder()
@@ -476,88 +258,198 @@ func TestSSHTransportIntegrationKnownHostsAutoAdd(t *testing.T) {
 		t.Fatalf("NewSSHBuilder failed: %v", err)
 	}
 
-	// Configure SSH transport to auto-add unknown hosts
+	file, err := os.Create(tmpKnownHosts)
+	if err != nil {
+		t.Fatalf("Failed to open temp known hosts file: %v", err)
+	}
+
+	content := fmt.Sprintf("%s ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBH3kZFNyb8iutKv6WzIA5Z1W+TqjwLU/kxRnFBLnLjBo5sXGkbAwUZd8xN7u4nF+OPdFwk9yfJ5ZHzvlsYYXowI=\n", linuxHost)
+	_, err = file.WriteString(content)
+	if err != nil {
+		t.Fatalf("Failed to write to temp known hosts file: %v", err)
+	}
+
+	err = file.Close()
+	if err != nil {
+		t.Fatalf("Failed to close temp known hosts file: %v", err)
+	}
+
 	sshTransport, err := builder.
 		Host(linuxHost).
 		Port(linuxPort).
 		User(linuxUser).
-		PasswordAuth(linuxPassword).
-		UseKnownHosts(tmpKnownHosts, true). // Allow auto-adding unknown hosts
+		PublicKeyAuth(linuxPrivateKey). // Use a wrong key
+		UseStrictKnownHosts(tmpKnownHosts).
 		ConnectionTimeout(30 * time.Second).
 		Build()
-
 	if err != nil {
-		t.Fatalf("Failed to build SSH transport: %v", err)
+		t.Fatalf("Failed to build SSH transport with wrong key: %v", err)
 	}
 
-	// Connection should succeed and auto-add the host key
 	err = sshTransport.Connect()
-	if err != nil {
-		t.Fatalf("Expected connection to succeed with auto-add known hosts: %v", err)
-	}
-
-	// Verify the host key was added to the known_hosts file
-	verifyHostKeyAdded(t, tmpKnownHosts, linuxHost)
-
-	// Test basic functionality to ensure connection works
-	ctx := context.Background()
-	stdout, stderr, err := sshTransport.ExecuteCommand(ctx, "echo 'Known hosts test'")
-	if err != nil {
-		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
-	}
-
-	if !containsIgnoreCase(stdout, "Known hosts test") {
-		t.Errorf("Expected stdout to contain 'Known hosts test', got: %s", stdout)
-	}
-
-	err = sshTransport.Close()
-	if err != nil {
-		t.Errorf("Close failed: %v", err)
-	}
-
-	// Now test connecting again - should work without auto-adding since key is already known
-	sshTransport2, err := builder.
-		Host(linuxHost).
-		Port(linuxPort).
-		User(linuxUser).
-		PasswordAuth(linuxPassword).
-		UseKnownHosts(tmpKnownHosts, false). // Strict checking now
-		ConnectionTimeout(30 * time.Second).
-		Build()
-
-	if err != nil {
-		t.Fatalf("Failed to build second SSH transport: %v", err)
-	}
-
-	err = sshTransport2.Connect()
-	if err != nil {
-		t.Fatalf("Expected second connection to succeed with known host key: %v", err)
-	}
-
-	err = sshTransport2.Close()
-	if err != nil {
-		t.Errorf("Second close failed: %v", err)
+	if err == nil {
+		t.Error("Expected connection to fail with wrong key")
+		sshTransport.Close()
+	} else if !strings.Contains(err.Error(), "key mismatch") {
+		t.Errorf("Got unexpected error: %v", err)
 	}
 }
 
-func TestSSHTransportIntegrationKnownHostsNonExistentFile(t *testing.T) {
+func TestSSHTransportKnownHosts_AddUnknown(t *testing.T) {
+
 	setupVagrantEnvironment(t)
 
-	// Use a path that doesn't exist
-	nonExistentPath := "/tmp/non_existent_known_hosts_" + getCurrentTimestamp()
+	tmpKnownHosts := createTempKnownHostsFile(t)
+	defer cleanupTempFile(t, tmpKnownHosts)
 
 	builder, err := transport.NewSSHBuilder()
 	if err != nil {
 		t.Fatalf("NewSSHBuilder failed: %v", err)
 	}
 
-	// Configure SSH transport to use non-existent known hosts file with auto-add
 	sshTransport, err := builder.
 		Host(linuxHost).
 		Port(linuxPort).
 		User(linuxUser).
 		PasswordAuth(linuxPassword).
-		UseKnownHosts(nonExistentPath, true). // Auto-add to non-existent file
+		UseKnownHosts(tmpKnownHosts). // Allow auto-adding unknown hosts
+		ConnectionTimeout(30 * time.Second).
+		Build()
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Expected connection to succeed with auto-add known hosts: %v", err)
+	}
+	sshTransport.Close()
+
+	// Test connection again with strict host checking to verify known host was added
+	sshTransport, err = builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		UseStrictKnownHosts(tmpKnownHosts). // Strict checking now
+		ConnectionTimeout(30 * time.Second).
+		Build()
+	if err != nil {
+		t.Fatalf("Failed to build second SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Expected second connection to succeed with known host key: %v", err)
+	}
+
+	err = sshTransport.Close()
+	if err != nil {
+		t.Errorf("Second close failed: %v", err)
+	}
+}
+
+func TestSSHTransportKnownHosts_AddUnknown_RejectNotMatchingKey(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	tmpKnownHosts := createTempKnownHostsFile(t)
+	defer cleanupTempFile(t, tmpKnownHosts)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	file, err := os.Create(tmpKnownHosts)
+	if err != nil {
+		t.Fatalf("Failed to open temp known hosts file: %v", err)
+	}
+
+	content := fmt.Sprintf("%s ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBH3kZFNyb8iutKv6WzIA5Z1W+TqjwLU/kxRnFBLnLjBo5sXGkbAwUZd8xN7u4nF+OPdFwk9yfJ5ZHzvlsYYXowI=\n", linuxHost)
+	_, err = file.WriteString(content)
+	if err != nil {
+		t.Fatalf("Failed to write to temp known hosts file: %v", err)
+	}
+
+	err = file.Close()
+	if err != nil {
+		t.Fatalf("Failed to close temp known hosts file: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PublicKeyAuth(linuxPrivateKey). // Use a wrong key
+		UseKnownHosts(tmpKnownHosts).
+		ConnectionTimeout(30 * time.Second).
+		Build()
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport with wrong key: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err == nil {
+		t.Error("Expected connection to fail with wrong key")
+		sshTransport.Close()
+	} else if !strings.Contains(err.Error(), "key mismatch") {
+		t.Errorf("Got unexpected error: %v", err)
+	}
+}
+
+func TestSSHTransportKnownHosts_AddUnknown_NonExistentFile(t *testing.T) {
+	setupVagrantEnvironment(t)
+
+	nonExistentPath := "/tmp/non_existent_known_hosts"
+
+	cleanupTempFile(t, nonExistentPath)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		UseKnownHosts(nonExistentPath).
+		ConnectionTimeout(30 * time.Second).
+		Build()
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Expected connection to succeed and create known hosts file: %v", err)
+	}
+
+	err = sshTransport.Close()
+	if err != nil {
+		t.Errorf("Close failed: %v", err)
+	}
+
+	cleanupTempFile(t, nonExistentPath)
+}
+
+func TestSSHTransportExecuteCommand_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
 		ConnectionTimeout(30 * time.Second).
 		Build()
 
@@ -565,27 +457,1705 @@ func TestSSHTransportIntegrationKnownHostsNonExistentFile(t *testing.T) {
 		t.Fatalf("Failed to build SSH transport: %v", err)
 	}
 
-	// Connection should succeed and create the known_hosts file
 	err = sshTransport.Connect()
 	if err != nil {
-		t.Fatalf("Expected connection to succeed and create known hosts file: %v", err)
+		t.Fatalf("Failed to connect: %v", err)
 	}
+	defer sshTransport.Close()
 
-	// Verify the file was created and contains the host key
-	verifyHostKeyAdded(t, nonExistentPath, linuxHost)
-
-	err = sshTransport.Close()
+	stdout, stderr, err := sshTransport.ExecuteCommand(context.Background(), "echo 'Hello from Linux'")
 	if err != nil {
-		t.Errorf("Close failed: %v", err)
+		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
 	}
 
-	// Clean up the created file
-	cleanupTempFile(t, nonExistentPath)
+	if stdout != "Hello from Linux" {
+		t.Errorf("Expected stdout to be 'Hello from Linux', got: %s", stdout)
+	}
+
+	if stderr != "" {
+		t.Errorf("Expected stderr to be empty, got: %s", stderr)
+	}
+}
+
+func TestSSHTransportExecuteCommand_WinPowerShell(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	stdout, stderr, err := sshTransport.ExecuteCommand(context.Background(), `echo "Hello from Windows"`)
+	if err != nil {
+		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
+	}
+
+	if stdout != "Hello from Windows" {
+		t.Errorf("Expected stdout to be 'Hello from Windows', got: %s", stdout)
+	}
+
+	if stderr != "" {
+		t.Errorf("Expected stderr to be empty, got: %s", stderr)
+	}
+}
+
+func TestSSHTransportExecuteCommand_WinCmd(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(cmdHost).
+		Port(cmdPort).
+		User(cmdUser).
+		PasswordAuth(cmdPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	stdout, stderr, err := sshTransport.ExecuteCommand(context.Background(), "echo Hello from CMD")
+	if err != nil {
+		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
+	}
+
+	if stdout != "Hello from CMD" {
+		t.Errorf("Expected stdout to be 'Hello from CMD', got: %s", stdout)
+	}
+
+	if stderr != "" {
+		t.Errorf("Expected stderr to be empty, got: %s", stderr)
+	}
+}
+
+func TestSSHTransportExecutePowerShell_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	stdout, err := sshTransport.ExecutePowerShell(context.Background(), "Write-Host 'Hello from PowerShell'")
+	expectedErr := "PowerShell is not available on the remote system"
+	if err == nil {
+		t.Error("Expected PowerShell command to fail on Linux, but it succeeded")
+	} else if !strings.Contains(err.Error(), expectedErr) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedErr, err.Error())
+	}
+
+	if stdout != "" {
+		t.Errorf("Expected PowerShell output to be empty on Linux, got: %s", stdout)
+	}
+}
+
+func TestSSHTransportExecutePowerShell_WinPowerShell(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	stdout, err := sshTransport.ExecutePowerShell(context.Background(), "Write-Host 'Hello from PowerShell'")
+	if err != nil {
+		t.Fatalf("ExecutePowerShell failed: %v", err)
+	}
+
+	if stdout != "Hello from PowerShell" {
+		t.Errorf("Expected PowerShell output to be 'Hello from PowerShell', got: %s", stdout)
+	}
+}
+
+func TestSSHTransportExecutePowerShell_WinCmd(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(cmdHost).
+		Port(cmdPort).
+		User(cmdUser).
+		PasswordAuth(cmdPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	stdout, err := sshTransport.ExecutePowerShell(context.Background(), "Write-Host 'Hello from PowerShell'")
+	if err != nil {
+		t.Fatalf("ExecutePowerShell failed: %v", err)
+	}
+
+	if stdout != "Hello from PowerShell" {
+		t.Errorf("Expected PowerShell output to be 'Hello from PowerShell', got: %s", stdout)
+	}
+}
+
+func TestSSHTransportStat_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_stat_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer sshTransport.Remove(tmpFile.Name())
+
+	fileInfo, err := sshTransport.Stat(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("Stat failed: %v", err)
+	}
+
+	if fileInfo == nil {
+		t.Error("Expected fileInfo to be non-nil for existing file")
+	}
+}
+
+func TestSSHTransportStat_Windows(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_stat_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer sshTransport.Remove(tmpFile.Name())
+
+	fileInfo, err := sshTransport.Stat(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("Stat failed: %v", err)
+	}
+
+	if fileInfo == nil {
+		t.Error("Expected fileInfo to be non-nil for existing file")
+	}
+}
+
+func TestSSHTransportCreate_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_create_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer sshTransport.RemoveAll(tmpDir)
+
+	file, err := sshTransport.Create(tmpDir + "/testfile.txt")
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	_, err = file.Write([]byte("Hello from SSH Create"))
+	if err != nil {
+		t.Fatalf("Write failed: %v", err)
+	}
+
+	err = file.Sync()
+	if err != nil {
+		t.Fatalf("Sync failed: %v", err)
+	}
+
+	err = file.Close()
+	if err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	file, err = sshTransport.Open(tmpDir + "/testfile.txt")
+	if err != nil {
+		t.Fatalf("Stat failed: %v", err)
+	}
+
+	if file == nil {
+		t.Error("Expected file to be non-nil for existing file")
+	}
+
+	buffer := &bytes.Buffer{}
+	_, err = buffer.ReadFrom(file)
+	if err != nil {
+		t.Fatalf("Read failed: %v", err)
+	}
+
+	if string(buffer.String()) != "Hello from SSH Create" {
+		t.Errorf("Expected file content to be 'Hello from SSH Create', got: %s", string(buffer.String()))
+	}
+}
+
+func TestSSHTransportCreate_Windows(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_create_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer sshTransport.RemoveAll(tmpDir)
+
+	file, err := sshTransport.Create(tmpDir + "\\testfile.txt")
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	_, err = file.Write([]byte("Hello from SSH Create"))
+	if err != nil {
+		t.Fatalf("Write failed: %v", err)
+	}
+
+	err = file.Sync()
+	if err != nil {
+		t.Fatalf("Sync failed: %v", err)
+	}
+
+	err = file.Close()
+	if err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	file, err = sshTransport.Open(tmpDir + "\\testfile.txt")
+	if err != nil {
+		t.Fatalf("Stat failed: %v", err)
+	}
+
+	if file == nil {
+		t.Error("Expected file to be non-nil for existing file")
+	}
+
+	buffer := &bytes.Buffer{}
+	_, err = buffer.ReadFrom(file)
+	if err != nil {
+		t.Fatalf("Read failed: %v", err)
+	}
+
+	if string(buffer.String()) != "Hello from SSH Create" {
+		t.Errorf("Expected file content to be 'Hello from SSH Create', got: %s", string(buffer.String()))
+	}
+}
+
+func TestSSHTransportOpen_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_open_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+
+	err = tmpFile.Sync()
+	if err != nil {
+		t.Fatalf("Failed to sync temp file: %v", err)
+	}
+
+	err = tmpFile.Close()
+	if err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+
+	defer sshTransport.Remove(tmpFile.Name())
+
+	file, err := sshTransport.Open(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+
+	if file == nil {
+		t.Error("Expected file to be non-nil for existing file")
+	}
+
+	buffer := &bytes.Buffer{}
+	_, err = buffer.ReadFrom(file)
+	if err != nil {
+		t.Fatalf("Read failed: %v", err)
+	}
+
+	if string(buffer.String()) != "" { // Expecting empty content since we just created the file
+		t.Errorf("Expected file content to be empty, got: %s", string(buffer.String()))
+	}
+
+	err = file.Close()
+	if err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+}
+
+func TestSSHTransportOpen_Windows(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_open_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+
+	err = tmpFile.Sync()
+	if err != nil {
+		t.Fatalf("Failed to sync temp file: %v", err)
+	}
+
+	err = tmpFile.Close()
+	if err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+
+	defer sshTransport.Remove(tmpFile.Name())
+
+	file, err := sshTransport.Open(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+
+	if file == nil {
+		t.Error("Expected file to be non-nil for existing file")
+	}
+
+	buffer := &bytes.Buffer{}
+	_, err = buffer.ReadFrom(file)
+	if err != nil {
+		t.Fatalf("Read failed: %v", err)
+	}
+
+	if string(buffer.String()) != "" { // Expecting empty content since we just created the file
+		t.Errorf("Expected file content to be empty, got: %s", string(buffer.String()))
+	}
+
+	err = file.Close()
+	if err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+}
+
+func TestSSHTransportMkdir_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_mkdir_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+
+	defer sshTransport.RemoveAll(tmpDir)
+
+	path := tmpDir + "/newdir"
+	err = sshTransport.Mkdir(path)
+	if err != nil {
+		t.Fatalf("Mkdir failed: %v", err)
+	}
+
+	fileInfo, err := sshTransport.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat failed: %v", err)
+	}
+
+	if fileInfo == nil {
+		t.Error("Expected fileInfo to be non-nil for existing directory")
+	}
+
+	if !fileInfo.IsDir() {
+		t.Error("Expected fileInfo to be a directory")
+	}
+}
+
+func TestSSHTransportMkdir_Windows(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_mkdir_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+
+	defer sshTransport.RemoveAll(tmpDir)
+
+	path := tmpDir + "\\newdir"
+	err = sshTransport.Mkdir(path)
+	if err != nil {
+		t.Fatalf("Mkdir failed: %v", err)
+	}
+
+	fileInfo, err := sshTransport.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat failed: %v", err)
+	}
+
+	if fileInfo == nil {
+		t.Error("Expected fileInfo to be non-nil for existing directory")
+	}
+
+	if !fileInfo.IsDir() {
+		t.Error("Expected fileInfo to be a directory")
+	}
+}
+
+func TestSSHTransportRemove_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_remove_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+
+	err = tmpFile.Sync()
+	if err != nil {
+		t.Fatalf("Failed to sync temp file: %v", err)
+	}
+
+	err = tmpFile.Close()
+	if err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+
+	defer sshTransport.Remove(tmpFile.Name())
+
+	err = sshTransport.Remove(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("Remove failed: %v", err)
+	}
+
+	fileInfo, err := sshTransport.Stat(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("Stat failed after remove: %v", err)
+	}
+
+	if fileInfo != nil {
+		t.Error("Expected fileInfo to be nil for removed file")
+	}
+}
+
+func TestSSHTransportRemove_Windows(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_remove_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+
+	err = tmpFile.Sync()
+	if err != nil {
+		t.Fatalf("Failed to sync temp file: %v", err)
+	}
+
+	err = tmpFile.Close()
+	if err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+
+	defer sshTransport.Remove(tmpFile.Name())
+
+	err = sshTransport.Remove(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("Remove failed: %v", err)
+	}
+
+	fileInfo, err := sshTransport.Stat(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("Stat failed after remove: %v", err)
+	}
+
+	if fileInfo != nil {
+		t.Error("Expected fileInfo to be nil for removed file")
+	}
+}
+
+func TestSSHTransportRemoveAll_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_removeall_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+
+	file, err := sshTransport.Create(tmpDir + "/testfile.txt")
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	err = file.Close()
+	if err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	err = sshTransport.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("RemoveAll failed: %v", err)
+	}
+
+	fileInfo, err := sshTransport.Stat(tmpDir)
+	if err != nil {
+		t.Fatalf("Stat failed after RemoveAll: %v", err)
+	}
+
+	if fileInfo != nil {
+		t.Error("Expected fileInfo to be nil for removed directory")
+	}
+}
+
+func TestSSHTransportRemoveAll_Windows(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_removeall_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+
+	file, err := sshTransport.Create(tmpDir + "\\testfile.txt")
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	err = file.Close()
+	if err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	err = sshTransport.RemoveAll(tmpDir)
+	if err != nil {
+		t.Fatalf("RemoveAll failed: %v", err)
+	}
+
+	fileInfo, err := sshTransport.Stat(tmpDir)
+	if err != nil {
+		t.Fatalf("Stat failed after RemoveAll: %v", err)
+	}
+
+	if fileInfo != nil {
+		t.Error("Expected fileInfo to be nil for removed directory")
+	}
+}
+
+func TestSSHTransportJoin_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	path := sshTransport.Join("/tmp", "testfile.txt")
+	expectedPath := "/tmp/testfile.txt"
+
+	if path != expectedPath {
+		t.Errorf("Expected joined path to be '%s', got '%s'", expectedPath, path)
+	}
+}
+
+func TestSSHTransportJoin_Windows(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	path := sshTransport.Join("C:\\temp", "testfile.txt")
+	expectedPath := "C:\\temp\\testfile.txt"
+
+	if path != expectedPath {
+		t.Errorf("Expected joined path to be '%s', got '%s'", expectedPath, path)
+	}
+}
+
+func TestSSHTransportTempDir_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpDir, err := sshTransport.TempDir()
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+
+	if tmpDir != "/tmp" {
+		t.Errorf("Expected temp dir to be '/tmp', got: %s", tmpDir)
+	}
+}
+
+func TestSSHTransportTempDir_Windows(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpDir, err := sshTransport.TempDir()
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+
+	if tmpDir != "C:\\Users\\vagrant\\AppData\\Local\\Temp" {
+		t.Errorf("Expected temp dir to be 'C:\\Users\\vagrant\\AppData\\Local\\Temp', got: %s", tmpDir)
+	}
+}
+
+func TestSSHTransportCreateTemp_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_create_temp_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer sshTransport.Remove(tmpFile.Name())
+
+	if !strings.HasPrefix(tmpFile.Name(), "/tmp/test_ssh_create_temp_") {
+		t.Errorf("Expected temp file to start with '/tmp/test_ssh_create_temp_', got: %s", tmpFile.Name())
+	}
+
+	err = tmpFile.Close()
+	if err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+}
+
+func TestSSHTransportCreateTemp_Windows(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_create_temp_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer sshTransport.Remove(tmpFile.Name())
+
+	if !strings.HasPrefix(tmpFile.Name(), "C:\\Users\\vagrant\\AppData\\Local\\Temp\\test_ssh_create_temp_") {
+		t.Errorf("Expected temp file to start with 'C:\\Users\\vagrant\\AppData\\Local\\Temp\\test_ssh_create_temp_', got: %s", tmpFile.Name())
+	}
+
+	err = tmpFile.Close()
+	if err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+}
+
+func TestSSHTransportMkdirTemp_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_mkdir_temp_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer sshTransport.RemoveAll(tmpDir)
+
+	if !strings.HasPrefix(tmpDir, "/tmp/test_ssh_mkdir_temp_") {
+		t.Errorf("Expected temp dir to start with '/tmp/test_ssh_mkdir_temp_', got: %s", tmpDir)
+	}
+}
+
+func TestSSHTransportMkdirTemp_Windows(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_mkdir_temp_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer sshTransport.RemoveAll(tmpDir)
+
+	if !strings.HasPrefix(tmpDir, "C:\\Users\\vagrant\\AppData\\Local\\Temp\\test_ssh_mkdir_temp_") {
+		t.Errorf("Expected temp dir to start with 'C:\\Users\\vagrant\\AppData\\Local\\Temp\\test_ssh_mkdir_temp_', got: %s", tmpDir)
+	}
+}
+
+func TestSSHTransportSymlink_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	// Create a temporary file for testing
+	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_symlink_*.txt")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer sshTransport.Remove(tmpFile.Name())
+
+	// Create a symlink to the temporary file
+	symlinkPath := tmpFile.Name() + "_symlink"
+	err = sshTransport.Symlink(tmpFile.Name(), symlinkPath)
+	if err != nil {
+		t.Fatalf("Failed to create symlink: %v", err)
+	}
+	defer sshTransport.Remove(symlinkPath)
+
+	// Verify the symlink points to the correct target
+	target, err := sshTransport.ReadLink(symlinkPath)
+	if err != nil {
+		t.Fatalf("Failed to read symlink: %v", err)
+	}
+
+	if target != tmpFile.Name() {
+		t.Errorf("Expected symlink target '%s', got '%s'", tmpFile.Name(), target)
+	}
+}
+
+func TestSSHTransportSymlink_Windows(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	// Create a temporary file for testing
+	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_symlink_*.txt")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer sshTransport.Remove(tmpFile.Name())
+
+	// Create a symlink to the temporary file
+	symlinkPath := tmpFile.Name() + "_symlink"
+	err = sshTransport.Symlink(tmpFile.Name(), symlinkPath)
+	if err != nil {
+		t.Fatalf("Failed to create symlink: %v", err)
+	}
+	defer sshTransport.Remove(symlinkPath)
+
+	// Verify the symlink points to the correct target
+	target, err := sshTransport.ReadLink(symlinkPath)
+	if err != nil {
+		t.Fatalf("Failed to read symlink: %v", err)
+	}
+
+	if target != tmpFile.Name() {
+		t.Errorf("Expected symlink target '%s', got '%s'", tmpFile.Name(), target)
+	}
+}
+
+func TestSSHTransportReadLink_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_readlink_*.txt")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer sshTransport.Remove(tmpFile.Name())
+
+	symlinkPath := tmpFile.Name() + "_symlink"
+	err = sshTransport.Symlink(tmpFile.Name(), symlinkPath)
+	if err != nil {
+		t.Fatalf("Failed to create symlink: %v", err)
+	}
+	defer sshTransport.Remove(symlinkPath)
+
+	target, err := sshTransport.ReadLink(symlinkPath)
+	if err != nil {
+		t.Fatalf("Failed to read symlink: %v", err)
+	}
+
+	if target != tmpFile.Name() {
+		t.Errorf("Expected symlink target '%s', got '%s'", tmpFile.Name(), target)
+	}
+}
+
+func TestSSHTransportReadLink_Windows(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_readlink_*.txt")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer sshTransport.Remove(tmpFile.Name())
+
+	symlinkPath := tmpFile.Name() + "_symlink"
+	err = sshTransport.Symlink(tmpFile.Name(), symlinkPath)
+	if err != nil {
+		t.Fatalf("Failed to create symlink: %v", err)
+	}
+	defer sshTransport.Remove(symlinkPath)
+
+	target, err := sshTransport.ReadLink(symlinkPath)
+	if err != nil {
+		t.Fatalf("Failed to read symlink: %v", err)
+	}
+
+	if target != tmpFile.Name() {
+		t.Errorf("Expected symlink target '%s', got '%s'", tmpFile.Name(), target)
+	}
+}
+
+func TestSSHTransportRealPath_Linux(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	path, err := sshTransport.RealPath("sh")
+	if err != nil {
+		t.Fatalf("RealPath failed: %v", err)
+	}
+
+	if path != "/bin/sh" && path != "/usr/bin/sh" {
+		t.Errorf("Expected real path to be '/bin/sh' or '/usr/bin/sh', got '%s'", path)
+	}
+}
+
+func TestSSHTransportRealPath_Linux_NotFound(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	_, err = sshTransport.RealPath("nonexistent_command")
+	if err == nil {
+		t.Fatal("Expected RealPath to return an error for nonexistent command, but got nil")
+	}
+
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("Expected error to be os.ErrNotExist, got: %v", err)
+	}
+}
+
+func TestSSHTransportRealPath_Windows(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	path, err := sshTransport.RealPath("cmd.exe")
+	if err != nil {
+		t.Fatalf("RealPath failed: %v", err)
+	}
+
+	if path != "C:\\WINDOWS\\system32\\cmd.exe" {
+		t.Errorf("Expected real path 'C:\\WINDOWS\\system32\\cmd.exe', got '%s'", path)
+	}
+}
+
+func TestSSHTransportRealPath_Windows_NotFound(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	_, err = sshTransport.RealPath("nonexistent_command")
+	if err == nil {
+		t.Fatal("Expected RealPath to return an error for nonexistent command, but got nil")
+	}
+
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("Expected error to be os.ErrNotExist, got: %v", err)
+	}
+}
+
+func TestSSHTransportRealPath_Cmd(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(cmdHost).
+		Port(cmdPort).
+		User(cmdUser).
+		PasswordAuth(cmdPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	path, err := sshTransport.RealPath("cmd.exe")
+	if err != nil {
+		t.Fatalf("RealPath failed: %v", err)
+	}
+
+	if path != "C:\\WINDOWS\\system32\\cmd.exe" {
+		t.Errorf("Expected real path 'C:\\WINDOWS\\system32\\cmd.exe', got '%s'", path)
+	}
+}
+
+func TestSSHTransportRealPath_Cmd_NotFound(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(cmdHost).
+		Port(cmdPort).
+		User(cmdUser).
+		PasswordAuth(cmdPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	_, err = sshTransport.RealPath("nonexistent_command")
+	if err == nil {
+		t.Fatal("Expected RealPath to return an error for nonexistent command, but got nil")
+	}
+
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("Expected error to be os.ErrNotExist, got: %v", err)
+	}
 }
 
 // Helper functions for known hosts testing
 
-func createEmptyTempKnownHostsFile(t *testing.T) string {
+func createTempKnownHostsFile(t *testing.T) string {
+
 	t.Helper()
 
 	tmpFile, err := os.CreateTemp("", "test_known_hosts_empty_*")
@@ -604,100 +2174,4 @@ func cleanupTempFile(t *testing.T, path string) {
 	if err != nil && !errors.Is(err, os.ErrNotExist) && !errors.Is(err, syscall.ENOENT) {
 		t.Logf("Warning: failed to cleanup temp file %s: %v", path, err)
 	}
-}
-
-func verifyHostKeyAdded(t *testing.T, knownHostsPath, expectedHost string) {
-	t.Helper()
-
-	content, err := os.ReadFile(knownHostsPath)
-	if err != nil {
-		t.Fatalf("Failed to read known hosts file %s: %v", knownHostsPath, err)
-	}
-
-	contentStr := string(content)
-	if !strings.Contains(contentStr, expectedHost) && !strings.Contains(contentStr, "["+expectedHost+"]") {
-		t.Errorf("Expected known hosts file to contain host %s, but it doesn't. Content: %s", expectedHost, contentStr)
-	}
-
-	// Verify file is not empty
-	if len(strings.TrimSpace(contentStr)) == 0 {
-		t.Error("Known hosts file is empty, expected it to contain host key")
-	}
-}
-
-func getCurrentTimestamp() string {
-	return strconv.FormatInt(time.Now().UnixNano(), 10)
-}
-
-func TestSSHTransportIntegrationKnownHostsDisabled(t *testing.T) {
-	setupVagrantEnvironment(t)
-
-	builder, err := transport.NewSSHBuilder()
-	if err != nil {
-		t.Fatalf("NewSSHBuilder failed: %v", err)
-	}
-
-	// Configure SSH transport to disable known hosts checking (default behavior in existing tests)
-	sshTransport, err := builder.
-		Host(linuxHost).
-		Port(linuxPort).
-		User(linuxUser).
-		PasswordAuth(linuxPassword).
-		DontUseKnownHosts(). // Disable known hosts checking
-		ConnectionTimeout(30 * time.Second).
-		Build()
-
-	if err != nil {
-		t.Fatalf("Failed to build SSH transport: %v", err)
-	}
-
-	// Connection should always succeed regardless of host key
-	err = sshTransport.Connect()
-	if err != nil {
-		t.Fatalf("Expected connection to succeed with disabled known hosts checking: %v", err)
-	}
-
-	// Test basic functionality
-	ctx := context.Background()
-	stdout, stderr, err := sshTransport.ExecuteCommand(ctx, "echo 'No known hosts check'")
-	if err != nil {
-		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
-	}
-
-	if !containsIgnoreCase(stdout, "No known hosts check") {
-		t.Errorf("Expected stdout to contain 'No known hosts check', got: %s", stdout)
-	}
-
-	err = sshTransport.Close()
-	if err != nil {
-		t.Errorf("Close failed: %v", err)
-	}
-}
-
-// Helper function for case-insensitive string contains check
-func containsIgnoreCase(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || containsIgnoreCaseHelper(s, substr))
-}
-
-func containsIgnoreCaseHelper(s, substr string) bool {
-	s = toLower(s)
-	substr = toLower(substr)
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
-func toLower(s string) string {
-	result := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
-		if s[i] >= 'A' && s[i] <= 'Z' {
-			result[i] = s[i] + ('a' - 'A')
-		} else {
-			result[i] = s[i]
-		}
-	}
-	return string(result)
 }

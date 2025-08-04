@@ -55,6 +55,7 @@ type SSHTransportBuilder struct {
 }
 
 func NewSSHBuilder() (*SSHTransportBuilder, error) {
+
 	knownHostsPath, err := DefaultKnownHostsPath()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get default known hosts path: %w", err)
@@ -119,11 +120,19 @@ func (b *SSHTransportBuilder) DontUseKnownHosts() *SSHTransportBuilder {
 	return b
 }
 
-func (b *SSHTransportBuilder) UseKnownHosts(knownHostsPath string, addUnknownHosts bool) *SSHTransportBuilder {
+func (b *SSHTransportBuilder) UseKnownHosts(knownHostsPath string) *SSHTransportBuilder {
 
 	b.useKnownHostsFile = true
 	b.knownHostsPath = knownHostsPath
-	b.addUnknownHostsToFile = addUnknownHosts
+	b.addUnknownHostsToFile = true
+	return b
+}
+
+func (b *SSHTransportBuilder) UseStrictKnownHosts(knownHostsPath string) *SSHTransportBuilder {
+
+	b.useKnownHostsFile = true
+	b.knownHostsPath = knownHostsPath
+	b.addUnknownHostsToFile = false
 	return b
 }
 
@@ -230,10 +239,15 @@ type sshTransport struct {
 
 	client *ssh.Client
 
-	fileSystem FileSystem
+	sftpClient *sftp.Client
 
-	hasValidatedPowerShell bool
-	canRunPowerShell       bool
+	canRunPowerShell bool
+
+	pathListSeparator rune
+	pathSeparator     rune
+	tempDir           string
+
+	pathPrefixes []string
 }
 
 // Type implements Transport.
@@ -263,7 +277,22 @@ func (s *sshTransport) Connect() error {
 		s.client = nil
 		return fmt.Errorf("failed to create SSH session: %w", err)
 	}
-	session.Close() // Close the test session immediately
+
+	// Check if PowerShell is available on the remote system
+	powershellCheckCmd := "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Write-Host 'PowerShell is available'\""
+
+	err = session.Run(powershellCheckCmd)
+	session.Close()
+	if err != nil {
+		s.canRunPowerShell = false
+		s.pathSeparator = '/'     // Use forward slash for Unix-like paths
+		s.pathListSeparator = ':' // Use colon for Unix-like path list separator
+		s.tempDir = "/tmp"        // Assume /tmp for non-Windows systems
+	} else {
+		s.canRunPowerShell = true
+		s.pathSeparator = '\\'    // Use backslash for Windows paths
+		s.pathListSeparator = ';' // Use semicolon for Windows path list separator
+	}
 
 	return nil
 }
@@ -271,8 +300,8 @@ func (s *sshTransport) Connect() error {
 // Close implements Transport.
 func (s *sshTransport) Close() error {
 
-	if s.fileSystem != nil {
-		_ = s.fileSystem.Close() // Close the file system if it exists
+	if s.sftpClient != nil {
+		_ = s.sftpClient.Close() // Close the SFTP client if it exists
 	}
 
 	if s.client == nil {
@@ -311,8 +340,8 @@ func (s *sshTransport) ExecuteCommand(ctx context.Context, command string) (stri
 
 		err := session.Run(command)
 		outputChannel <- &sshResult{
-			stdout: outBuf.String(),
-			stderr: errBuf.String(),
+			stdout: strings.TrimSpace(outBuf.String()),
+			stderr: strings.TrimSpace(errBuf.String()),
 			err:    err,
 		}
 	}()
@@ -334,29 +363,8 @@ func (s *sshTransport) ExecutePowerShell(ctx context.Context, command string) (s
 		return "", fmt.Errorf("failed to connect to SSH transport: %w", err)
 	}
 
-	if !s.hasValidatedPowerShell {
-		// Check if PowerShell is available on the remote system
-		powershellCheckCmd := "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Write-Host 'PowerShell is available'\""
-
-		session, err := s.client.NewSession()
-		if err != nil {
-			return "", fmt.Errorf("failed to create SSH session: %w", err)
-		}
-
-		err = session.Run(powershellCheckCmd)
-		session.Close()
-		if err != nil {
-			s.hasValidatedPowerShell = true
-			s.canRunPowerShell = false
-			return "", fmt.Errorf("PowerShell is not available on the remote system: %w", err)
-		} else {
-			s.hasValidatedPowerShell = true
-			s.canRunPowerShell = true
-		}
-	}
-
 	if !s.canRunPowerShell {
-		return "", fmt.Errorf("PowerShell is not available on the remote system")
+		return "", errors.New("PowerShell is not available on the remote system")
 	}
 
 	session, err := s.client.NewSession()
@@ -385,7 +393,7 @@ func (s *sshTransport) ExecutePowerShell(ctx context.Context, command string) (s
 
 		err := session.Run(command)
 		outputChannel <- &sshResult{
-			stdout: outBuf.String(),
+			stdout: strings.TrimSpace(outBuf.String()),
 			stderr: "",
 			err:    err,
 		}
@@ -400,88 +408,376 @@ func (s *sshTransport) ExecutePowerShell(ctx context.Context, command string) (s
 	}
 }
 
-// FileSystem implements Transport.
-func (s *sshTransport) FileSystem() FileSystem {
-	if s.fileSystem == nil {
-		s.fileSystem = newSFTPFileSystem(s)
+// Stat implements Transport.
+func (s *sshTransport) Stat(path string) (os.FileInfo, error) {
+
+	err := s.connectSFTP() // Ensure we are connected to SFTP
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to SFTP client: %w", err)
 	}
 
-	return s.fileSystem
+	fileInfo, err := s.sftpClient.Stat(path)
+
+	if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOENT) {
+		return nil, nil // Return nil if the file does not exist
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return fileInfo, nil
 }
 
-type sftpFileSystem struct {
-	transport *sshTransport
-	client    *sftp.Client
+// Create implements Transport.
+func (s *sshTransport) Create(path string) (File, error) {
+
+	err := s.connectSFTP() // Ensure we are connected to SFTP
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to SFTP client: %w", err)
+	}
+
+	file, err := s.sftpClient.Create(path)
+
+	if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOENT) {
+		return nil, nil // Return nil if the file does not exist
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return file, nil
 }
 
-func newSFTPFileSystem(transport *sshTransport) FileSystem {
-	return &sftpFileSystem{transport: transport}
+// Open implements Transport.
+func (s *sshTransport) Open(path string) (File, error) {
+
+	err := s.connectSFTP() // Ensure we are connected to SFTP
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to SFTP client: %w", err)
+	}
+
+	file, err := s.sftpClient.Open(path)
+
+	if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOENT) {
+		return nil, nil // Return nil if the file does not exist
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return file, nil
 }
 
-// IsNull implements FileSystem.
-func (s *sftpFileSystem) IsNull() bool {
-	return false // SFTP file system is always available
+// Mkdir implements Transport.
+func (s *sshTransport) Mkdir(path string) error {
+
+	err := s.connectSFTP() // Ensure we are connected to SFTP
+	if err != nil {
+		return fmt.Errorf("failed to connect to SFTP client: %w", err)
+	}
+
+	err = s.sftpClient.Mkdir(path)
+	if errors.Is(err, os.ErrExist) || errors.Is(err, syscall.EEXIST) {
+		return nil // Directory already exists, return nil
+	}
+
+	return err
 }
 
-// Connect implements FileSystem.
-func (s *sftpFileSystem) Connect() error {
+// MkdirAll implements Transport.
+func (s *sshTransport) MkdirAll(path string) error {
 
-	if s.client != nil {
+	err := s.connectSFTP() // Ensure we are connected to SFTP
+	if err != nil {
+		return fmt.Errorf("failed to connect to SFTP client: %w", err)
+	}
+
+	err = s.sftpClient.MkdirAll(path)
+	if errors.Is(err, os.ErrExist) || errors.Is(err, syscall.EEXIST) {
+		return nil // Directory already exists, return nil
+	}
+
+	return err
+}
+
+// Remove implements Transport.
+func (s *sshTransport) Remove(path string) error {
+
+	err := s.connectSFTP() // Ensure we are connected to SFTP
+	if err != nil {
+		return fmt.Errorf("failed to connect to SFTP client: %w", err)
+	}
+
+	return s.sftpClient.Remove(path)
+}
+
+// RemoveAll implements Transport.
+func (s *sshTransport) RemoveAll(path string) error {
+
+	err := s.connectSFTP() // Ensure we are connected to SFTP
+	if err != nil {
+		return fmt.Errorf("failed to connect to SFTP client: %w", err)
+	}
+
+	return s.sftpClient.RemoveAll(path)
+}
+
+// Join implements Transport.
+func (s *sshTransport) Join(elem ...string) string {
+
+	if len(elem) == 0 {
+		return ""
+	}
+
+	stringBuilder := &strings.Builder{}
+
+	for i, e := range elem {
+		if i > 0 {
+			stringBuilder.WriteRune(s.pathSeparator)
+		}
+
+		if strings.HasSuffix(e, string(s.pathSeparator)) {
+			e = strings.TrimSuffix(e, string(s.pathSeparator))
+		}
+
+		stringBuilder.WriteString(e)
+	}
+
+	return stringBuilder.String()
+}
+
+// TempDir implements Transport.
+func (s *sshTransport) TempDir() (string, error) {
+
+	if s.tempDir != "" {
+		return s.tempDir, nil // Return cached temp dir if available
+	}
+
+	err := s.Connect() // Ensure we are connected
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to SSH transport: %w", err)
+	}
+
+	stdout, err := s.ExecutePowerShell(context.Background(), "$path = [System.IO.Path]::GetTempPath(); Write-Host $path")
+	stdout = strings.TrimRight(stdout, string(s.pathSeparator))
+	if err != nil {
+		return "", fmt.Errorf("failed to get temp dir: %w", err)
+	}
+
+	s.tempDir = stdout
+
+	return stdout, nil
+}
+
+// CreateTemp implements Transport.
+func (s *sshTransport) CreateTemp(dir, pattern string) (File, error) {
+
+	err := s.connectSFTP() // Ensure we are connected to SFTP
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to SFTP client: %w", err)
+	}
+
+	if dir == "" {
+		dir, err = s.TempDir()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get temp dir: %w", err)
+		}
+	}
+
+	splitPattern := strings.Split(pattern, "*")
+	if len(splitPattern) > 2 {
+		return nil, fmt.Errorf("pattern must contain at most one wildcard (*)")
+	}
+
+	var prefix, suffix string
+	if len(splitPattern) == 1 {
+		prefix = splitPattern[0]
+	} else {
+		prefix = splitPattern[0]
+		suffix = splitPattern[1]
+	}
+
+	stringBuilder := &strings.Builder{}
+	stringBuilder.WriteString(dir)
+	stringBuilder.WriteRune(s.pathSeparator)
+	stringBuilder.WriteString(prefix)
+
+	randomNumber := fmt.Sprintf("%d", time.Now().UnixNano()%1000000) // Simple random number based on current time
+	stringBuilder.WriteString(randomNumber)
+	stringBuilder.WriteString(suffix)
+
+	return s.Create(stringBuilder.String())
+}
+
+// MkdirTemp implements Transport.
+func (s *sshTransport) MkdirTemp(dir, pattern string) (string, error) {
+
+	err := s.connectSFTP() // Ensure we are connected to SFTP
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to SFTP client: %w", err)
+	}
+
+	if dir == "" {
+		dir, err = s.TempDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get temp dir: %w", err)
+		}
+	}
+
+	splitPattern := strings.Split(pattern, "*")
+	if len(splitPattern) > 2 {
+		return "", fmt.Errorf("pattern must contain at most one wildcard (*)")
+	}
+
+	var prefix, suffix string
+	if len(splitPattern) == 1 {
+		prefix = splitPattern[0]
+	} else {
+		prefix = splitPattern[0]
+		suffix = splitPattern[1]
+	}
+
+	stringBuilder := &strings.Builder{}
+	stringBuilder.WriteString(dir)
+	stringBuilder.WriteRune(s.pathSeparator)
+	stringBuilder.WriteString(prefix)
+
+	randomNumber := fmt.Sprintf("%d", time.Now().UnixNano()%1000000) // Simple random number based on current time
+	stringBuilder.WriteString(randomNumber)
+	stringBuilder.WriteString(suffix)
+
+	tempDirPath := stringBuilder.String()
+
+	err = s.Mkdir(tempDirPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp directory: %w", err)
+	}
+
+	return tempDirPath, nil
+}
+
+// Symlink implements Transport.
+func (s *sshTransport) Symlink(target, path string) error {
+
+	err := s.connectSFTP() // Ensure we are connected to SFTP
+	if err != nil {
+		return fmt.Errorf("failed to connect to SFTP client: %w", err)
+	}
+
+	return s.sftpClient.Symlink(target, path)
+}
+
+// ReadLink implements Transport.
+func (s *sshTransport) ReadLink(path string) (string, error) {
+
+	err := s.connectSFTP() // Ensure we are connected to SFTP
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to SFTP client: %w", err)
+	}
+
+	target, err := s.sftpClient.ReadLink(path)
+	if err != nil {
+		return "", err
+	}
+
+	if s.canRunPowerShell {
+		target = strings.ReplaceAll(target, "/", string(s.pathSeparator)) // Normalize path for Windows
+		target = strings.Trim(target, string(s.pathSeparator))
+	}
+
+	return target, nil
+}
+
+// RealPath implements Transport.
+func (s *sshTransport) RealPath(path string) (string, error) {
+
+	err := s.populatePathPrefixes()
+	if err != nil {
+		return "", fmt.Errorf("failed to populate path prefixes: %w", err)
+	}
+
+	err = s.connectSFTP() // Ensure we are connected to SFTP
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to SFTP client: %w", err)
+	}
+
+	for _, prefix := range s.pathPrefixes {
+		newPath := prefix + path
+		fileInfo, _ := s.Stat(newPath) // Ignore error, just check if file exists
+
+		if fileInfo != nil {
+			return newPath, nil // Return the first valid path found
+		}
+	}
+
+	realPath, err := s.sftpClient.RealPath(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to get real path: %w", err)
+	}
+
+	fileInfo, _ := s.Stat(realPath) // Ignore error, just check if file exists
+	if fileInfo != nil {
+		return realPath, nil // Return the absolute path if it exists
+	}
+
+	return "", os.ErrNotExist // Return error if no valid path found
+}
+
+func (s *sshTransport) populatePathPrefixes() error {
+
+	if s.pathPrefixes != nil {
+		return nil // Already populated
+	}
+
+	var stdout string
+	var err error
+	if s.canRunPowerShell {
+		stdout, err = s.ExecutePowerShell(context.Background(), "Write-Host $env:PATH")
+	} else {
+		stdout, _, err = s.ExecuteCommand(context.Background(), "echo $PATH")
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to get PATH environment variable: %w", err)
+	}
+
+	pathOutput := strings.TrimRight(strings.TrimSpace(stdout), string(s.pathListSeparator))
+
+	s.pathPrefixes = strings.Split(pathOutput, string(s.pathListSeparator))
+
+	for i, prefix := range s.pathPrefixes {
+		if !strings.HasSuffix(prefix, string(s.pathSeparator)) {
+			s.pathPrefixes[i] = prefix + string(s.pathSeparator) // Ensure each prefix ends with a separator
+		}
+	}
+
+	return nil
+}
+
+func (s *sshTransport) connectSFTP() error {
+
+	if s.sftpClient != nil {
 		return nil // Already connected
 	}
 
-	err := s.transport.Connect()
-	if err != nil {
-		return fmt.Errorf("failed to connect to SSH transport: %w", err)
+	if s.client == nil {
+		err := s.Connect()
+		if err != nil {
+			return fmt.Errorf("failed to connect to SSH transport: %w", err)
+		}
 	}
 
-	client, err := sftp.NewClient(s.transport.client)
+	client, err := sftp.NewClient(s.client)
 	if err != nil {
-		s.transport.Close() // Close the SSH client on error
 		return fmt.Errorf("failed to create SFTP client: %w", err)
 	}
 
-	s.client = client
+	s.sftpClient = client
 
 	return nil
-}
-
-// Close implements FileSystem.
-func (s *sftpFileSystem) Close() error {
-
-	if s.client == nil {
-		return nil // No client to close
-	}
-
-	err := s.client.Close()
-	s.client = nil
-	if err != nil {
-		return fmt.Errorf("failed to close SFTP client: %w", err)
-	}
-
-	return nil
-}
-
-// Stat implements FileSystem.
-func (s *sftpFileSystem) Stat(path string) (os.FileInfo, error) {
-
-	err := s.Connect() // Ensure we are connected
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to SSH transport: %w", err)
-	}
-
-	return s.client.Stat(path)
-}
-
-// Open implements FileSystem.
-func (s *sftpFileSystem) Open(path string) (File, error) {
-
-	err := s.Connect() // Ensure we are connected
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to SSH transport: %w", err)
-	}
-
-	return s.client.Open(path)
 }
 
 func newHostKeyAddingCallback(path string) (ssh.HostKeyCallback, error) {

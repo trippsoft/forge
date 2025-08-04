@@ -1,144 +1,293 @@
 package info
 
 import (
+	"os"
 	"testing"
+
+	"github.com/trippsoft/forge/internal/transport/mock"
 )
 
-func TestFipsInfo_PopulateFipsInfo_Linux_Enabled(t *testing.T) {
+func TestFipsInfo_PopulateFipsInfo_NoOS(t *testing.T) {
+
 	osInfo := newOSInfo()
-	osInfo.families.Add("linux")
 
-	transport := newMockTransport()
-	transport.defaultCommandResponse.stdout = "1\n"
+	transport := mock.NewMockTransport()
 
-	fipsInfo := &fipsInfo{}
-	err := fipsInfo.populateFipsInfo(osInfo, transport)
+	info := newFipsInfo()
+	diags := info.populateFipsInfo(osInfo, transport)
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if diags.HasErrors() {
+		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
 
-	if !fipsInfo.known {
-		t.Error("expected FIPS to be known on Linux system")
+	if !diags.HasWarnings() {
+		t.Fatal("expected warnings, got none")
 	}
 
-	if !fipsInfo.enabled {
-		t.Error("expected FIPS to be enabled when file contains '1'")
+	if info.Known() {
+		t.Error("expected FIPS to be unknown with missing OS info")
+	}
+
+	if info.Enabled() {
+		t.Error("expected FIPS to be disabled with missing OS info")
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Missing OS information"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "Skipping FIPS information collection due to missing or invalid OS info"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
 	}
 }
 
-func TestFipsInfo_PopulateFipsInfo_Linux_Disabled(t *testing.T) {
-	osInfo := newOSInfo()
-	osInfo.families.Add("linux")
+func TestFipsInfo_PopulateFipsInfo_Darwin(t *testing.T) {
 
-	transport := newMockTransport()
-	transport.defaultCommandResponse.stdout = "0\n"
-
-	fipsInfo := &fipsInfo{}
-	err := fipsInfo.populateFipsInfo(osInfo, transport)
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if !fipsInfo.known {
-		t.Error("expected FIPS to be known on Linux system")
-	}
-
-	if fipsInfo.enabled {
-		t.Error("expected FIPS to be disabled when file contains '0'")
-	}
-}
-
-func TestFipsInfo_PopulateFipsInfo_Windows_Enabled(t *testing.T) {
-	osInfo := newOSInfo()
-	osInfo.families.Add("windows")
-
-	transport := newMockTransport()
-	transport.defaultPowerShellResponse.stdout = "1\r\n"
-
-	fipsInfo := &fipsInfo{}
-	err := fipsInfo.populateFipsInfo(osInfo, transport)
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if !fipsInfo.known {
-		t.Error("expected FIPS to be known on Windows system")
-	}
-
-	if !fipsInfo.enabled {
-		t.Error("expected FIPS to be enabled when PowerShell returns '1'")
-	}
-}
-
-func TestFipsInfo_PopulateFipsInfo_Windows_Disabled(t *testing.T) {
-	osInfo := newOSInfo()
-	osInfo.families.Add("windows")
-
-	transport := newMockTransport()
-	transport.defaultPowerShellResponse.stdout = "0\r\n"
-
-	fipsInfo := &fipsInfo{}
-	err := fipsInfo.populateFipsInfo(osInfo, transport)
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if !fipsInfo.known {
-		t.Error("expected FIPS to be known on Windows system")
-	}
-
-	if fipsInfo.enabled {
-		t.Error("expected FIPS to be disabled when PowerShell returns '0'")
-	}
-}
-
-func TestFipsInfo_PopulateFipsInfo_UnknownOS(t *testing.T) {
 	osInfo := newOSInfo()
 	osInfo.families.Add("darwin") // macOS
+	osInfo.families.Add("macos")
+	osInfo.id = "macos"
 
-	transport := newMockTransport()
+	transport := mock.NewMockTransport()
 
-	fipsInfo := &fipsInfo{}
-	err := fipsInfo.populateFipsInfo(osInfo, transport)
+	info := newFipsInfo()
+	diags := info.populateFipsInfo(osInfo, transport)
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if diags.HasErrors() {
+		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
 
-	if fipsInfo.known {
-		t.Error("expected FIPS to be unknown on unsupported OS")
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
 	}
 
-	if fipsInfo.enabled {
-		t.Error("expected FIPS to be disabled on unsupported OS")
+	if info.Known() {
+		t.Error("expected FIPS to be unknown on macOS")
+	}
+
+	if info.Enabled() {
+		t.Error("expected FIPS to be disabled on macOS")
 	}
 }
 
-func TestFipsInfo_PopulateFipsInfo_CommandError(t *testing.T) {
-	// Test FIPS with file system read error
+func TestFipsInfo_PopulateFipsInfo_Linux(t *testing.T) {
+
+	tests := []struct {
+		name            string
+		output          string
+		expectedEnabled bool
+	}{
+		{
+			name:            "FIPS enabled",
+			output:          "1",
+			expectedEnabled: true,
+		},
+		{
+			name:            "FIPS disabled",
+			output:          "0",
+			expectedEnabled: false,
+		},
+		{
+			name:            "FIPS not supported",
+			output:          "",
+			expectedEnabled: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			osInfo := newOSInfo()
+			osInfo.families.Add("linux")
+			osInfo.id = "ubuntu"
+
+			transport := mock.NewMockTransport()
+			transport.CommandResults[fipsLinuxDiscoveryScript] = &mock.CommandResult{
+				Stdout: tt.output,
+			}
+
+			info := newFipsInfo()
+			diags := info.populateFipsInfo(osInfo, transport)
+
+			if diags.HasErrors() {
+				t.Fatalf("expected no errors, got: %v", diags.Errors())
+			}
+
+			if diags.HasWarnings() {
+				t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+			}
+
+			if !info.Known() {
+				t.Error("expected FIPS to be known on Linux system")
+			}
+
+			if info.Enabled() != tt.expectedEnabled {
+				t.Errorf("expected FIPS to be %v, got: %v", tt.expectedEnabled, info.Enabled())
+			}
+		})
+	}
+}
+
+func TestFipsInfo_PopulateFipsInfo_Linux_Error(t *testing.T) {
 	osInfo := newOSInfo()
 	osInfo.families.Add("linux")
+	osInfo.id = "ubuntu"
 
-	transport := newMockTransport()
+	transport := mock.NewMockTransport()
+	transport.CommandResults[fipsLinuxDiscoveryScript] = &mock.CommandResult{
+		Err: os.ErrPermission,
+	}
 
-	fipsInfo := &fipsInfo{}
-	err := fipsInfo.populateFipsInfo(osInfo, transport)
-	if err == nil {
-		t.Error("expected error when reading FIPS file fails")
+	info := newFipsInfo()
+	diags := info.populateFipsInfo(osInfo, transport)
+
+	if !diags.HasErrors() {
+		t.Fatal("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if !info.Known() {
+		t.Error("expected FIPS to be known on Linux system")
+	}
+
+	if info.Enabled() {
+		t.Error("expected FIPS to be disabled when command execution fails")
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to check FIPS status"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error checking FIPS status: permission denied"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, errors[0].Detail)
 	}
 }
 
-func TestFipsInfo_ToMapOfCtyValues_Known(t *testing.T) {
-	fipsInfo := &fipsInfo{
-		known:   true,
-		enabled: true,
+func TestFipsInfo_PopulateFipsInfo_Windows(t *testing.T) {
+
+	tests := []struct {
+		name            string
+		output          string
+		expectedEnabled bool
+	}{
+		{
+			name:            "FIPS enabled",
+			output:          "1",
+			expectedEnabled: true,
+		},
+		{
+			name:            "FIPS disabled",
+			output:          "0",
+			expectedEnabled: false,
+		},
+		{
+			name:            "FIPS not supported",
+			output:          "",
+			expectedEnabled: false,
+		},
 	}
 
-	values := fipsInfo.toMapOfCtyValues()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			osInfo := newOSInfo()
+			osInfo.families.Add("windows")
+			osInfo.id = "windows-server"
+
+			transport := mock.NewWinMockTransport()
+			transport.PowerShellResults[fipsWindowsDiscoveryScript] = &mock.CommandResult{
+				Stdout: tt.output,
+			}
+
+			info := newFipsInfo()
+			diags := info.populateFipsInfo(osInfo, transport)
+
+			if diags.HasErrors() {
+				t.Fatalf("expected no errors, got: %v", diags.Errors())
+			}
+
+			if diags.HasWarnings() {
+				t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+			}
+
+			if !info.Known() {
+				t.Error("expected FIPS to be known on Windows system")
+			}
+
+			if info.Enabled() != tt.expectedEnabled {
+				t.Errorf("expected FIPS to be %v, got: %v", tt.expectedEnabled, info.Enabled())
+			}
+		})
+	}
+}
+
+func TestFipsInfo_PopulateFipsInfo_Windows_Error(t *testing.T) {
+	osInfo := newOSInfo()
+	osInfo.families.Add("windows")
+	osInfo.id = "windows-server"
+
+	transport := mock.NewWinMockTransport()
+	transport.PowerShellResults[fipsWindowsDiscoveryScript] = &mock.CommandResult{
+		Err: os.ErrPermission,
+	}
+
+	info := newFipsInfo()
+	diags := info.populateFipsInfo(osInfo, transport)
+	if !diags.HasErrors() {
+		t.Fatal("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if !info.Known() {
+		t.Error("expected FIPS to be known on Windows system")
+	}
+
+	if info.Enabled() {
+		t.Error("expected FIPS to be disabled when command execution fails")
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to check FIPS status"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error checking FIPS status: permission denied"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, errors[0].Detail)
+	}
+}
+
+func TestFipsInfo_ToMapOfCtyValues_Known_Enabled(t *testing.T) {
+	info := newFipsInfo()
+	info.known = true
+	info.enabled = true
+
+	values := info.toMapOfCtyValues()
 
 	if _, exists := values["fips_enabled"]; !exists {
 		t.Error("expected fips_enabled key to be present in values map")
@@ -149,13 +298,12 @@ func TestFipsInfo_ToMapOfCtyValues_Known(t *testing.T) {
 	}
 }
 
-func TestFipsInfo_ToMapOfCtyValues_KnownButDisabled(t *testing.T) {
-	fipsInfo := &fipsInfo{
-		known:   true,
-		enabled: false,
-	}
+func TestFipsInfo_ToMapOfCtyValues_Known_Disabled(t *testing.T) {
+	info := newFipsInfo()
+	info.known = true
+	info.enabled = false
 
-	values := fipsInfo.toMapOfCtyValues()
+	values := info.toMapOfCtyValues()
 
 	if _, exists := values["fips_enabled"]; !exists {
 		t.Error("expected fips_enabled key to be present in values map")
@@ -167,18 +315,37 @@ func TestFipsInfo_ToMapOfCtyValues_KnownButDisabled(t *testing.T) {
 }
 
 func TestFipsInfo_ToMapOfCtyValues_Unknown(t *testing.T) {
-	fipsInfo := &fipsInfo{
-		known:   false,
-		enabled: false,
+
+	tests := []struct {
+		name    string
+		enabled bool
+	}{
+		{
+			name:    "Enabled",
+			enabled: true,
+		},
+		{
+			name:    "Disabled",
+			enabled: false,
+		},
 	}
 
-	values := fipsInfo.toMapOfCtyValues()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 
-	if value, exists := values["fips_enabled"]; exists {
-		if !value.IsNull() {
-			t.Error("expected fips_enabled to be null for unknown FIPS")
-		}
-	} else {
-		t.Error("expected fips_enabled key to be present in values map")
+			info := newFipsInfo()
+			info.known = false
+			info.enabled = tt.enabled
+
+			values := info.toMapOfCtyValues()
+
+			if value, exists := values["fips_enabled"]; exists {
+				if !value.IsNull() {
+					t.Error("expected fips_enabled to be null for unknown FIPS")
+				}
+			} else {
+				t.Error("expected fips_enabled key to be present in values map")
+			}
+		})
 	}
 }

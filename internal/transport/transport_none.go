@@ -6,15 +6,9 @@ import (
 	"os"
 )
 
-type noneTransport struct {
-	fileSystem FileSystem
-}
+var TransportNone Transport = &noneTransport{}
 
-func NewNoneTransport() Transport {
-	return &noneTransport{
-		fileSystem: &noneFileSystem{},
-	}
-}
+type noneTransport struct{}
 
 // Type implements Transport.
 func (n *noneTransport) Type() TransportType {
@@ -41,34 +35,72 @@ func (n *noneTransport) ExecutePowerShell(ctx context.Context, command string) (
 	return "", errors.New("no transport available for PowerShell execution")
 }
 
-// FileSystem implements Transport.
-func (n *noneTransport) FileSystem() FileSystem {
-	return n.fileSystem
-}
-
-type noneFileSystem struct{}
-
-// Connect implements FileSystem.
-func (n *noneFileSystem) Connect() error {
-	return nil // No connection needed for none file system
-}
-
-// Close implements FileSystem.
-func (n *noneFileSystem) Close() error {
-	return nil // No connection needed for none file system
-}
-
-// IsNull implements FileSystem.
-func (n *noneFileSystem) IsNull() bool {
-	return true // None file system is always null
-}
-
-// Stat implements FileSystem.
-func (n *noneFileSystem) Stat(path string) (os.FileInfo, error) {
+// Stat implements Transport.
+func (n *noneTransport) Stat(path string) (os.FileInfo, error) {
 	return nil, errors.New("no file system available")
 }
 
-// Open implements FileSystem.
-func (n *noneFileSystem) Open(path string) (File, error) {
+// Create implements Transport.
+func (n *noneTransport) Create(path string) (File, error) {
 	return nil, errors.New("no file system available")
+}
+
+// Open implements Transport.
+func (n *noneTransport) Open(path string) (File, error) {
+	return nil, errors.New("no file system available")
+}
+
+// Mkdir implements Transport.
+func (n *noneTransport) Mkdir(path string) error {
+	return errors.New("no file system available")
+}
+
+// MkdirAll implements Transport.
+func (n *noneTransport) MkdirAll(path string) error {
+	return errors.New("no file system available")
+}
+
+// Remove implements Transport.
+func (n *noneTransport) Remove(path string) error {
+	return errors.New("no file system available")
+}
+
+// RemoveAll implements Transport.
+func (n *noneTransport) RemoveAll(path string) error {
+	return errors.New("no file system available")
+}
+
+// Join implements Transport.
+func (n *noneTransport) Join(elem ...string) string {
+	return ""
+}
+
+// TempDir implements Transport.
+func (n *noneTransport) TempDir() (string, error) {
+	return "", errors.New("no file system available")
+}
+
+// CreateTemp implements Transport.
+func (n *noneTransport) CreateTemp(dir string, pattern string) (File, error) {
+	return nil, errors.New("no file system available")
+}
+
+// MkdirTemp implements Transport.
+func (n *noneTransport) MkdirTemp(dir string, pattern string) (string, error) {
+	return "", errors.New("no file system available")
+}
+
+// Symlink implements Transport.
+func (n *noneTransport) Symlink(target, path string) error {
+	return errors.New("no file system available")
+}
+
+// Readlink implements Transport.
+func (n *noneTransport) ReadLink(path string) (string, error) {
+	return "", errors.New("no file system available")
+}
+
+// RealPath implements Transport.
+func (n *noneTransport) RealPath(path string) (string, error) {
+	return "", errors.New("no file system available")
 }

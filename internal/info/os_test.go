@@ -1,11 +1,10 @@
 package info
 
 import (
-	"bytes"
-	"errors"
-	"io"
+	"os"
 	"testing"
 
+	"github.com/trippsoft/forge/internal/transport/mock"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -13,1720 +12,2286 @@ func TestOSInfo_PopulateOSInfo_Darwin(t *testing.T) {
 
 	tests := []struct {
 		name                 string
-		unameArchOutput      string
-		swVersOutput         string
+		output               string
+		expectedFriendlyName string
+		expectedRelease      string
+		expectedMajorVersion string
+		expectedVersion      string
+		expectedArch         string
+		expectedArchBits     int
+	}{
+		{
+			name: "macOS 26.0.0 amd64",
+			output: `{
+				"os_arch": "amd64",
+				"os_version": "26.0.0"
+				}`,
+			expectedFriendlyName: "macOS 26.0.0",
+			expectedRelease:      "Tahoe",
+			expectedMajorVersion: "26",
+			expectedVersion:      "26.0.0",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "macOS 26.0.0 arm64",
+			output: `{
+				"os_arch": "arm64",
+				"os_version": "26.0.0"
+				}`,
+			expectedFriendlyName: "macOS 26.0.0",
+			expectedRelease:      "Tahoe",
+			expectedMajorVersion: "26",
+			expectedVersion:      "26.0.0",
+			expectedArch:         "arm64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "macOS 15.0.0 amd64",
+			output: `{
+				"os_arch": "amd64",
+				"os_version": "15.0.0"
+				}`,
+			expectedFriendlyName: "macOS 15.0.0",
+			expectedRelease:      "Sequoia",
+			expectedMajorVersion: "15",
+			expectedVersion:      "15.0.0",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "macOS 15.0.0 arm64",
+			output: `{
+				"os_arch": "arm64",
+				"os_version": "15.0.0"
+				}`,
+			expectedFriendlyName: "macOS 15.0.0",
+			expectedRelease:      "Sequoia",
+			expectedMajorVersion: "15",
+			expectedVersion:      "15.0.0",
+			expectedArch:         "arm64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "macOS 14.0.0 amd64",
+			output: `{
+				"os_arch": "amd64",
+				"os_version": "14.0.0"
+				}`,
+			expectedFriendlyName: "macOS 14.0.0",
+			expectedRelease:      "Sonoma",
+			expectedMajorVersion: "14",
+			expectedVersion:      "14.0.0",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "macOS 14.0.0 arm64",
+			output: `{
+				"os_arch": "arm64",
+				"os_version": "14.0.0"
+				}`,
+			expectedFriendlyName: "macOS 14.0.0",
+			expectedRelease:      "Sonoma",
+			expectedMajorVersion: "14",
+			expectedVersion:      "14.0.0",
+			expectedArch:         "arm64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "macOS 13.0.0 amd64",
+			output: `{
+				"os_arch": "amd64",
+				"os_version": "13.0.0"
+				}`,
+			expectedFriendlyName: "macOS 13.0.0",
+			expectedRelease:      "Ventura",
+			expectedMajorVersion: "13",
+			expectedVersion:      "13.0.0",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "macOS 13.0.0 arm64",
+			output: `{
+				"os_arch": "arm64",
+				"os_version": "13.0.0"
+				}`,
+			expectedFriendlyName: "macOS 13.0.0",
+			expectedRelease:      "Ventura",
+			expectedMajorVersion: "13",
+			expectedVersion:      "13.0.0",
+			expectedArch:         "arm64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "macOS 12.0.0 amd64",
+			output: `{
+				"os_arch": "amd64",
+				"os_version": "12.0.0"
+				}`,
+			expectedFriendlyName: "macOS 12.0.0",
+			expectedRelease:      "Monterey",
+			expectedMajorVersion: "12",
+			expectedVersion:      "12.0.0",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "macOS 12.0.0 arm64",
+			output: `{
+				"os_arch": "arm64",
+				"os_version": "12.0.0"
+				}`,
+			expectedFriendlyName: "macOS 12.0.0",
+			expectedRelease:      "Monterey",
+			expectedMajorVersion: "12",
+			expectedVersion:      "12.0.0",
+			expectedArch:         "arm64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "macOS 11.0.0 amd64",
+			output: `{
+				"os_arch": "amd64",
+				"os_version": "11.0.0"
+				}`,
+			expectedFriendlyName: "macOS 11.0.0",
+			expectedRelease:      "Big Sur",
+			expectedMajorVersion: "11",
+			expectedVersion:      "11.0.0",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "macOS 11.0.0 arm64",
+			output: `{
+				"os_arch": "arm64",
+				"os_version": "11.0.0"
+				}`,
+			expectedFriendlyName: "macOS 11.0.0",
+			expectedRelease:      "Big Sur",
+			expectedMajorVersion: "11",
+			expectedVersion:      "11.0.0",
+			expectedArch:         "arm64",
+			expectedArchBits:     64,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			transport := mock.NewMockTransport()
+			transport.CommandResults["uname -s"] = &mock.CommandResult{
+				Stdout: "Darwin",
+			}
+			transport.CommandResults[darwinOSDiscoveryScript] = &mock.CommandResult{
+				Stdout: tt.output,
+			}
+
+			info := newOSInfo()
+			diags := info.populateOSInfo(transport)
+
+			if diags.HasErrors() {
+				t.Fatalf("expected no errors, got: %v", diags.Errors())
+			}
+
+			if diags.HasWarnings() {
+				t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+			}
+
+			if !info.Families().Contains("posix") {
+				t.Error("expected POSIX family to be added")
+			}
+
+			if !info.Families().Contains("darwin") {
+				t.Error("expected Darwin family to be added")
+			}
+
+			if !info.Families().Contains("macos") {
+				t.Error("expected macOS family to be added")
+			}
+
+			if info.Families().Size() != 3 {
+				t.Errorf("expected 3 families, got: %d", info.Families().Size())
+			}
+
+			expectedKernel := "darwin"
+			if info.Kernel() != expectedKernel {
+				t.Errorf("expected kernel to be %q, got: %q", expectedKernel, info.Kernel())
+			}
+
+			expectedID := "macos"
+			if info.ID() != expectedID {
+				t.Errorf("expected id to be %q, got: %q", expectedID, info.ID())
+			}
+
+			if info.FriendlyName() != tt.expectedFriendlyName {
+				t.Errorf("expected friendlyName to be %q, got: %q", tt.expectedFriendlyName, info.FriendlyName())
+			}
+
+			if info.Release() != tt.expectedRelease {
+				t.Errorf("expected release to be %q, got: %q", tt.expectedRelease, info.Release())
+			}
+
+			if info.MajorVersion() != tt.expectedMajorVersion {
+				t.Errorf("expected majorVersion to be %q, got: %q", tt.expectedMajorVersion, info.MajorVersion())
+			}
+
+			if info.Version() != tt.expectedVersion {
+				t.Errorf("expected version to be %q, got: %q", tt.expectedVersion, info.Version())
+			}
+
+			if info.Edition() != "" {
+				t.Errorf("expected edition to be empty, got: %q", info.Edition())
+			}
+
+			if info.EditionID() != "" {
+				t.Errorf("expected editionID to be empty, got: %q", info.EditionID())
+			}
+
+			if info.ProcArch() != tt.expectedArch {
+				t.Errorf("expected procArch to be %q, got: %q", tt.expectedArch, info.ProcArch())
+			}
+
+			if info.OSArch() != tt.expectedArch {
+				t.Errorf("expected osArch to be %q, got: %q", tt.expectedArch, info.OSArch())
+			}
+
+			if info.ProcArchBits() != tt.expectedArchBits {
+				t.Errorf("expected procArchBits to be %d, got: %d", tt.expectedArchBits, info.ProcArchBits())
+			}
+
+			if info.OSArchBits() != tt.expectedArchBits {
+				t.Errorf("expected osArchBits to be %d, got: %d", tt.expectedArchBits, info.OSArchBits())
+			}
+		})
+	}
+}
+
+func TestOSInfo_PopulateOSInfo_Darwin_Error(t *testing.T) {
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults["uname -s"] = &mock.CommandResult{
+		Stdout: "Darwin",
+	}
+	transport.CommandResults[darwinOSDiscoveryScript] = &mock.CommandResult{
+		Err: os.ErrPermission,
+	}
+
+	info := newOSInfo()
+	diags := info.populateOSInfo(transport)
+
+	if !diags.HasErrors() {
+		t.Fatalf("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if !info.Families().Contains("posix") {
+		t.Error("expected POSIX family to be added")
+	}
+
+	if !info.Families().Contains("darwin") {
+		t.Error("expected Darwin family to be added")
+	}
+
+	if !info.Families().Contains("macos") {
+		t.Error("expected macOS family to be added")
+	}
+
+	if info.Families().Size() != 3 {
+		t.Errorf("expected 3 families, got: %d", info.Families().Size())
+	}
+
+	expectedKernel := "darwin"
+	if info.Kernel() != expectedKernel {
+		t.Errorf("expected kernel to be %q, got: %q", expectedKernel, info.Kernel())
+	}
+
+	expectedID := "macos"
+	if info.ID() != expectedID {
+		t.Errorf("expected id to be %q, got: %q", expectedID, info.ID())
+	}
+
+	expectedFriendlyName := "macOS"
+	if info.FriendlyName() != expectedFriendlyName {
+		t.Errorf("expected friendlyName to be %q, got: %q", expectedFriendlyName, info.FriendlyName())
+	}
+
+	if info.Release() != "" {
+		t.Errorf("expected release to be empty, got: %q", info.Release())
+	}
+
+	if info.MajorVersion() != "" {
+		t.Errorf("expected majorVersion to be empty, got: %q", info.MajorVersion())
+	}
+
+	if info.Version() != "" {
+		t.Errorf("expected version to be empty, got: %q", info.Version())
+	}
+
+	if info.Edition() != "" {
+		t.Errorf("expected edition to be empty, got: %q", info.Edition())
+	}
+
+	if info.EditionID() != "" {
+		t.Errorf("expected editionID to be empty, got: %q", info.EditionID())
+	}
+
+	if info.ProcArch() != "" {
+		t.Errorf("expected procArch to be empty, got: %q", info.ProcArch())
+	}
+
+	if info.OSArch() != "" {
+		t.Errorf("expected osArch to be empty, got: %q", info.OSArch())
+	}
+
+	if info.ProcArchBits() != 0 {
+		t.Errorf("expected procArchBits to be %d, got: %d", 0, info.ProcArchBits())
+	}
+
+	if info.OSArchBits() != 0 {
+		t.Errorf("expected osArchBits to be %d, got: %d", 0, info.OSArchBits())
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to get macOS version"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error executing discovery command: permission denied"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, errors[0].Detail)
+	}
+}
+
+func TestOSInfo_PopulateOSInfo_Darwin_NotJSON(t *testing.T) {
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults["uname -s"] = &mock.CommandResult{
+		Stdout: "Darwin",
+	}
+	transport.CommandResults[darwinOSDiscoveryScript] = &mock.CommandResult{
+		Stdout: "Not a JSON output",
+	}
+
+	info := newOSInfo()
+	diags := info.populateOSInfo(transport)
+
+	if !diags.HasErrors() {
+		t.Fatalf("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if !info.Families().Contains("posix") {
+		t.Error("expected POSIX family to be added")
+	}
+
+	if !info.Families().Contains("darwin") {
+		t.Error("expected Darwin family to be added")
+	}
+
+	if !info.Families().Contains("macos") {
+		t.Error("expected macOS family to be added")
+	}
+
+	if info.Families().Size() != 3 {
+		t.Errorf("expected 3 families, got: %d", info.Families().Size())
+	}
+
+	expectedKernel := "darwin"
+	if info.Kernel() != expectedKernel {
+		t.Errorf("expected kernel to be %q, got: %q", expectedKernel, info.Kernel())
+	}
+
+	expectedID := "macos"
+	if info.ID() != expectedID {
+		t.Errorf("expected id to be %q, got: %q", expectedID, info.ID())
+	}
+
+	expectedFriendlyName := "macOS"
+	if info.FriendlyName() != expectedFriendlyName {
+		t.Errorf("expected friendlyName to be %q, got: %q", expectedFriendlyName, info.FriendlyName())
+	}
+
+	if info.Release() != "" {
+		t.Errorf("expected release to be empty, got: %q", info.Release())
+	}
+
+	if info.MajorVersion() != "" {
+		t.Errorf("expected majorVersion to be empty, got: %q", info.MajorVersion())
+	}
+
+	if info.Version() != "" {
+		t.Errorf("expected version to be empty, got: %q", info.Version())
+	}
+
+	if info.Edition() != "" {
+		t.Errorf("expected edition to be empty, got: %q", info.Edition())
+	}
+
+	if info.EditionID() != "" {
+		t.Errorf("expected editionID to be empty, got: %q", info.EditionID())
+	}
+
+	if info.ProcArch() != "" {
+		t.Errorf("expected procArch to be empty, got: %q", info.ProcArch())
+	}
+
+	if info.OSArch() != "" {
+		t.Errorf("expected osArch to be empty, got: %q", info.OSArch())
+	}
+
+	if info.ProcArchBits() != 0 {
+		t.Errorf("expected procArchBits to be %d, got: %d", 0, info.ProcArchBits())
+	}
+
+	if info.OSArchBits() != 0 {
+		t.Errorf("expected osArchBits to be %d, got: %d", 0, info.OSArchBits())
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to parse macOS discovery output"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error parsing JSON output: invalid character 'N' looking for beginning of value"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, errors[0].Detail)
+	}
+}
+
+func TestOSInfo_PopulateOSInfo_Darwin_UnknownArchitecture(t *testing.T) {
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults["uname -s"] = &mock.CommandResult{
+		Stdout: "Darwin",
+	}
+	transport.CommandResults[darwinOSDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			"os_arch": "newarch",
+			"os_version": "26.0.0"
+			}
+			`,
+	}
+
+	info := newOSInfo()
+
+	diags := info.populateOSInfo(transport)
+
+	if diags.HasErrors() {
+		t.Fatalf("expected no errors, got: %v", diags.Errors())
+	}
+
+	if !diags.HasWarnings() {
+		t.Fatalf("expected warnings, got none")
+	}
+
+	if !info.Families().Contains("posix") {
+		t.Error("expected POSIX family to be added")
+	}
+
+	if !info.Families().Contains("darwin") {
+		t.Error("expected Darwin family to be added")
+	}
+
+	if !info.Families().Contains("macos") {
+		t.Error("expected macOS family to be added")
+	}
+
+	expectedKernel := "darwin"
+	if info.Kernel() != expectedKernel {
+		t.Errorf("expected kernel to be %q, got: %q", expectedKernel, info.Kernel())
+	}
+
+	expectedArch := "newarch"
+	if info.ProcArch() != expectedArch {
+		t.Errorf("expected procArch to be %q, got: %q", expectedArch, info.ProcArch())
+	}
+
+	if info.OSArch() != expectedArch {
+		t.Errorf("expected osArch to be %q, got: %q", expectedArch, info.OSArch())
+	}
+
+	expectedArchBits := 0
+	if info.ProcArchBits() != expectedArchBits {
+		t.Errorf("expected procArchBits to be %d, got: %d", expectedArchBits, info.ProcArchBits())
+	}
+
+	if info.OSArchBits() != expectedArchBits {
+		t.Errorf("expected osArchBits to be %d, got: %d", expectedArchBits, info.OSArchBits())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Errorf("expected 1 warning, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Unknown architecture"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("expected first warning summary to be %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "Unknown architecture \"newarch\" detected, using it as is"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("expected first warning detail to be %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+}
+
+func TestOSInfo_PopulateOSInfo_Darwin_UnknownVersion(t *testing.T) {
+	transport := mock.NewMockTransport()
+	transport.CommandResults["uname -s"] = &mock.CommandResult{
+		Stdout: "Darwin",
+	}
+	transport.CommandResults[darwinOSDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			"os_arch": "amd64",
+			"os_version": "99.0.0"
+			}`,
+	}
+
+	info := newOSInfo()
+
+	diags := info.populateOSInfo(transport)
+
+	if diags.HasErrors() {
+		t.Fatalf("expected no errors, got: %v", diags.Errors())
+	}
+
+	if !diags.HasWarnings() {
+		t.Fatalf("expected warnings, got none")
+	}
+
+	if !info.Families().Contains("posix") {
+		t.Error("expected POSIX family to be added")
+	}
+
+	if !info.Families().Contains("darwin") {
+		t.Error("expected Darwin family to be added")
+	}
+
+	if !info.Families().Contains("macos") {
+		t.Error("expected macOS family to be added")
+	}
+
+	if info.Families().Size() != 3 {
+		t.Errorf("expected 3 families, got: %d", info.Families().Size())
+	}
+
+	if info.ID() != "macos" {
+		t.Errorf("expected OS ID to be \"macos\", got: %q", info.ID())
+	}
+
+	expectedFriendlyName := "macOS 99.0.0"
+	if info.FriendlyName() != expectedFriendlyName {
+		t.Errorf("expected friendly name to be %q, got: %q", expectedFriendlyName, info.FriendlyName())
+	}
+
+	if info.Release() != "" {
+		t.Errorf("expected release to be empty, got: %q", info.Release())
+	}
+
+	expectedMajorVersion := "99"
+	if info.MajorVersion() != expectedMajorVersion {
+		t.Errorf("expected major version to be %q, got: %q", expectedMajorVersion, info.MajorVersion())
+	}
+
+	if info.Version() != "99.0.0" {
+		t.Errorf("expected version to be %q, got: %q", "99.0.0", info.Version())
+	}
+
+	expectedArch := "amd64"
+	if info.OSArch() != expectedArch {
+		t.Errorf("expected OS architecture to be %q, got: %q", expectedArch, info.OSArch())
+	}
+
+	if info.OSArchBits() != 64 {
+		t.Errorf("expected OS architecture bits to be 64, got: %d", info.OSArchBits())
+	}
+
+	if info.ProcArch() != expectedArch {
+		t.Errorf("expected processor architecture to be %q, got: %q", expectedArch, info.ProcArch())
+	}
+
+	if info.ProcArchBits() != 64 {
+		t.Errorf("expected processor architecture bits to be 64, got: %d", info.ProcArchBits())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Errorf("expected 1 warning, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Unknown macOS release"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("expected warning summary to be %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "Unknown macOS release detected for major version 99"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("expected warning detail to be %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+}
+
+func TestOSInfo_PopulateOSInfo_Linux(t *testing.T) {
+
+	tests := []struct {
+		name                 string
+		output               string
+		expectedFamilies     []string
+		expectedId           string
 		expectedFriendlyName string
 		expectedMajorVersion string
 		expectedVersion      string
 		expectedRelease      string
+		expectedEdition      string
+		expectedEditionId    string
 		expectedArch         string
+		expectedArchBits     int
 	}{
 		{
-			name:                 "macOS Tahoe x64",
-			unameArchOutput:      "x86_64\n",
-			swVersOutput:         "26.0.0\n",
-			expectedFriendlyName: "macOS 26.0.0",
-			expectedMajorVersion: "26",
-			expectedVersion:      "26.0.0",
-			expectedRelease:      "Tahoe",
+			name: "almalinux",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "almalinux",
+				"os_friendly_name": "AlmaLinux 8.5",
+				"os_release": "almalinux",
+				"os_version": "8.5",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "el", "almalinux"},
+			expectedId:           "almalinux",
+			expectedFriendlyName: "AlmaLinux 8.5",
+			expectedMajorVersion: "8",
+			expectedVersion:      "8.5",
+			expectedRelease:      "almalinux",
+			expectedEdition:      "",
+			expectedEditionId:    "",
 			expectedArch:         "amd64",
+			expectedArchBits:     64,
 		},
 		{
-			name:                 "macOS Sequoia x64",
-			unameArchOutput:      "x86_64\n",
-			swVersOutput:         "15.0.0\n",
-			expectedFriendlyName: "macOS 15.0.0",
+			name: "amazon",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "amzn",
+				"os_friendly_name": "Amazon Linux 2",
+				"os_release": "amzn",
+				"os_version": "2",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "el", "amazon"},
+			expectedId:           "amazon",
+			expectedFriendlyName: "Amazon Linux 2",
+			expectedMajorVersion: "2",
+			expectedVersion:      "2",
+			expectedRelease:      "amzn",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "archlinux-arm",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "archlinux-arm",
+				"os_friendly_name": "Arch Linux ARM",
+				"os_release": "rolling",
+				"os_version": "rolling",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "archlinux", "archlinux-arm"},
+			expectedId:           "archlinux-arm",
+			expectedFriendlyName: "Arch Linux ARM",
+			expectedMajorVersion: "rolling",
+			expectedVersion:      "rolling",
+			expectedRelease:      "rolling",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "arcolinux",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "arcolinux",
+				"os_friendly_name": "ArcoLinux",
+				"os_release": "rolling",
+				"os_version": "rolling",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "archlinux", "arcolinux"},
+			expectedId:           "arcolinux",
+			expectedFriendlyName: "ArcoLinux",
+			expectedMajorVersion: "rolling",
+			expectedVersion:      "rolling",
+			expectedRelease:      "rolling",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "centos",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "centos",
+				"os_friendly_name": "CentOS Linux 7",
+				"os_release": "centos",
+				"os_version": "7",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "el", "centos"},
+			expectedId:           "centos",
+			expectedFriendlyName: "CentOS Linux 7",
+			expectedMajorVersion: "7",
+			expectedVersion:      "7",
+			expectedRelease:      "centos",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "clearos",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "clearos",
+				"os_friendly_name": "ClearOS",
+				"os_release": "clearos",
+				"os_version": "7",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "el", "clearos"},
+			expectedId:           "clearos",
+			expectedFriendlyName: "ClearOS",
+			expectedMajorVersion: "7",
+			expectedVersion:      "7",
+			expectedRelease:      "clearos",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "clearlinux",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "clearlinux",
+				"os_friendly_name": "Clear Linux OS",
+				"os_release": "clearlinux",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "clearlinux"},
+			expectedId:           "clearlinux",
+			expectedFriendlyName: "Clear Linux OS",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "clearlinux",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "cloudlinux",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "cloudlinux",
+				"os_friendly_name": "CloudLinux 7",
+				"os_release": "cloudlinux",
+				"os_version": "7",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "el", "cloudlinux"},
+			expectedId:           "cloudlinux",
+			expectedFriendlyName: "CloudLinux 7",
+			expectedMajorVersion: "7",
+			expectedVersion:      "7",
+			expectedRelease:      "cloudlinux",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "cumuluslinux",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "cumuluslinux",
+				"os_friendly_name": "Cumulus Linux 3.7",
+				"os_release": "cumulus",
+				"os_version": "3.7",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "cumuluslinux"},
+			expectedId:           "cumuluslinux",
+			expectedFriendlyName: "Cumulus Linux 3.7",
+			expectedMajorVersion: "3",
+			expectedVersion:      "3.7",
+			expectedRelease:      "cumulus",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "deepin",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "deepin",
+				"os_friendly_name": "Deepin 20.2",
+				"os_release": "",
+				"os_version": "20.2",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "debian", "deepin"},
+			expectedId:           "deepin",
+			expectedFriendlyName: "Deepin 20.2",
+			expectedMajorVersion: "20",
+			expectedVersion:      "20.2",
+			expectedRelease:      "",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "devuan",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "devuan",
+				"os_friendly_name": "Devuan GNU/Linux 2.1 (ASCII)",
+				"os_release": "ascii",
+				"os_version": "2.1",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "debian", "devuan"},
+			expectedId:           "devuan",
+			expectedFriendlyName: "Devuan GNU/Linux 2.1 (ASCII)",
+			expectedMajorVersion: "2",
+			expectedVersion:      "2.1",
+			expectedRelease:      "ascii",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "elementary",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "elementary",
+				"os_friendly_name": "elementary OS 6.1",
+				"os_release": "juno",
+				"os_version": "6.1",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "debian", "ubuntu", "elementary"},
+			expectedId:           "elementary",
+			expectedFriendlyName: "elementary OS 6.1",
+			expectedMajorVersion: "6",
+			expectedVersion:      "6.1",
+			expectedRelease:      "juno",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "endeavouros",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "endeavouros",
+				"os_friendly_name": "EndeavourOS",
+				"os_release": "rolling",
+				"os_version": "rolling",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "archlinux", "endeavouros"},
+			expectedId:           "endeavouros",
+			expectedFriendlyName: "EndeavourOS",
+			expectedMajorVersion: "rolling",
+			expectedVersion:      "rolling",
+			expectedRelease:      "rolling",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "fedora",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "fedora",
+				"os_friendly_name": "Fedora 34 (Workstation Edition)",
+				"os_release": "",
+				"os_version": "34",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "el", "fedora"},
+			expectedId:           "fedora",
+			expectedFriendlyName: "Fedora 34 (Workstation Edition)",
+			expectedMajorVersion: "34",
+			expectedVersion:      "34",
+			expectedRelease:      "",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "kali",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "kali",
+				"os_friendly_name": "Kali GNU/Linux 2021.3",
+				"os_release": "kali-rolling",
+				"os_version": "2021.3",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "debian", "kali"},
+			expectedId:           "kali",
+			expectedFriendlyName: "Kali GNU/Linux 2021.3",
+			expectedMajorVersion: "2021",
+			expectedVersion:      "2021.3",
+			expectedRelease:      "kali-rolling",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "kylin",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "kylin",
+				"os_friendly_name": "Kylin 10",
+				"os_release": "kylin",
+				"os_version": "10",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "debian", "ubuntu", "kylin"},
+			expectedId:           "kylin",
+			expectedFriendlyName: "Kylin 10",
+			expectedMajorVersion: "10",
+			expectedVersion:      "10",
+			expectedRelease:      "kylin",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "linuxmint",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "linuxmint",
+				"os_friendly_name": "Linux Mint 20.2",
+				"os_release": "uma",
+				"os_version": "20.2",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "debian", "ubuntu", "linuxmint"},
+			expectedId:           "linuxmint",
+			expectedFriendlyName: "Linux Mint 20.2",
+			expectedMajorVersion: "20",
+			expectedVersion:      "20.2",
+			expectedRelease:      "uma",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "mageia",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "mageia",
+				"os_friendly_name": "Mageia 8",
+				"os_release": "",
+				"os_version": "8",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "mandrake", "mageia"},
+			expectedId:           "mageia",
+			expectedFriendlyName: "Mageia 8",
+			expectedMajorVersion: "8",
+			expectedVersion:      "8",
+			expectedRelease:      "",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "manjaro",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "manjaro",
+				"os_friendly_name": "Manjaro Linux",
+				"os_release": "rolling",
+				"os_version": "rolling",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "archlinux", "manjaro"},
+			expectedId:           "manjaro",
+			expectedFriendlyName: "Manjaro Linux",
+			expectedMajorVersion: "rolling",
+			expectedVersion:      "rolling",
+			expectedRelease:      "rolling",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "manjaro-arm",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "manjaro-arm",
+				"os_friendly_name": "Manjaro ARM",
+				"os_release": "rolling",
+				"os_version": "rolling",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "archlinux", "manjaro", "manjaro-arm"},
+			expectedId:           "manjaro-arm",
+			expectedFriendlyName: "Manjaro ARM",
+			expectedMajorVersion: "rolling",
+			expectedVersion:      "rolling",
+			expectedRelease:      "rolling",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "nobara",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "nobara",
+				"os_friendly_name": "Nobara 38",
+				"os_release": "nobara",
+				"os_version": "38",
+				"os_edition": "KDE Plasma Desktop Edition",
+				"os_edition_id": "kde"
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "el", "fedora", "nobara"},
+			expectedId:           "nobara",
+			expectedFriendlyName: "Nobara 38",
+			expectedMajorVersion: "38",
+			expectedVersion:      "38",
+			expectedRelease:      "nobara",
+			expectedEdition:      "KDE Plasma Desktop Edition",
+			expectedEditionId:    "kde",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "opensuse",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "opensuse",
+				"os_friendly_name": "openSUSE Leap 15.3",
+				"os_release": "",
+				"os_version": "15.3",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "suse", "opensuse"},
+			expectedId:           "opensuse",
+			expectedFriendlyName: "openSUSE Leap 15.3",
 			expectedMajorVersion: "15",
-			expectedVersion:      "15.0.0",
-			expectedRelease:      "Sequoia",
+			expectedVersion:      "15.3",
+			expectedRelease:      "",
+			expectedEdition:      "",
+			expectedEditionId:    "",
 			expectedArch:         "amd64",
+			expectedArchBits:     64,
 		},
 		{
-			name:                 "macOS Sonoma x64",
-			unameArchOutput:      "x86_64\n",
-			swVersOutput:         "14.0.0\n",
-			expectedFriendlyName: "macOS 14.0.0",
-			expectedMajorVersion: "14",
-			expectedVersion:      "14.0.0",
-			expectedRelease:      "Sonoma",
+			name: "oraclelinux",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "oraclelinux",
+				"os_friendly_name": "Oracle Linux Server 8.5",
+				"os_release": "ol8",
+				"os_version": "8.5",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "el", "oraclelinux"},
+			expectedId:           "oraclelinux",
+			expectedFriendlyName: "Oracle Linux Server 8.5",
+			expectedMajorVersion: "8",
+			expectedVersion:      "8.5",
+			expectedRelease:      "ol8",
+			expectedEdition:      "",
+			expectedEditionId:    "",
 			expectedArch:         "amd64",
+			expectedArchBits:     64,
 		},
 		{
-			name:                 "macOS Ventura x64",
-			unameArchOutput:      "x86_64\n",
-			swVersOutput:         "13.0.0\n",
-			expectedFriendlyName: "macOS 13.0.0",
-			expectedMajorVersion: "13",
-			expectedVersion:      "13.0.0",
-			expectedRelease:      "Ventura",
+			name: "pop_os",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "pop_os",
+				"os_friendly_name": "Pop!_OS 21.04",
+				"os_release": "hirsute",
+				"os_version": "21.04",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "debian", "ubuntu", "pop_os"},
+			expectedId:           "pop_os",
+			expectedFriendlyName: "Pop!_OS 21.04",
+			expectedMajorVersion: "21",
+			expectedVersion:      "21.04",
+			expectedRelease:      "hirsute",
+			expectedEdition:      "",
+			expectedEditionId:    "",
 			expectedArch:         "amd64",
+			expectedArchBits:     64,
 		},
 		{
-			name:                 "macOS Monterey x64",
-			unameArchOutput:      "x86_64\n",
-			swVersOutput:         "12.0.0\n",
-			expectedFriendlyName: "macOS 12.0.0",
-			expectedMajorVersion: "12",
-			expectedVersion:      "12.0.0",
-			expectedRelease:      "Monterey",
+			name: "raspbian",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "raspbian",
+				"os_friendly_name": "Raspbian GNU/Linux 10 (buster)",
+				"os_release": "buster",
+				"os_version": "10",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "debian", "raspbian"},
+			expectedId:           "raspbian",
+			expectedFriendlyName: "Raspbian GNU/Linux 10 (buster)",
+			expectedMajorVersion: "10",
+			expectedVersion:      "10",
+			expectedRelease:      "buster",
+			expectedEdition:      "",
+			expectedEditionId:    "",
 			expectedArch:         "amd64",
+			expectedArchBits:     64,
 		},
 		{
-			name:                 "macOS Big Sur x64",
-			unameArchOutput:      "x86_64\n",
-			swVersOutput:         "11.0.0\n",
-			expectedFriendlyName: "macOS 11.0.0",
-			expectedMajorVersion: "11",
-			expectedVersion:      "11.0.0",
-			expectedRelease:      "Big Sur",
+			name: "rhel",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "rhel",
+				"os_friendly_name": "Red Hat Enterprise Linux 8.5",
+				"os_release": "ol8",
+				"os_version": "8.5",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "el", "rhel"},
+			expectedId:           "rhel",
+			expectedFriendlyName: "Red Hat Enterprise Linux 8.5",
+			expectedMajorVersion: "8",
+			expectedVersion:      "8.5",
+			expectedRelease:      "ol8",
+			expectedEdition:      "",
+			expectedEditionId:    "",
 			expectedArch:         "amd64",
+			expectedArchBits:     64,
 		},
 		{
-			name:                 "macOS Tahoe arm64",
-			unameArchOutput:      "arm64\n",
-			swVersOutput:         "26.0.0\n",
-			expectedFriendlyName: "macOS 26.0.0",
-			expectedMajorVersion: "26",
-			expectedVersion:      "26.0.0",
-			expectedRelease:      "Tahoe",
+			name: "rocky",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "rocky",
+				"os_friendly_name": "Rocky Linux 8.5",
+				"os_release": "rocky",
+				"os_version": "8.5",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "el", "rocky"},
+			expectedId:           "rocky",
+			expectedFriendlyName: "Rocky Linux 8.5",
+			expectedMajorVersion: "8",
+			expectedVersion:      "8.5",
+			expectedRelease:      "rocky",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "scientific",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "scientific",
+				"os_friendly_name": "Scientific Linux 8",
+				"os_release": "scientific",
+				"os_version": "8",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "el", "scientific"},
+			expectedId:           "scientific",
+			expectedFriendlyName: "Scientific Linux 8",
+			expectedMajorVersion: "8",
+			expectedVersion:      "8",
+			expectedRelease:      "scientific",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "sled",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "sled",
+				"os_friendly_name": "SUSE Linux Enterprise Desktop 15 SP3",
+				"os_release": "",
+				"os_version": "15.3",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "suse", "sled"},
+			expectedId:           "sled",
+			expectedFriendlyName: "SUSE Linux Enterprise Desktop 15 SP3",
+			expectedMajorVersion: "15",
+			expectedVersion:      "15.3",
+			expectedRelease:      "",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "sles",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "sles",
+				"os_friendly_name": "SUSE Linux Enterprise Server 15 SP3",
+				"os_release": "",
+				"os_version": "15.3",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "suse", "sles"},
+			expectedId:           "sles",
+			expectedFriendlyName: "SUSE Linux Enterprise Server 15 SP3",
+			expectedMajorVersion: "15",
+			expectedVersion:      "15.3",
+			expectedRelease:      "",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "sles_sap",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "sles",
+				"os_friendly_name": "SUSE Linux Enterprise Server 15 SP3 for SAP Applications",
+				"os_release": "",
+				"os_version": "15.3",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "suse", "sles"},
+			expectedId:           "sles",
+			expectedFriendlyName: "SUSE Linux Enterprise Server 15 SP3 for SAP Applications",
+			expectedMajorVersion: "15",
+			expectedVersion:      "15.3",
+			expectedRelease:      "",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "ubuntu",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "ubuntu",
+				"os_friendly_name": "Ubuntu 20.04.3 LTS",
+				"os_release": "focal",
+				"os_version": "20.04.3",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "debian", "ubuntu"},
+			expectedId:           "ubuntu",
+			expectedFriendlyName: "Ubuntu 20.04.3 LTS",
+			expectedMajorVersion: "20",
+			expectedVersion:      "20.04.3",
+			expectedRelease:      "focal",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "virtuozzo",
+			output: `{
+			    "os_arch": "amd64",
+				"os_id": "virtuozzo",
+				"os_friendly_name": "Virtuozzo Linux 7",
+				"os_release": "virtuozzo",
+				"os_version": "7",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "el", "virtuozzo"},
+			expectedId:           "virtuozzo",
+			expectedFriendlyName: "Virtuozzo Linux 7",
+			expectedMajorVersion: "7",
+			expectedVersion:      "7",
+			expectedRelease:      "virtuozzo",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "generic 386",
+			output: `{
+			    "os_arch": "386",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "386",
+			expectedArchBits:     32,
+		},
+		{
+			name: "generic i386",
+			output: `{
+			    "os_arch": "i386",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "386",
+			expectedArchBits:     32,
+		},
+		{
+			name: "generic i486",
+			output: `{
+			    "os_arch": "i486",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "386",
+			expectedArchBits:     32,
+		},
+		{
+			name: "generic i586",
+			output: `{
+			    "os_arch": "i586",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "386",
+			expectedArchBits:     32,
+		},
+		{
+			name: "generic i686",
+			output: `{
+			    "os_arch": "i686",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "386",
+			expectedArchBits:     32,
+		},
+		{
+			name: "generic x86",
+			output: `{
+			    "os_arch": "x86",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "386",
+			expectedArchBits:     32,
+		},
+		{
+			name: "generic x86_64",
+			output: `{
+			    "os_arch": "x86_64",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "amd64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "generic arm",
+			output: `{
+			    "os_arch": "arm",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "arm",
+			expectedArchBits:     32,
+		},
+		{
+			name: "generic armv6l",
+			output: `{
+			    "os_arch": "armv6l",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "arm",
+			expectedArchBits:     32,
+		},
+		{
+			name: "generic armv7l",
+			output: `{
+			    "os_arch": "armv7l",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "arm",
+			expectedArchBits:     32,
+		},
+		{
+			name: "generic aarch64",
+			output: `{
+			    "os_arch": "aarch64",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
 			expectedArch:         "arm64",
+			expectedArchBits:     64,
 		},
 		{
-			name:                 "macOS Ventura arm64",
-			unameArchOutput:      "arm64\n",
-			swVersOutput:         "13.0.0\n",
-			expectedFriendlyName: "macOS 13.0.0",
-			expectedMajorVersion: "13",
-			expectedVersion:      "13.0.0",
-			expectedRelease:      "Ventura",
+			name: "generic arm64",
+			output: `{
+			    "os_arch": "arm64",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
 			expectedArch:         "arm64",
+			expectedArchBits:     64,
 		},
 		{
-			name:                 "macOS Monterey arm64",
-			unameArchOutput:      "arm64\n",
-			swVersOutput:         "12.0.0\n",
-			expectedFriendlyName: "macOS 12.0.0",
-			expectedMajorVersion: "12",
-			expectedVersion:      "12.0.0",
-			expectedRelease:      "Monterey",
-			expectedArch:         "arm64",
+			name: "generic mips",
+			output: `{
+			    "os_arch": "mips",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "mips",
+			expectedArchBits:     32,
 		},
 		{
-			name:                 "macOS Big Sur arm64",
-			unameArchOutput:      "arm64\n",
-			swVersOutput:         "11.0.0\n",
-			expectedFriendlyName: "macOS 11.0.0",
-			expectedMajorVersion: "11",
-			expectedVersion:      "11.0.0",
-			expectedRelease:      "Big Sur",
-			expectedArch:         "arm64",
+			name: "generic mips64",
+			output: `{
+			    "os_arch": "mips64",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "mips64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "generic ppc64",
+			output: `{
+			    "os_arch": "ppc64",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "ppc64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "generic ppc64le",
+			output: `{
+			    "os_arch": "ppc64le",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "ppc64le",
+			expectedArchBits:     64,
+		},
+		{
+			name: "generic riscv64",
+			output: `{
+			    "os_arch": "riscv64",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "riscv64",
+			expectedArchBits:     64,
+		},
+		{
+			name: "generic s390x",
+			output: `{
+			    "os_arch": "s390x",
+				"os_id": "generic",
+				"os_friendly_name": "Generic Linux 1.0",
+				"os_release": "generic",
+				"os_version": "1.0",
+				"os_edition": "",
+				"os_edition_id": ""
+				}`,
+			expectedFamilies:     []string{"posix", "linux", "generic"},
+			expectedId:           "generic",
+			expectedFriendlyName: "Generic Linux 1.0",
+			expectedMajorVersion: "1",
+			expectedVersion:      "1.0",
+			expectedRelease:      "generic",
+			expectedEdition:      "",
+			expectedEditionId:    "",
+			expectedArch:         "s390x",
+			expectedArchBits:     64,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			osInfo := newOSInfo()
-
-			transport := newMockTransport()
-			transport.commandResponses["uname -s"] = &commandResponse{
-				stdout: "Darwin\n",
+			transport := mock.NewMockTransport()
+			transport.CommandResults["uname -s"] = &mock.CommandResult{
+				Stdout: "Linux",
 			}
-			transport.commandResponses["uname -m"] = &commandResponse{
-				stdout: tt.unameArchOutput,
-			}
-			transport.commandResponses["/usr/bin/sw_vers -productVersion"] = &commandResponse{
-				stdout: tt.swVersOutput,
+			transport.CommandResults[linuxOSDiscoveryScript] = &mock.CommandResult{
+				Stdout: tt.output,
 			}
 
-			fileSystem := transport.fileSystem
+			info := newOSInfo()
+			diags := info.populateOSInfo(transport)
 
-			err := osInfo.populateOSInfo(transport, fileSystem)
-			if err != nil {
-				t.Fatalf("expected no error for Darwin family, got: %v", err)
+			if diags.HasErrors() {
+				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
 
-			if !osInfo.families.Contains("posix") {
-				t.Error("expected POSIX family to be added")
-			}
-
-			if !osInfo.families.Contains("darwin") {
-				t.Error("expected Darwin family to be added")
-			}
-
-			if osInfo.id != "darwin" {
-				t.Errorf("expected OS ID to be 'darwin', got: %s", osInfo.id)
-			}
-
-			if osInfo.friendlyName != tt.expectedFriendlyName {
-				t.Errorf("expected friendly name to be '%s', got: %s", tt.expectedFriendlyName, osInfo.friendlyName)
-			}
-
-			if osInfo.release != tt.expectedRelease {
-				t.Errorf("expected release to be '%s', got: %s", tt.expectedRelease, osInfo.release)
-			}
-
-			if osInfo.majorVersion != tt.expectedMajorVersion {
-				t.Errorf("expected major version to be '%s', got: %s", tt.expectedMajorVersion, osInfo.majorVersion)
-			}
-
-			if osInfo.version != tt.expectedVersion {
-				t.Errorf("expected version to be '%s', got: %s", tt.expectedVersion, osInfo.version)
-			}
-
-			if osInfo.osArch != tt.expectedArch {
-				t.Errorf("expected OS architecture to be '%s', got: %s", tt.expectedArch, osInfo.osArch)
-			}
-
-			if osInfo.osArchBits != 64 {
-				t.Errorf("expected OS architecture bits to be 64, got: %d", osInfo.osArchBits)
-			}
-
-			if osInfo.procArch != tt.expectedArch {
-				t.Errorf("expected processor architecture to be '%s', got: %s", tt.expectedArch, osInfo.procArch)
-			}
-
-			if osInfo.procArchBits != 64 {
-				t.Errorf("expected processor architecture bits to be 64, got: %d", osInfo.procArchBits)
-			}
-		})
-	}
-}
-
-func TestOSInfo_PopulateOSInfo_Linux_Families(t *testing.T) {
-
-	tests := []struct {
-		name              string
-		osReleaseContent  string
-		lsbReleaseContent string
-		expectedFamilies  []string
-	}{
-		{
-			name: "almalinux from os-release",
-			osReleaseContent: `PRETTY_NAME="AlmaLinux 8.5"
-							NAME="AlmaLinux"
-							VERSION_ID="8.5"
-							VERSION="8.5"
-							VERSION_CODENAME="almalinux"
-							ID="almalinux"
-							ID_LIKE="centos rhel"
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "almalinux"},
-		},
-		{
-			name: "almalinux from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: AlmaLinux
-							Description:    AlmaLinux 8.5
-							Release:        8.5
-							Codename:       n/a
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "almalinux"},
-		},
-		{
-			name: "amazon from os-release",
-			osReleaseContent: `PRETTY_NAME="Amazon Linux 2"
-							NAME="Amazon Linux"
-							VERSION_ID="2"
-							VERSION="2"
-							VERSION_CODENAME="amzn"
-							ID="amzn"
-							ID_LIKE="centos rhel"
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "amazon"},
-		},
-		{
-			name: "amazon from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: amzn
-							Description:    Amazon Linux 2
-							Release:        2
-							Codename:       n/a
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "amazon"},
-		},
-		{
-			name: "archlinux-arm from os-release",
-			osReleaseContent: `PRETTY_NAME="Arch Linux ARM"
-							NAME="Arch Linux ARM"
-							VERSION_ID="rolling"
-							VERSION="rolling"
-							VERSION_CODENAME="rolling"
-							ID="archarm"
-							ID_LIKE="arch"
-							`,
-			expectedFamilies: []string{"posix", "linux", "archlinux", "archlinux-arm"},
-		},
-		{
-			name: "archlinux-arm from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: archarm
-							Description:    Arch Linux ARM
-							Release:        rolling
-							Codename:       n/a
-							`,
-			expectedFamilies: []string{"posix", "linux", "archlinux", "archlinux-arm"},
-		},
-		{
-			name: "arcolinux from os-release",
-			osReleaseContent: `PRETTY_NAME="ArcoLinux"
-							NAME="ArcoLinux"
-							VERSION_ID="rolling"
-							VERSION="rolling"
-							VERSION_CODENAME="rolling"
-							ID="arcolinux"
-							ID_LIKE="arch"
-							`,
-			expectedFamilies: []string{"posix", "linux", "archlinux", "arcolinux"},
-		},
-		{
-			name: "arcolinux from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: arcolinux
-							Description:    ArcoLinux
-							Release:        rolling
-							Codename:       n/a
-							`,
-			expectedFamilies: []string{"posix", "linux", "archlinux", "arcolinux"},
-		},
-		{
-			name: "centos from os-release",
-			osReleaseContent: `PRETTY_NAME="CentOS Linux 7"
-							NAME="CentOS Linux"
-							VERSION_ID="7"
-							VERSION="7"
-							VERSION_CODENAME="centos"
-							ID="centos"
-							ID_LIKE="rhel fedora"
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "centos"},
-		},
-		{
-			name: "centos from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: centos
-							Description:    CentOS Linux 7
-							Release:        7
-							Codename:       n/a
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "centos"},
-		},
-		{
-			name: "clearos from os-release",
-			osReleaseContent: `PRETTY_NAME="ClearOS"
-							NAME="ClearOS"
-							VERSION_ID="7"
-							VERSION="7"
-							VERSION_CODENAME="clearos"
-							ID="clearos"
-							ID_LIKE="rhel fedora"
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "clearos"},
-		},
-		{
-			name: "clearos from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: clearos
-							Description:    ClearOS
-							Release:        7
-							Codename:       n/a
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "clearos"},
-		},
-		{
-			name: "cloudlinux from os-release",
-			osReleaseContent: `PRETTY_NAME="CloudLinux 7"
-							NAME="CloudLinux"
-							VERSION_ID="7"
-							VERSION="7"
-							VERSION_CODENAME="cloudlinux"
-							ID="cloudlinux"
-							ID_LIKE="rhel fedora"
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "cloudlinux"},
-		},
-		{
-			name: "cloudlinux from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: cloudlinux
-							Description:    CloudLinux 7
-							Release:        7
-							Codename:       n/a
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "cloudlinux"},
-		},
-		{
-			name: "deepin from os-release",
-			osReleaseContent: `PRETTY_NAME="Deepin 20.2"
-							NAME="Deepin"
-							VERSION_ID="20.2"
-							VERSION="20.2"
-							VERSION_CODENAME="n/a"
-							ID="deepin"
-							ID_LIKE="debian"
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "deepin"},
-		},
-		{
-			name: "deepin from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: deepin
-							Description:    Deepin
-							Release:        20.2
-							Codename:       n/a
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "deepin"},
-		},
-		{
-			name: "devuan from os-release",
-			osReleaseContent: `PRETTY_NAME="Devuan GNU/Linux 2.1 (ASCII)"
-							NAME="Devuan"
-							VERSION_ID="2.1"
-							VERSION="2.1 (ASCII)"
-							VERSION_CODENAME="ascii"
-							ID="devuan"
-							ID_LIKE="debian"
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "devuan"},
-		},
-		{
-			name: "devuan from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: devuan
-							Description:    Devuan GNU/Linux 2.1 (ASCII)
-							Release:        2.1 (ASCII)
-							Codename:       ascii
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "devuan"},
-		},
-		{
-			name: "elementary from os-release",
-			osReleaseContent: `PRETTY_NAME="elementary OS 6.1"
-							NAME="elementary OS"
-							VERSION_ID="6.1"
-							VERSION="6.1"
-							VERSION_CODENAME="juno"
-							ID="elementary"
-							ID_LIKE="ubuntu"
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "ubuntu", "elementary"},
-		},
-		{
-			name: "elementary from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: elementary
-							Description:    elementary OS 6.1
-							Release:        6.1
-							Codename:       juno
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "ubuntu", "elementary"},
-		},
-		{
-			name: "endeavouros from os-release",
-			osReleaseContent: `PRETTY_NAME="EndeavourOS"
-							NAME="EndeavourOS"
-							VERSION_ID="rolling"
-							VERSION="rolling"
-							VERSION_CODENAME="rolling"
-							ID="endeavouros"
-							ID_LIKE="arch"
-							`,
-			expectedFamilies: []string{"posix", "linux", "archlinux", "endeavouros"},
-		},
-		{
-			name: "endeavouros from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: endeavouros
-							Description:    EndeavourOS
-							Release:        rolling
-							Codename:       rolling
-							`,
-			expectedFamilies: []string{"posix", "linux", "archlinux", "endeavouros"},
-		},
-		{
-			name: "fedora from os-release",
-			osReleaseContent: `PRETTY_NAME="Fedora 34 (Workstation Edition)"
-							NAME="Fedora"
-							VERSION_ID="34"
-							VERSION="34 (Workstation Edition)"
-							VERSION_CODENAME="n/a"
-							ID="fedora"
-							ID_LIKE="rhel"
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "fedora"},
-		},
-		{
-			name: "fedora from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Fedora
-							Description:    Fedora 34 (Workstation Edition)
-							Release:        34
-							Codename:       n/a
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "fedora"},
-		},
-		{
-			name: "kali from os-release",
-			osReleaseContent: `PRETTY_NAME="Kali GNU/Linux 2021.3"
-							NAME="Kali GNU/Linux"
-							VERSION_ID="2021.3"
-							VERSION="2021.3"
-							VERSION_CODENAME="kali-rolling"
-							ID="kali"
-							ID_LIKE="debian"
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "kali"},
-		},
-		{
-			name: "kali from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Kali
-							Description:    Kali GNU/Linux 2021.3
-							Release:        2021.3
-							Codename:       kali-rolling
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "kali"},
-		},
-		{
-			name: "kylin from os-release",
-			osReleaseContent: `PRETTY_NAME="Kylin 10"
-							NAME="Kylin"
-							VERSION_ID="10"
-							VERSION="10"
-							VERSION_CODENAME="kylin"
-							ID="kylin"
-							ID_LIKE="debian"
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "ubuntu", "kylin"},
-		},
-		{
-			name: "kylin from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Kylin
-							Description:    Kylin 10
-							Release:        10
-							Codename:       kylin
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "ubuntu", "kylin"},
-		},
-		{
-			name: "linuxmint from os-release",
-			osReleaseContent: `PRETTY_NAME="Linux Mint 20.2"
-							NAME="Linux Mint"
-							VERSION_ID="20.2"
-							VERSION="20.2"
-							VERSION_CODENAME="uma"
-							ID="linuxmint"
-							ID_LIKE="ubuntu"
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "ubuntu", "linuxmint"},
-		},
-		{
-			name: "linuxmint from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: LinuxMint
-							Description:    Linux Mint 20.2
-							Release:        20.2
-							Codename:       uma
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "ubuntu", "linuxmint"},
-		},
-		{
-			name: "mageia from os-release",
-			osReleaseContent: `PRETTY_NAME="Mageia 8"
-							NAME="Mageia"
-							VERSION_ID="8"
-							VERSION="8"
-							VERSION_CODENAME="n/a"
-							ID="mageia"
-							ID_LIKE="mandriva mandrake"
-							`,
-			expectedFamilies: []string{"posix", "linux", "mandrake", "mageia"},
-		},
-		{
-			name: "mageia from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Mageia
-							Description:    Mageia 8
-							Release:        8
-							Codename:       n/a
-							`,
-			expectedFamilies: []string{"posix", "linux", "mandrake", "mageia"},
-		},
-		{
-			name: "manjaro from os-release",
-			osReleaseContent: `PRETTY_NAME="Manjaro Linux"
-							NAME="Manjaro Linux"
-							VERSION_ID="rolling"
-							VERSION="rolling"
-							VERSION_CODENAME="rolling"
-							ID="manjaro"
-							ID_LIKE="arch"
-							`,
-			expectedFamilies: []string{"posix", "linux", "archlinux", "manjaro"},
-		},
-		{
-			name: "manjaro from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Manjaro
-							Description:    Manjaro Linux
-							Release:        rolling
-							Codename:       rolling
-							`,
-			expectedFamilies: []string{"posix", "linux", "archlinux", "manjaro"},
-		},
-		{
-			name: "manjaro-arm from os-release",
-			osReleaseContent: `PRETTY_NAME="Manjaro ARM"
-							NAME="Manjaro ARM"
-							VERSION_ID="rolling"
-							VERSION="rolling"
-							VERSION_CODENAME="rolling"
-							ID="manjaro-arm"
-							ID_LIKE="arch"
-							`,
-			expectedFamilies: []string{"posix", "linux", "archlinux", "manjaro", "manjaro-arm"},
-		},
-		{
-			name: "manjaro-arm from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Manjaro-ARM
-							Description:    Manjaro ARM
-							Release:        rolling
-							Codename:       rolling
-							`,
-			expectedFamilies: []string{"posix", "linux", "archlinux", "manjaro", "manjaro-arm"},
-		},
-		{
-			name: "nobara from os-release",
-			osReleaseContent: `PRETTY_NAME="Nobara 38"
-							NAME="Nobara"
-							VERSION_ID="38"
-							VERSION="38"
-							VERSION_CODENAME="nobara"
-							ID="nobara"
-							ID_LIKE="fedora"
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "fedora", "nobara"},
-		},
-		{
-			name: "nobara from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Nobara
-							Description:    Nobara 38
-							Release:        38
-							Codename:       nobara
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "fedora", "nobara"},
-		},
-		{
-			name: "opensuse from os-release",
-			osReleaseContent: `PRETTY_NAME="openSUSE Leap 15.3"
-							NAME="openSUSE Leap"
-							VERSION_ID="15.3"
-							VERSION="15.3"
-							VERSION_CODENAME="n/a"
-							ID="opensuse-leap"
-							ID_LIKE="suse"
-							`,
-			expectedFamilies: []string{"posix", "linux", "suse", "opensuse"},
-		},
-		{
-			name: "opensuse from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: openSUSE-leap
-							Description:    openSUSE Leap 15.3
-							Release:        15.3
-							Codename:       n/a
-							`,
-			expectedFamilies: []string{"posix", "linux", "suse", "opensuse"},
-		},
-		{
-			name: "oraclelinux from os-release",
-			osReleaseContent: `PRETTY_NAME="Oracle Linux Server 8.5"
-							NAME="Oracle Linux Server"
-							VERSION_ID="8.5"
-							VERSION="8.5"
-							VERSION_CODENAME="ol8"
-							ID="ol"
-							ID_LIKE="fedora"
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "oraclelinux"},
-		},
-		{
-			name: "oraclelinux from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: ol
-							Description:    Oracle Linux Server 8.5
-							Release:        8.5
-							Codename:       ol8
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "oraclelinux"},
-		},
-		{
-			name: "pop_os from os-release",
-			osReleaseContent: `PRETTY_NAME="Pop!_OS 21.04"
-							NAME="Pop!_OS"
-							VERSION_ID="21.04"
-							VERSION="21.04"
-							VERSION_CODENAME="hirsute"
-							ID="pop"
-							ID_LIKE="ubuntu"
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "ubuntu", "pop_os"},
-		},
-		{
-			name: "pop_os from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Pop
-							Description:    Pop!_OS 21.04
-							Release:        21.04
-							Codename:       hirsute
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "ubuntu", "pop_os"},
-		},
-		{
-			name: "raspbian from os-release",
-			osReleaseContent: `PRETTY_NAME="Raspbian GNU/Linux 10 (buster)"
-							NAME="Raspbian GNU/Linux"
-							VERSION_ID="10"
-							VERSION="10 (buster)"
-							VERSION_CODENAME="buster"
-							ID="raspbian"
-							ID_LIKE="debian"
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "raspbian"},
-		},
-		{
-			name: "raspbian from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Raspbian
-							Description:    Raspbian GNU/Linux 10 (buster)
-							Release:        10
-							Codename:       buster
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "raspbian"},
-		},
-		{
-			name: "rhel from os-release",
-			osReleaseContent: `PRETTY_NAME="Red Hat Enterprise Linux 8.5"
-							NAME="Red Hat Enterprise Linux"
-							VERSION_ID="8.5"
-							VERSION="8.5"
-							VERSION_CODENAME="ol8"
-							ID="rhel"
-							ID_LIKE="fedora"
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "rhel"},
-		},
-		{
-			name: "rhel from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: rhel
-							Description:    Red Hat Enterprise Linux 8.5
-							Release:        8.5
-							Codename:       ol8
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "rhel"},
-		},
-		{
-			name: "rocky from os-release",
-			osReleaseContent: `PRETTY_NAME="Rocky Linux 8.5"
-							NAME="Rocky Linux"
-							VERSION_ID="8.5"
-							VERSION="8.5"
-							VERSION_CODENAME="rocky"
-							ID="rocky"
-							ID_LIKE="centos rhel"
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "rocky"},
-		},
-		{
-			name: "rocky from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: rocky
-							Description:    Rocky Linux 8.5
-							Release:        8.5
-							Codename:       rocky
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "rocky"},
-		},
-		{
-			name: "scientific from os-release",
-			osReleaseContent: `PRETTY_NAME="Scientific Linux 8"
-							NAME="Scientific Linux"
-							VERSION_ID="8"
-							VERSION="8"
-							VERSION_CODENAME="scientific"
-							ID="scientific"
-							ID_LIKE="centos rhel"
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "scientific"},
-		},
-		{
-			name: "scientific from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: scientific
-							Description:    Scientific Linux 8
-							Release:        8
-							Codename:       scientific
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "scientific"},
-		},
-		{
-			name: "sled from os-release",
-			osReleaseContent: `PRETTY_NAME="SUSE Linux Enterprise Desktop 15 SP3"
-							NAME="SUSE Linux Enterprise Desktop"
-							VERSION_ID="15.3"
-							VERSION="15.3"
-							VERSION_CODENAME="n/a"
-							ID="sled"
-							ID_LIKE="suse"
-							`,
-			expectedFamilies: []string{"posix", "linux", "suse", "sled"},
-		},
-		{
-			name: "sled from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: SLED
-							Description:    SUSE Linux Enterprise Desktop 15 SP3
-							Release:        15.3
-							Codename:       n/a
-							`,
-			expectedFamilies: []string{"posix", "linux", "suse", "sled"},
-		},
-		{
-			name: "sles from os-release",
-			osReleaseContent: `PRETTY_NAME="SUSE Linux Enterprise Server 15 SP3"
-							NAME="SUSE Linux Enterprise Server"
-							VERSION_ID="15.3"
-							VERSION="15.3"
-							VERSION_CODENAME="n/a"
-							ID="sles"
-							ID_LIKE="suse"
-							`,
-			expectedFamilies: []string{"posix", "linux", "suse", "sles"},
-		},
-		{
-			name: "sles from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: SLES
-							Description:    SUSE Linux Enterprise Server 15 SP3
-							Release:        15.3
-							Codename:       n/a
-							`,
-			expectedFamilies: []string{"posix", "linux", "suse", "sles"},
-		},
-		{
-			name: "ubuntu from os-release",
-			osReleaseContent: `PRETTY_NAME="Ubuntu 20.04.3 LTS"
-							NAME="Ubuntu"
-							VERSION_ID="20.04"
-							VERSION="20.04.3 LTS (Focal Fossa)"
-							VERSION_CODENAME="focal"
-							ID="ubuntu"
-							ID_LIKE="debian"
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "ubuntu"},
-		},
-		{
-			name: "ubuntu from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Ubuntu
-							Description:    Ubuntu 20.04.3 LTS
-							Release:        20.04
-							Codename:       focal
-							`,
-			expectedFamilies: []string{"posix", "linux", "debian", "ubuntu"},
-		},
-		{
-			name: "virtuozzo from os-release",
-			osReleaseContent: `PRETTY_NAME="Virtuozzo Linux 7"
-							NAME="Virtuozzo Linux"
-							VERSION_ID="7"
-							VERSION="7"
-							VERSION_CODENAME="virtuozzo"
-							ID="virtuozzo"
-							ID_LIKE="rhel fedora"
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "virtuozzo"},
-		},
-		{
-			name: "virtuozzo from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Virtuozzo
-							Description:    Virtuozzo Linux 7
-							Release:        7
-							Codename:       virtuozzo
-							`,
-			expectedFamilies: []string{"posix", "linux", "el", "virtuozzo"},
-		},
-		{
-			name: "generic from os-release",
-			osReleaseContent: `PRETTY_NAME="Generic Linux"
-							NAME="Generic Linux"
-							VERSION_ID="1.0"
-							VERSION="1.0"
-							VERSION_CODENAME="generic"
-							ID="generic"
-							ID_LIKE="linux"
-							`,
-			expectedFamilies: []string{"posix", "linux", "generic"},
-		},
-		{
-			name: "generic from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Generic
-							Description:    Generic Linux 1.0
-							Release:        1.0
-							Codename:       generic
-							`,
-			expectedFamilies: []string{"posix", "linux", "generic"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			osInfo := newOSInfo()
-
-			transport := newMockTransport()
-			transport.commandResponses["uname -s"] = &commandResponse{
-				stdout: "Linux\n",
-			}
-			transport.commandResponses["uname -m"] = &commandResponse{
-				stdout: "x86_64\n",
-			}
-			transport.commandResponses["/usr/bin/lsb_release -a"] = &commandResponse{
-				stdout: tt.lsbReleaseContent,
-			}
-
-			fileSystem := transport.fileSystem
-			fileSystem.files["/etc/os-release"] = &mockFile{
-				content: io.NopCloser(bytes.NewBufferString(tt.osReleaseContent)),
-			}
-
-			err := osInfo.populateOSInfo(transport, fileSystem)
-			if err != nil {
-				t.Fatalf("expected no error for Linux family, got: %v", err)
+			if diags.HasWarnings() {
+				t.Fatalf("expected no warnings, got: %v", diags.Warnings())
 			}
 
 			for _, family := range tt.expectedFamilies {
-				if !osInfo.families.Contains(family) {
+				if !info.families.Contains(family) {
 					t.Errorf("expected family %q to be added, but it was not", family)
 				}
 			}
 
-			if len(tt.expectedFamilies) != osInfo.families.Size() {
-				t.Errorf("expected %d families, got: %d", len(tt.expectedFamilies), osInfo.families.Size())
+			if len(tt.expectedFamilies) != info.families.Size() {
+				t.Errorf("expected %d families, got: %d", len(tt.expectedFamilies), info.families.Size())
+			}
+
+			if info.ID() != tt.expectedId {
+				t.Errorf("expected id %q, got: %q", tt.expectedId, info.ID())
+			}
+
+			if info.FriendlyName() != tt.expectedFriendlyName {
+				t.Errorf("expected friendly name %q, got: %q", tt.expectedFriendlyName, info.FriendlyName())
+			}
+
+			if info.MajorVersion() != tt.expectedMajorVersion {
+				t.Errorf("expected major version %q, got: %q", tt.expectedMajorVersion, info.MajorVersion())
+			}
+
+			if info.Version() != tt.expectedVersion {
+				t.Errorf("expected version %q, got: %q", tt.expectedVersion, info.Version())
+			}
+
+			if info.Release() != tt.expectedRelease {
+				t.Errorf("expected release %q, got: %q", tt.expectedRelease, info.Release())
+			}
+
+			if info.Edition() != tt.expectedEdition {
+				t.Errorf("expected edition %q, got: %q", tt.expectedEdition, info.Edition())
+			}
+
+			if info.EditionID() != tt.expectedEditionId {
+				t.Errorf("expected edition id %q, got: %q", tt.expectedEditionId, info.EditionID())
+			}
+
+			if info.ProcArch() != tt.expectedArch {
+				t.Errorf("expected architecture %q, got: %q", tt.expectedArch, info.ProcArch())
+			}
+
+			if info.ProcArchBits() != tt.expectedArchBits {
+				t.Errorf("expected architecture bits %d, got: %d", tt.expectedArchBits, info.ProcArchBits())
+			}
+
+			if info.OSArch() != tt.expectedArch {
+				t.Errorf("expected architecture %q, got: %q", tt.expectedArch, info.OSArch())
+			}
+
+			if info.OSArchBits() != tt.expectedArchBits {
+				t.Errorf("expected architecture bits %d, got: %d", tt.expectedArchBits, info.OSArchBits())
 			}
 		})
 	}
 }
 
-func TestOSInfo_PopulateOSInfo_Linux_ID(t *testing.T) {
+func TestOSInfo_PopulateOSInfo_Linux_Error(t *testing.T) {
 
-	tests := []struct {
-		name              string
-		osReleaseContent  string
-		lsbReleaseContent string
-		expectedID        string
-	}{
-		{
-			name: "amazon from os-release",
-			osReleaseContent: `PRETTY_NAME="Amazon Linux 2"
-							NAME="Amazon Linux"
-							VERSION_ID="2"
-							VERSION="2"
-							VERSION_CODENAME="amzn"
-							ID="amzn"
-							ID_LIKE="centos rhel"
-							`,
-			expectedID: "amazon",
-		},
-		{
-			name: "amazon from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: amzn
-							Description:    Amazon Linux 2
-							Release:        2
-							Codename:       n/a
-							`,
-			expectedID: "amazon",
-		},
-		{
-			name: "archlinux from os-release",
-			osReleaseContent: `PRETTY_NAME="Arch Linux"
-							NAME="Arch Linux"
-							VERSION_ID="rolling"
-							VERSION="rolling"
-							VERSION_CODENAME="rolling"
-							ID="arch"
-							ID_LIKE="arch"
-							`,
-			expectedID: "archlinux",
-		},
-		{
-			name: "archlinux from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: arch
-							Description:    Arch Linux
-							Release:        rolling
-							Codename:       rolling
-							`,
-			expectedID: "archlinux",
-		},
-		{
-			name: "archlinux-arm from os-release",
-			osReleaseContent: `PRETTY_NAME="Arch Linux ARM"
-							NAME="Arch Linux ARM"
-							VERSION_ID="rolling"
-							VERSION="rolling"
-							VERSION_CODENAME="rolling"
-							ID="archarm"
-							ID_LIKE="arch"
-							`,
-			expectedID: "archlinux-arm",
-		},
-		{
-			name: "archlinux-arm from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: archarm
-							Description:    Arch Linux ARM
-							Release:        rolling
-							Codename:       rolling
-							`,
-			expectedID: "archlinux-arm",
-		},
-		{
-			name: "clearlinux from os-release",
-			osReleaseContent: `PRETTY_NAME="Clear Linux OS"
-							NAME="Clear Linux OS"
-							VERSION_ID="1.0"
-							VERSION="1.0"
-							VERSION_CODENAME="clearlinux"
-							ID="clear-linux-os"
-							ID_LIKE="linux"
-							`,
-			expectedID: "clearlinux",
-		},
-		{
-			name: "clearlinux from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: clear-linux-os
-							Description:    Clear Linux OS 1.0
-							Release:        1.0
-							Codename:       clearlinux
-							`,
-			expectedID: "clearlinux",
-		},
-		{
-			name: "cumuluslinux from os-release",
-			osReleaseContent: `PRETTY_NAME="Cumulus Linux 3.7"
-							NAME="Cumulus Linux"
-							VERSION_ID="3.7"
-							VERSION="3.7"
-							VERSION_CODENAME="cumulus"
-							ID="cumulus-linux"
-							ID_LIKE="debian"
-							`,
-			expectedID: "cumuluslinux",
-		},
-		{
-			name: "cumuluslinux from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: cumulus-linux
-							Description:    Cumulus Linux 3.7
-							Release:        3.7
-							Codename:       cumulus
-							`,
-			expectedID: "cumuluslinux",
-		},
-		{
-			name: "pop_os from os-release",
-			osReleaseContent: `PRETTY_NAME="Pop!_OS 21.04"
-							NAME="Pop!_OS"
-							VERSION_ID="21.04"
-							VERSION="21.04"
-							VERSION_CODENAME="hirsute"
-							ID="pop"
-							ID_LIKE="ubuntu"
-							`,
-			expectedID: "pop_os",
-		},
-		{
-			name: "pop_os from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Pop
-							Description:    Pop!_OS 21.04
-							Release:        21.04
-							Codename:       hirsute
-							`,
-			expectedID: "pop_os",
-		},
-		{
-			name: "oraclelinux from os-release",
-			osReleaseContent: `PRETTY_NAME="Oracle Linux Server 8.5"
-							NAME="Oracle Linux Server"
-							VERSION_ID="8.5"
-							VERSION="8.5"
-							VERSION_CODENAME="ol8"
-							ID="ol"
-							ID_LIKE="fedora"
-							`,
-			expectedID: "oraclelinux",
-		},
-		{
-			name: "oraclelinux from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: ol
-							Description:    Oracle Linux Server 8.5
-							Release:        8.5
-							Codename:       ol8
-							`,
-			expectedID: "oraclelinux",
-		},
-		{
-			name: "opensuse from os-release",
-			osReleaseContent: `PRETTY_NAME="openSUSE Leap 15.3"
-							NAME="openSUSE Leap"
-							VERSION_ID="15.3"
-							VERSION="15.3"
-							VERSION_CODENAME="n/a"
-							ID="opensuse-leap"
-							ID_LIKE="suse"
-							`,
-			expectedID: "opensuse",
-		},
-		{
-			name: "opensuse from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: openSUSE-leap
-							Description:    openSUSE Leap 15.3
-							Release:        15.3
-							Codename:       n/a
-							`,
-			expectedID: "opensuse",
-		},
-		{
-			name: "sles from os-release",
-			osReleaseContent: `PRETTY_NAME="SUSE Linux Enterprise Server 15 SP3 for SAP Applications"
-							NAME="SUSE Linux Enterprise Server for SAP Applications"
-							VERSION_ID="15.3"
-							VERSION="15.3"
-							VERSION_CODENAME="n/a"
-							ID="sles_sap"
-							ID_LIKE="suse"
-							`,
-			expectedID: "sles",
-		},
-		{
-			name: "sles from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: SLES_SAP
-							Description:    SUSE Linux Enterprise Server 15 SP3 for SAP Applications
-							Release:        15.3
-							Codename:       n/a
-							`,
-			expectedID: "sles",
-		},
-		{
-			name: "generic from os-release",
-			osReleaseContent: `PRETTY_NAME="Generic Linux 1.0"
-							NAME="Generic Linux"
-							VERSION_ID="1.0"
-							VERSION="1.0"
-							VERSION_CODENAME="generic"
-							ID="generic"
-							ID_LIKE="linux"
-							`,
-			expectedID: "generic",
-		},
-		{
-			name: "generic from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Generic
-							Description:    Generic Linux 1.0
-							Release:        1.0
-							Codename:       generic
-							`,
-			expectedID: "generic",
-		},
+	transport := mock.NewMockTransport()
+	transport.CommandResults["uname -s"] = &mock.CommandResult{
+		Stdout: "Linux",
+	}
+	transport.CommandResults[linuxOSDiscoveryScript] = &mock.CommandResult{
+		Err: os.ErrPermission,
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	info := newOSInfo()
+	diags := info.populateOSInfo(transport)
 
-			osInfo := newOSInfo()
+	if !diags.HasErrors() {
+		t.Fatalf("expected errors, got none")
+	}
 
-			transport := newMockTransport()
-			transport.commandResponses["uname -s"] = &commandResponse{
-				stdout: "Linux\n",
-			}
-			transport.commandResponses["uname -m"] = &commandResponse{
-				stdout: "x86_64\n",
-			}
-			transport.commandResponses["/usr/bin/lsb_release -a"] = &commandResponse{
-				stdout: tt.lsbReleaseContent,
-			}
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
 
-			fileSystem := transport.fileSystem
-			fileSystem.files["/etc/os-release"] = &mockFile{
-				content: io.NopCloser(bytes.NewBufferString(tt.osReleaseContent)),
-			}
+	if info.families.Size() != 2 {
+		t.Errorf("expected 2 families (posix, linux), got: %d", info.families.Size())
+	}
 
-			err := osInfo.populateOSInfo(transport, fileSystem)
-			if err != nil {
-				t.Fatalf("expected no error for Linux OS, got: %v", err)
-			}
+	if !info.families.Contains("posix") {
+		t.Errorf("expected family 'posix' to be added, but it was not")
+	}
 
-			if osInfo.id != tt.expectedID {
-				t.Errorf("expected ID %q, got: %q", tt.expectedID, osInfo.id)
-			}
-		})
+	if !info.families.Contains("linux") {
+		t.Errorf("expected family 'linux' to be added, but it was not")
+	}
+
+	if info.ID() != "" {
+		t.Errorf("expected id to be empty, got: %q", info.ID())
+	}
+
+	if info.FriendlyName() != "" {
+		t.Errorf("expected friendly name to be empty, got: %q", info.FriendlyName())
+	}
+
+	if info.MajorVersion() != "" {
+		t.Errorf("expected major version to be empty, got: %q", info.MajorVersion())
+	}
+
+	if info.Version() != "" {
+		t.Errorf("expected version to be empty, got: %q", info.Version())
+	}
+
+	if info.Release() != "" {
+		t.Errorf("expected release to be empty, got: %q", info.Release())
+	}
+
+	if info.Edition() != "" {
+		t.Errorf("expected edition to be empty, got: %q", info.Edition())
+	}
+
+	if info.EditionID() != "" {
+		t.Errorf("expected edition id to be empty, got: %q", info.EditionID())
+	}
+
+	if info.ProcArch() != "" {
+		t.Errorf("expected architecture to be empty, got: %q", info.ProcArch())
+	}
+
+	if info.ProcArchBits() != 0 {
+		t.Errorf("expected architecture bits to be 0, got: %d", info.ProcArchBits())
+	}
+
+	if info.OSArch() != "" {
+		t.Errorf("expected architecture to be empty, got: %q", info.OSArch())
+	}
+
+	if info.OSArchBits() != 0 {
+		t.Errorf("expected architecture bits to be 0, got: %d", info.OSArchBits())
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Errorf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to get Linux OS information"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected error summary to be %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error executing Linux discovery script: permission denied"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected error detail to be %q, got: %q", expectedDetail, errors[0].Detail)
 	}
 }
 
-func TestOSInfo_PopulateOSInfo_Linux_FriendlyName(t *testing.T) {
+func TestOSInfo_PopulateOSInfo_Linux_NotJSON(t *testing.T) {
 
-	tests := []struct {
-		name                 string
-		osReleaseContent     string
-		lsbReleaseContent    string
-		expectedFriendlyName string
-	}{
-		{
-			name: "from os-release",
-			osReleaseContent: `PRETTY_NAME="Generic Linux 1.0"
-							NAME="Generic Linux"
-							VERSION_ID="1.0"
-							VERSION="1.0"
-							VERSION_CODENAME="generic"
-							ID="generic"
-							ID_LIKE="linux"
-							`,
-			expectedFriendlyName: "Generic Linux 1.0",
-		},
-		{
-			name: "from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Generic
-							Description:    Generic Linux 1.0
-							Release:        1.0
-							Codename:       generic
-							`,
-			expectedFriendlyName: "Generic Linux 1.0",
-		},
+	transport := mock.NewMockTransport()
+	transport.CommandResults["uname -s"] = &mock.CommandResult{
+		Stdout: "Linux",
+	}
+	transport.CommandResults[linuxOSDiscoveryScript] = &mock.CommandResult{
+		Stdout: "Not JSON",
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	info := newOSInfo()
+	diags := info.populateOSInfo(transport)
 
-			osInfo := newOSInfo()
-
-			transport := newMockTransport()
-			transport.commandResponses["uname -s"] = &commandResponse{
-				stdout: "Linux\n",
-			}
-			transport.commandResponses["uname -m"] = &commandResponse{
-				stdout: "x86_64\n",
-			}
-			transport.commandResponses["/usr/bin/lsb_release -a"] = &commandResponse{
-				stdout: tt.lsbReleaseContent,
-			}
-
-			fileSystem := transport.fileSystem
-			fileSystem.files["/etc/os-release"] = &mockFile{
-				content: io.NopCloser(bytes.NewBufferString(tt.osReleaseContent)),
-			}
-
-			err := osInfo.populateOSInfo(transport, fileSystem)
-			if err != nil {
-				t.Fatalf("expected no error for Linux OS, got: %v", err)
-			}
-
-			if osInfo.friendlyName != tt.expectedFriendlyName {
-				t.Errorf("expected friendly name %q, got: %q", tt.expectedFriendlyName, osInfo.friendlyName)
-			}
-		})
-	}
-}
-
-func TestOSInfo_PopulateOSInfo_Linux_Release(t *testing.T) {
-
-	tests := []struct {
-		name              string
-		osReleaseContent  string
-		lsbReleaseContent string
-		expectedRelease   string
-	}{
-		{
-			name: "from os-release",
-			osReleaseContent: `PRETTY_NAME="Generic Linux 1.0"
-							NAME="Generic Linux"
-							VERSION_ID="1.0"
-							VERSION="1.0"
-							VERSION_CODENAME="generic"
-							ID="generic"
-							ID_LIKE="linux"
-							`,
-			expectedRelease: "generic",
-		},
-		{
-			name: "from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Generic
-							Description:    Generic Linux 1.0
-							Release:        1.0
-							Codename:       generic
-							`,
-			expectedRelease: "generic",
-		},
+	if !diags.HasErrors() {
+		t.Fatalf("expected errors, got none")
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			osInfo := newOSInfo()
-
-			transport := newMockTransport()
-			transport.commandResponses["uname -s"] = &commandResponse{
-				stdout: "Linux\n",
-			}
-			transport.commandResponses["uname -m"] = &commandResponse{
-				stdout: "x86_64\n",
-			}
-			transport.commandResponses["/usr/bin/lsb_release -a"] = &commandResponse{
-				stdout: tt.lsbReleaseContent,
-			}
-
-			fileSystem := transport.fileSystem
-			fileSystem.files["/etc/os-release"] = &mockFile{
-				content: io.NopCloser(bytes.NewBufferString(tt.osReleaseContent)),
-			}
-
-			err := osInfo.populateOSInfo(transport, fileSystem)
-			if err != nil {
-				t.Fatalf("expected no error for Linux OS, got: %v", err)
-			}
-
-			if osInfo.release != tt.expectedRelease {
-				t.Errorf("expected release %q, got: %q", tt.expectedRelease, osInfo.release)
-			}
-		})
-	}
-}
-
-func TestOSInfo_PopulateOSInfo_Linux_Version(t *testing.T) {
-
-	tests := []struct {
-		name                 string
-		osReleaseContent     string
-		lsbReleaseContent    string
-		expectedMajorVersion string
-		expectedVersion      string
-	}{
-		{
-			name: "from os-release",
-			osReleaseContent: `PRETTY_NAME="Generic Linux 1.0"
-							NAME="Generic Linux"
-							VERSION_ID="1.0"
-							VERSION="1.0"
-							VERSION_CODENAME="generic"
-							ID="generic"
-							ID_LIKE="linux"
-							`,
-			expectedMajorVersion: "1",
-			expectedVersion:      "1.0",
-		},
-		{
-			name: "from lsb-release",
-			lsbReleaseContent: `LSB Version:    n/a
-							Distributor ID: Generic
-							Description:    Generic Linux 1.0
-							Release:        1.0
-							Codename:       generic
-							`,
-			expectedMajorVersion: "1",
-			expectedVersion:      "1.0",
-		},
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			osInfo := newOSInfo()
-
-			transport := newMockTransport()
-			transport.commandResponses["uname -s"] = &commandResponse{
-				stdout: "Linux\n",
-			}
-			transport.commandResponses["uname -m"] = &commandResponse{
-				stdout: "x86_64\n",
-			}
-			transport.commandResponses["/usr/bin/lsb_release -a"] = &commandResponse{
-				stdout: tt.lsbReleaseContent,
-			}
-
-			fileSystem := transport.fileSystem
-			fileSystem.files["/etc/os-release"] = &mockFile{
-				content: io.NopCloser(bytes.NewBufferString(tt.osReleaseContent)),
-			}
-
-			err := osInfo.populateOSInfo(transport, fileSystem)
-			if err != nil {
-				t.Fatalf("expected no error for Linux OS, got: %v", err)
-			}
-
-			if osInfo.majorVersion != tt.expectedMajorVersion {
-				t.Errorf("expected major version %q, got: %q", tt.expectedMajorVersion, osInfo.majorVersion)
-			}
-
-			if osInfo.version != tt.expectedVersion {
-				t.Errorf("expected version %q, got: %q", tt.expectedVersion, osInfo.version)
-			}
-		})
-	}
-}
-
-func TestOSInfo_PopulateOSInfo_Linux_Edition(t *testing.T) {
-
-	tests := []struct {
-		name              string
-		osReleaseContent  string
-		expectedEdition   string
-		expectedEditionId string
-	}{
-		{
-			name: "from os-release",
-			osReleaseContent: `PRETTY_NAME="Generic Linux 1.0"
-							NAME="Generic Linux"
-							VERSION_ID="1.0"
-							VERSION="1.0"
-							VERSION_CODENAME="generic"
-							ID="generic"
-							ID_LIKE="linux"
-							VARIANT="Generic"
-							VARIANT_ID="generic"
-							`,
-			expectedEdition:   "Generic",
-			expectedEditionId: "generic",
-		},
-		{
-			name: "not specified",
-			osReleaseContent: `PRETTY_NAME="Generic Linux 1.0"
-							NAME="Generic Linux"
-							VERSION_ID="1.0"
-							VERSION="1.0"
-							VERSION_CODENAME="generic"
-							ID="generic"
-							ID_LIKE="linux"
-							`,
-			expectedEdition:   "",
-			expectedEditionId: "",
-		},
+	if info.families.Size() != 2 {
+		t.Errorf("expected 2 families (posix, linux), got: %d", info.families.Size())
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			osInfo := newOSInfo()
-
-			transport := newMockTransport()
-			transport.commandResponses["uname -s"] = &commandResponse{
-				stdout: "Linux\n",
-			}
-			transport.commandResponses["uname -m"] = &commandResponse{
-				stdout: "x86_64\n",
-			}
-
-			fileSystem := transport.fileSystem
-			fileSystem.files["/etc/os-release"] = &mockFile{
-				content: io.NopCloser(bytes.NewBufferString(tt.osReleaseContent)),
-			}
-
-			err := osInfo.populateOSInfo(transport, fileSystem)
-			if err != nil {
-				t.Fatalf("expected no error for Linux OS, got: %v", err)
-			}
-
-			if osInfo.edition != tt.expectedEdition {
-				t.Errorf("expected edition %q, got: %q", tt.expectedEdition, osInfo.edition)
-			}
-
-			if osInfo.editionId != tt.expectedEditionId {
-				t.Errorf("expected edition ID %q, got: %q", tt.expectedEditionId, osInfo.editionId)
-			}
-		})
-	}
-}
-
-func TestOSInfo_PopulateOSInfo_Linux_Architecture(t *testing.T) {
-
-	tests := []struct {
-		name             string
-		unameArchOutput  string
-		expectedArch     string
-		expectedArchBits int
-	}{
-		{
-			name:             "i386",
-			unameArchOutput:  "i386\n",
-			expectedArch:     "386",
-			expectedArchBits: 32,
-		},
-		{
-			name:             "i486",
-			unameArchOutput:  "i486\n",
-			expectedArch:     "386",
-			expectedArchBits: 32,
-		},
-		{
-			name:             "i586",
-			unameArchOutput:  "i586\n",
-			expectedArch:     "386",
-			expectedArchBits: 32,
-		},
-		{
-			name:             "i686",
-			unameArchOutput:  "i686\n",
-			expectedArch:     "386",
-			expectedArchBits: 32,
-		},
-		{
-			name:             "x86_64",
-			unameArchOutput:  "x86_64\n",
-			expectedArch:     "amd64",
-			expectedArchBits: 64,
-		},
-		{
-			name:             "armv6l",
-			unameArchOutput:  "armv6l\n",
-			expectedArch:     "arm",
-			expectedArchBits: 32,
-		},
-		{
-			name:             "armv7l",
-			unameArchOutput:  "armv7l\n",
-			expectedArch:     "arm",
-			expectedArchBits: 32,
-		},
-		{
-			name:             "aarch64",
-			unameArchOutput:  "aarch64\n",
-			expectedArch:     "arm64",
-			expectedArchBits: 64,
-		},
-		{
-			name:             "mips",
-			unameArchOutput:  "mips\n",
-			expectedArch:     "mips",
-			expectedArchBits: 32,
-		},
-		{
-			name:             "mips64",
-			unameArchOutput:  "mips64\n",
-			expectedArch:     "mips64",
-			expectedArchBits: 64,
-		},
-		{
-			name:             "ppc64",
-			unameArchOutput:  "ppc64\n",
-			expectedArch:     "ppc64",
-			expectedArchBits: 64,
-		},
-		{
-			name:             "ppc64le",
-			unameArchOutput:  "ppc64le\n",
-			expectedArch:     "ppc64le",
-			expectedArchBits: 64,
-		},
-		{
-			name:             "riscv64",
-			unameArchOutput:  "riscv64\n",
-			expectedArch:     "riscv64",
-			expectedArchBits: 64,
-		},
-		{
-			name:             "s390x",
-			unameArchOutput:  "s390x\n",
-			expectedArch:     "s390x",
-			expectedArchBits: 64,
-		},
-		{
-			name:             "newarch",
-			unameArchOutput:  "newarch\n",
-			expectedArch:     "newarch",
-			expectedArchBits: 0,
-		},
+	if !info.families.Contains("posix") {
+		t.Errorf("expected family 'posix' to be added, but it was not")
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	if !info.families.Contains("linux") {
+		t.Errorf("expected family 'linux' to be added, but it was not")
+	}
 
-			osInfo := newOSInfo()
+	if info.ID() != "" {
+		t.Errorf("expected id to be empty, got: %q", info.ID())
+	}
 
-			transport := newMockTransport()
-			transport.commandResponses["uname -s"] = &commandResponse{
-				stdout: "Linux\n",
-			}
-			transport.commandResponses["uname -m"] = &commandResponse{
-				stdout: tt.unameArchOutput,
-			}
+	if info.FriendlyName() != "" {
+		t.Errorf("expected friendly name to be empty, got: %q", info.FriendlyName())
+	}
 
-			fileSystem := transport.fileSystem
-			fileSystem.files["/etc/os-release"] = &mockFile{
-				content: io.NopCloser(bytes.NewBufferString(`PRETTY_NAME="Generic Linux 1.0"
-							NAME="Generic Linux"
-							VERSION_ID="1.0"
-							VERSION="1.0"
-							VERSION_CODENAME=generic
-							ID=generic
-							ID_LIKE=debian
-							`)),
-			}
+	if info.MajorVersion() != "" {
+		t.Errorf("expected major version to be empty, got: %q", info.MajorVersion())
+	}
 
-			err := osInfo.populateOSInfo(transport, fileSystem)
-			if err != nil {
-				t.Fatalf("expected no error for Linux family, got: %v", err)
-			}
+	if info.Version() != "" {
+		t.Errorf("expected version to be empty, got: %q", info.Version())
+	}
 
-			if osInfo.osArch != tt.expectedArch {
-				t.Errorf("expected OS architecture to be %q, got: %s", tt.expectedArch, osInfo.osArch)
-			}
+	if info.Release() != "" {
+		t.Errorf("expected release to be empty, got: %q", info.Release())
+	}
 
-			if osInfo.osArchBits != tt.expectedArchBits {
-				t.Errorf("expected OS architecture bits to be %d, got: %d", tt.expectedArchBits, osInfo.osArchBits)
-			}
+	if info.Edition() != "" {
+		t.Errorf("expected edition to be empty, got: %q", info.Edition())
+	}
 
-			if osInfo.procArch != tt.expectedArch {
-				t.Errorf("expected processor architecture to be %q, got: %s", tt.expectedArch, osInfo.procArch)
-			}
+	if info.EditionID() != "" {
+		t.Errorf("expected edition id to be empty, got: %q", info.EditionID())
+	}
 
-			if osInfo.procArchBits != tt.expectedArchBits {
-				t.Errorf("expected processor architecture bits to be %d, got: %d", tt.expectedArchBits, osInfo.procArchBits)
-			}
-		})
+	if info.ProcArch() != "" {
+		t.Errorf("expected architecture to be empty, got: %q", info.ProcArch())
+	}
+
+	if info.ProcArchBits() != 0 {
+		t.Errorf("expected architecture bits to be 0, got: %d", info.ProcArchBits())
+	}
+
+	if info.OSArch() != "" {
+		t.Errorf("expected architecture to be empty, got: %q", info.OSArch())
+	}
+
+	if info.OSArchBits() != 0 {
+		t.Errorf("expected architecture bits to be 0, got: %d", info.OSArchBits())
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Errorf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to parse Linux discovery output"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected error summary to be %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error parsing JSON output: invalid character 'N' looking for beginning of value"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected error detail to be %q, got: %q", expectedDetail, errors[0].Detail)
 	}
 }
 
 func TestOSInfo_PopulateOSInfo_Windows_Architecture(t *testing.T) {
 
 	tests := []struct {
-		name string
-
-		procArchPowerShell string
-		osArchPowerShell   string
-
+		name                 string
+		output               string
 		expectedprocArch     string
 		expectedprocArchBits int
-
-		expectedosArch     string
-		expectedosArchBits int
+		expectedosArch       string
+		expectedosArchBits   int
 	}{
 		{
-			name:                 "x86",
-			procArchPowerShell:   "x86",
-			osArchPowerShell:     "32-bit",
+			name: "x86",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Pro",
+				"os_version": "10.0.19041.0",
+				"os_bits": "32-bit",
+				"processor_arch": "X86"
+				}
+				`,
 			expectedprocArch:     "386",
 			expectedprocArchBits: 32,
 			expectedosArch:       "386",
 			expectedosArchBits:   32,
 		},
 		{
-			name:                 "x64",
-			procArchPowerShell:   "AMD64",
-			osArchPowerShell:     "64-bit",
+			name: "AMD64",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Pro",
+				"os_version": "10.0.19041.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedprocArch:     "amd64",
 			expectedprocArchBits: 64,
 			expectedosArch:       "amd64",
 			expectedosArchBits:   64,
 		},
 		{
-			name:                 "32-bit OS on x64 processor",
-			procArchPowerShell:   "AMD64",
-			osArchPowerShell:     "32-bit",
+			name: "32-bit OS on AMD64 processor",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Pro",
+				"os_version": "10.0.19041.0",
+				"os_bits": "32-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedprocArch:     "amd64",
 			expectedprocArchBits: 64,
 			expectedosArch:       "386",
 			expectedosArchBits:   32,
 		},
 		{
-			name:                 "arm64",
-			procArchPowerShell:   "ARM64",
-			osArchPowerShell:     "64-bit",
+			name: "ARM64",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Pro",
+				"os_version": "10.0.19041.0",
+				"os_bits": "64-bit",
+				"processor_arch": "ARM64"
+				}
+				`,
 			expectedprocArch:     "arm64",
 			expectedprocArchBits: 64,
 			expectedosArch:       "arm64",
 			expectedosArchBits:   64,
 		},
 		{
-			name:                 "arm",
-			procArchPowerShell:   "ARM",
-			osArchPowerShell:     "32-bit",
+			name: "ARM",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Pro",
+				"os_version": "10.0.19041.0",
+				"os_bits": "32-bit",
+				"processor_arch": "ARM"
+				}
+				`,
 			expectedprocArch:     "arm",
 			expectedprocArchBits: 32,
 			expectedosArch:       "arm",
 			expectedosArchBits:   32,
 		},
 		{
-			name:                 "32-bit OS on arm64 processor",
-			procArchPowerShell:   "ARM64",
-			osArchPowerShell:     "32-bit",
+			name: "32-bit OS on ARM64 processor",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Pro",
+				"os_version": "10.0.19041.0",
+				"os_bits": "32-bit",
+				"processor_arch": "ARM64"
+				}
+				`,
 			expectedprocArch:     "arm64",
 			expectedprocArchBits: 64,
 			expectedosArch:       "arm",
 			expectedosArchBits:   32,
 		},
-		{
-			name:                 "unknown architecture",
-			procArchPowerShell:   "newarch",
-			osArchPowerShell:     "64-bit",
-			expectedprocArch:     "newarch",
-			expectedprocArchBits: 0,
-			expectedosArch:       "newarch",
-			expectedosArchBits:   0,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
-			osInfo := newOSInfo()
-
-			transport := newMockTransport()
-			transport.commandResponses["uname -s"] = &commandResponse{
-				err: errors.New("command not found"),
+			transport := mock.NewWinMockTransport()
+			transport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &mock.CommandResult{
+				Stdout: "5.1.19041.1237",
+			}
+			transport.PowerShellResults[windowsOSDiscoveryScript] = &mock.CommandResult{
+				Stdout: tt.output,
 			}
 
-			transport.powerShellResponses[procArchPowerShell] = &commandResponse{
-				stdout: tt.procArchPowerShell,
-			}
-			transport.powerShellResponses[osArchPowerShell] = &commandResponse{
-				stdout: tt.osArchPowerShell,
+			info := newOSInfo()
+			diags := info.populateOSInfo(transport)
+
+			if diags.HasErrors() {
+				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
 
-			err := osInfo.populateOSInfo(transport, transport.fileSystem)
-			if err != nil {
-				t.Fatalf("expected no error for Windows family, got: %v", err)
+			if diags.HasWarnings() {
+				t.Fatalf("expected no warnings, got: %v", diags.Warnings())
 			}
 
-			if osInfo.procArch != tt.expectedprocArch {
-				t.Errorf("expected processor architecture to be %q, got: %s", tt.expectedprocArch, osInfo.procArch)
+			if info.Families().Size() != 2 {
+				t.Errorf("expected 2 families, got: %d", info.Families().Size())
 			}
 
-			if osInfo.procArchBits != tt.expectedprocArchBits {
-				t.Errorf("expected processor architecture bits to be %d, got: %d", tt.expectedprocArchBits, osInfo.procArchBits)
+			expectedKernel := "windows"
+			if !info.Families().Contains(expectedKernel) {
+				t.Errorf("expected family %q to be present, but it was not", expectedKernel)
 			}
 
-			if osInfo.osArch != tt.expectedosArch {
-				t.Errorf("expected OS architecture to be %q, got: %s", tt.expectedosArch, osInfo.osArch)
+			expectedID := "windows-client"
+			if !info.Families().Contains(expectedID) {
+				t.Errorf("expected family %q to be present, but it was not", expectedID)
 			}
 
-			if osInfo.osArchBits != tt.expectedosArchBits {
-				t.Errorf("expected OS architecture bits to be %d, got: %d", tt.expectedosArchBits, osInfo.osArchBits)
+			if info.Kernel() != expectedKernel {
+				t.Errorf("expected kernel to be %q, got: %q", expectedKernel, info.Kernel())
+			}
+
+			if info.ID() != expectedID {
+				t.Errorf("expected ID to be %q, got: %q", expectedID, info.ID())
+			}
+
+			if info.ProcArch() != tt.expectedprocArch {
+				t.Errorf("expected processor architecture to be %q, got: %q", tt.expectedprocArch, info.ProcArch())
+			}
+
+			if info.ProcArchBits() != tt.expectedprocArchBits {
+				t.Errorf("expected processor architecture bits to be %d, got: %d", tt.expectedprocArchBits, info.ProcArchBits())
+			}
+
+			if info.OSArch() != tt.expectedosArch {
+				t.Errorf("expected OS architecture to be %q, got: %q", tt.expectedosArch, info.OSArch())
+			}
+
+			if info.OSArchBits() != tt.expectedosArchBits {
+				t.Errorf("expected OS architecture bits to be %d, got: %d", tt.expectedosArchBits, info.OSArchBits())
 			}
 		})
+	}
+}
+
+func TestOSInfo_PopulateOSInfo_Windows_Architecture_Unknown(t *testing.T) {
+
+	transport := mock.NewWinMockTransport()
+	transport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &mock.CommandResult{
+		Stdout: "5.1.19041.1237",
+	}
+	transport.PowerShellResults[windowsOSDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			"os_friendly_name": "Microsoft Windows 10 Pro",
+			"os_version": "10.0.19041.0",
+			"os_bits": "64-bit",
+			"processor_arch": "newarch"
+			}
+			`,
+	}
+
+	info := newOSInfo()
+	diags := info.populateOSInfo(transport)
+
+	if diags.HasErrors() {
+		t.Fatalf("expected no errors, got: %v", diags)
+	}
+
+	if !diags.HasWarnings() {
+		t.Fatalf("expected warnings, got none")
+	}
+
+	if info.Families().Size() != 2 {
+		t.Errorf("expected 2 families, got: %d", info.Families().Size())
+	}
+
+	expectedKernel := "windows"
+	if !info.Families().Contains(expectedKernel) {
+		t.Errorf("expected family %q to be present, but it was not", expectedKernel)
+	}
+
+	expectedID := "windows-client"
+	if !info.Families().Contains(expectedID) {
+		t.Errorf("expected family %q to be present, but it was not", expectedID)
+	}
+
+	if info.Kernel() != expectedKernel {
+		t.Errorf("expected kernel to be %q, got: %q", expectedKernel, info.Kernel())
+	}
+
+	if info.ID() != expectedID {
+		t.Errorf("expected ID to be %q, got: %q", expectedID, info.ID())
+	}
+
+	expectedArch := "newarch"
+	if info.ProcArch() != expectedArch {
+		t.Errorf("expected processor architecture to be %q, got: %s", expectedArch, info.ProcArch())
+	}
+
+	expectedArchBits := 0
+	if info.ProcArchBits() != expectedArchBits {
+		t.Errorf("expected processor architecture bits to be %d, got: %d", expectedArchBits, info.ProcArchBits())
+	}
+
+	if info.OSArch() != expectedArch {
+		t.Errorf("expected OS architecture to be %q, got: %s", expectedArch, info.OSArch())
+	}
+
+	if info.OSArchBits() != expectedArchBits {
+		t.Errorf("expected OS architecture bits to be %d, got: %d", expectedArchBits, info.OSArchBits())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Unknown architecture"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("expected first warning summary to be %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "Unknown architecture \"newarch\" detected, using it as is"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("expected first warning detail to be %q, got: %q", expectedDetail, warnings[0].Detail)
 	}
 }
 
@@ -1734,8 +2299,7 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 
 	tests := []struct {
 		name                 string
-		friendNamePowerShell string
-		versionPowerShell    string
+		output               string
 		expectedID           string
 		expectedFriendlyName string
 		expectedRelease      string
@@ -1746,9 +2310,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 	}{
 		// Windows Server 2008 R2 (6.1.7600)
 		{
-			name:                 "Windows Server 2008 R2 Standard",
-			friendNamePowerShell: "Microsoft Windows Server 2008 R2 Standard",
-			versionPowerShell:    "6.1.7600.0",
+			name: "Windows Server 2008 R2 Standard",
+			output: `{
+				"os_friendly_name": "Microsoft Windows Server 2008 R2 Standard",
+				"os_version": "6.1.7600.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-server",
 			expectedFriendlyName: "Microsoft Windows Server 2008 R2 Standard",
 			expectedRelease:      "server-2008-r2",
@@ -1759,9 +2328,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 7 (6.1.7600)
 		{
-			name:                 "Windows 7 Professional",
-			friendNamePowerShell: "Microsoft Windows 7 Professional",
-			versionPowerShell:    "6.1.7600.0",
+			name: "Windows 7 Professional",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 7 Professional",
+				"os_version": "6.1.7600.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 7 Professional",
 			expectedRelease:      "7",
@@ -1772,9 +2346,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows Server 2008 R2 SP1 (6.1.7601)
 		{
-			name:                 "Windows Server 2008 R2 SP1 Enterprise",
-			friendNamePowerShell: "Microsoft Windows Server 2008 R2 Enterprise",
-			versionPowerShell:    "6.1.7601.0",
+			name: "Windows Server 2008 R2 SP1 Enterprise",
+			output: `{
+				"os_friendly_name": "Microsoft Windows Server 2008 R2 SP1 Enterprise",
+				"os_version": "6.1.7601.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-server",
 			expectedFriendlyName: "Microsoft Windows Server 2008 R2 SP1 Enterprise",
 			expectedRelease:      "server-2008-r2-sp1",
@@ -1785,9 +2364,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 7 SP1 (6.1.7601)
 		{
-			name:                 "Windows 7 SP1 Ultimate",
-			friendNamePowerShell: "Microsoft Windows 7 Ultimate",
-			versionPowerShell:    "6.1.7601.0",
+			name: "Windows 7 SP1 Ultimate",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 7 Ultimate",
+				"os_version": "6.1.7601.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 7 SP1 Ultimate",
 			expectedRelease:      "7-sp1",
@@ -1798,9 +2382,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows Server 2012 (6.2.9200)
 		{
-			name:                 "Windows Server 2012 Datacenter",
-			friendNamePowerShell: "Microsoft Windows Server 2012 Datacenter",
-			versionPowerShell:    "6.2.9200.0",
+			name: "Windows Server 2012 Datacenter",
+			output: `{
+				"os_friendly_name": "Microsoft Windows Server 2012 Datacenter",
+				"os_version": "6.2.9200.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-server",
 			expectedFriendlyName: "Microsoft Windows Server 2012 Datacenter",
 			expectedRelease:      "server-2012",
@@ -1811,9 +2400,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 8 (6.2.9200)
 		{
-			name:                 "Windows 8 Pro",
-			friendNamePowerShell: "Microsoft Windows 8 Pro",
-			versionPowerShell:    "6.2.9200.0",
+			name: "Windows 8 Pro",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 8 Pro",
+				"os_version": "6.2.9200.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 8 Pro",
 			expectedRelease:      "8",
@@ -1824,9 +2418,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows Server 2012 R2 (6.3.9600)
 		{
-			name:                 "Windows Server 2012 R2 Standard",
-			friendNamePowerShell: "Microsoft Windows Server 2012 R2 Standard",
-			versionPowerShell:    "6.3.9600.0",
+			name: "Windows Server 2012 R2 Standard",
+			output: `{
+				"os_friendly_name": "Microsoft Windows Server 2012 R2 Standard",
+				"os_version": "6.3.9600.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-server",
 			expectedFriendlyName: "Microsoft Windows Server 2012 R2 Standard",
 			expectedRelease:      "server-2012-r2",
@@ -1837,9 +2436,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 8.1 (6.3.9600)
 		{
-			name:                 "Windows 8.1 Enterprise",
-			friendNamePowerShell: "Microsoft Windows 8.1 Enterprise",
-			versionPowerShell:    "6.3.9600.0",
+			name: "Windows 8.1 Enterprise",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 8.1 Enterprise",
+				"os_version": "6.3.9600.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 8.1 Enterprise",
 			expectedRelease:      "8.1",
@@ -1850,9 +2454,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 10 1507 (10.0.10240)
 		{
-			name:                 "Windows 10 1507 Home",
-			friendNamePowerShell: "Microsoft Windows 10 Home",
-			versionPowerShell:    "10.0.10240.0",
+			name: "Windows 10 1507 Home",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Home",
+				"os_version": "10.0.10240.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 10 1507 Home",
 			expectedRelease:      "10-1507",
@@ -1863,9 +2472,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 10 1511 (10.0.10586)
 		{
-			name:                 "Windows 10 1511 Pro",
-			friendNamePowerShell: "Microsoft Windows 10 Pro",
-			versionPowerShell:    "10.0.10586.0",
+			name: "Windows 10 1511 Pro",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Pro",
+				"os_version": "10.0.10586.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 10 1511 Pro",
 			expectedRelease:      "10-1511",
@@ -1876,9 +2490,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows Server 2016 (10.0.14393)
 		{
-			name:                 "Windows Server 2016 Datacenter",
-			friendNamePowerShell: "Microsoft Windows Server 2016 Datacenter",
-			versionPowerShell:    "10.0.14393.0",
+			name: "Windows Server 2016 Datacenter",
+			output: `{
+				"os_friendly_name": "Microsoft Windows Server 2016 Datacenter",
+				"os_version": "10.0.14393.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-server",
 			expectedFriendlyName: "Microsoft Windows Server 2016 Datacenter",
 			expectedRelease:      "server-2016",
@@ -1889,9 +2508,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 10 1607 (10.0.14393)
 		{
-			name:                 "Windows 10 1607 Enterprise",
-			friendNamePowerShell: "Microsoft Windows 10 Enterprise",
-			versionPowerShell:    "10.0.14393.0",
+			name: "Windows 10 1607 Enterprise",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Enterprise",
+				"os_version": "10.0.14393.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 10 1607 Enterprise",
 			expectedRelease:      "10-1607",
@@ -1902,9 +2526,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 10 1703 (10.0.15063)
 		{
-			name:                 "Windows 10 1703 Education",
-			friendNamePowerShell: "Microsoft Windows 10 Education",
-			versionPowerShell:    "10.0.15063.0",
+			name: "Windows 10 1703 Education",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Education",
+				"os_version": "10.0.15063.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 10 1703 Education",
 			expectedRelease:      "10-1703",
@@ -1915,9 +2544,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 10 1709 (10.0.16299)
 		{
-			name:                 "Windows 10 1709 Pro",
-			friendNamePowerShell: "Microsoft Windows 10 Pro",
-			versionPowerShell:    "10.0.16299.0",
+			name: "Windows 10 1709 Pro",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Pro",
+				"os_version": "10.0.16299.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 10 1709 Pro",
 			expectedRelease:      "10-1709",
@@ -1928,9 +2562,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 10 1803 (10.0.17134)
 		{
-			name:                 "Windows 10 1803 Home",
-			friendNamePowerShell: "Microsoft Windows 10 Home",
-			versionPowerShell:    "10.0.17134.0",
+			name: "Windows 10 1803 Home",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Home",
+				"os_version": "10.0.17134.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 10 1803 Home",
 			expectedRelease:      "10-1803",
@@ -1941,9 +2580,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows Server 2019 (10.0.17763)
 		{
-			name:                 "Windows Server 2019 Standard",
-			friendNamePowerShell: "Microsoft Windows Server 2019 Standard",
-			versionPowerShell:    "10.0.17763.0",
+			name: "Windows Server 2019 Standard",
+			output: `{
+				"os_friendly_name": "Microsoft Windows Server 2019 Standard",
+				"os_version": "10.0.17763.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-server",
 			expectedFriendlyName: "Microsoft Windows Server 2019 Standard",
 			expectedRelease:      "server-2019",
@@ -1954,9 +2598,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 10 1809 (10.0.17763)
 		{
-			name:                 "Windows 10 1809 Enterprise",
-			friendNamePowerShell: "Microsoft Windows 10 Enterprise",
-			versionPowerShell:    "10.0.17763.0",
+			name: "Windows 10 1809 Enterprise",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Enterprise",
+				"os_version": "10.0.17763.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 10 1809 Enterprise",
 			expectedRelease:      "10-1809",
@@ -1967,9 +2616,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 10 1903 (10.0.18362)
 		{
-			name:                 "Windows 10 1903 Pro",
-			friendNamePowerShell: "Microsoft Windows 10 Pro",
-			versionPowerShell:    "10.0.18362.0",
+			name: "Windows 10 1903 Pro",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Pro",
+				"os_version": "10.0.18362.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 10 1903 Pro",
 			expectedRelease:      "10-1903",
@@ -1980,9 +2634,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows Server 1909 (10.0.18363)
 		{
-			name:                 "Windows Server 1909 Core",
-			friendNamePowerShell: "Microsoft Windows Server Core",
-			versionPowerShell:    "10.0.18363.0",
+			name: "Windows Server 1909 Core",
+			output: `{
+				"os_friendly_name": "Microsoft Windows Server Core",
+				"os_version": "10.0.18363.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-server",
 			expectedFriendlyName: "Microsoft Windows Server 1909 Core",
 			expectedRelease:      "server-1909",
@@ -1993,9 +2652,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 10 1909 (10.0.18363)
 		{
-			name:                 "Windows 10 1909 Home",
-			friendNamePowerShell: "Microsoft Windows 10 Home",
-			versionPowerShell:    "10.0.18363.0",
+			name: "Windows 10 1909 Home",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Home",
+				"os_version": "10.0.18363.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 10 1909 Home",
 			expectedRelease:      "10-1909",
@@ -2006,9 +2670,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows Server 2004 (10.0.19041)
 		{
-			name:                 "Windows Server 2004 Datacenter",
-			friendNamePowerShell: "Microsoft Windows Server 2004 Datacenter",
-			versionPowerShell:    "10.0.19041.0",
+			name: "Windows Server 2004 Datacenter",
+			output: `{
+				"os_friendly_name": "Microsoft Windows Server 2004 Datacenter",
+				"os_version": "10.0.19041.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-server",
 			expectedFriendlyName: "Microsoft Windows Server 2004 Datacenter",
 			expectedRelease:      "server-2004",
@@ -2019,9 +2688,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 10 2004 (10.0.19041)
 		{
-			name:                 "Windows 10 2004 Education",
-			friendNamePowerShell: "Microsoft Windows 10 Education",
-			versionPowerShell:    "10.0.19041.0",
+			name: "Windows 10 2004 Education",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Education",
+				"os_version": "10.0.19041.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 10 2004 Education",
 			expectedRelease:      "10-2004",
@@ -2032,9 +2706,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows Server 20H2 (10.0.19042)
 		{
-			name:                 "Windows Server 20H2 Standard",
-			friendNamePowerShell: "Microsoft Windows Server 20H2 Standard",
-			versionPowerShell:    "10.0.19042.0",
+			name: "Windows Server 20H2 Standard",
+			output: `{
+				"os_friendly_name": "Microsoft Windows Server 20H2 Standard",
+				"os_version": "10.0.19042.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-server",
 			expectedFriendlyName: "Microsoft Windows Server 20H2 Standard",
 			expectedRelease:      "server-20h2",
@@ -2045,9 +2724,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 10 20H2 (10.0.19042)
 		{
-			name:                 "Windows 10 20H2 Pro",
-			friendNamePowerShell: "Microsoft Windows 10 Pro",
-			versionPowerShell:    "10.0.19042.0",
+			name: "Windows 10 20H2 Pro",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Pro",
+				"os_version": "10.0.19042.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 10 20H2 Pro",
 			expectedRelease:      "10-20h2",
@@ -2058,9 +2742,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 10 21H1 (10.0.19043)
 		{
-			name:                 "Windows 10 21H1 Enterprise",
-			friendNamePowerShell: "Microsoft Windows 10 Enterprise",
-			versionPowerShell:    "10.0.19043.0",
+			name: "Windows 10 21H1 Enterprise",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Enterprise",
+				"os_version": "10.0.19043.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 10 21H1 Enterprise",
 			expectedRelease:      "10-21h1",
@@ -2071,9 +2760,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 10 21H2 (10.0.19044)
 		{
-			name:                 "Windows 10 21H2 Home",
-			friendNamePowerShell: "Microsoft Windows 10 Home",
-			versionPowerShell:    "10.0.19044.0",
+			name: "Windows 10 21H2 Home",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Home",
+				"os_version": "10.0.19044.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 10 21H2 Home",
 			expectedRelease:      "10-21h2",
@@ -2084,9 +2778,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 10 22H2 (10.0.19045)
 		{
-			name:                 "Windows 10 22H2 Pro",
-			friendNamePowerShell: "Microsoft Windows 10 Pro",
-			versionPowerShell:    "10.0.19045.0",
+			name: "Windows 10 22H2 Pro",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 10 Pro",
+				"os_version": "10.0.19045.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 10 22H2 Pro",
 			expectedRelease:      "10-22h2",
@@ -2097,9 +2796,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows Server 2022 (10.0.20348)
 		{
-			name:                 "Windows Server 2022 Datacenter",
-			friendNamePowerShell: "Microsoft Windows Server 2022 Datacenter",
-			versionPowerShell:    "10.0.20348.0",
+			name: "Windows Server 2022 Datacenter",
+			output: `{
+				"os_friendly_name": "Microsoft Windows Server 2022 Datacenter",
+				"os_version": "10.0.20348.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-server",
 			expectedFriendlyName: "Microsoft Windows Server 2022 Datacenter",
 			expectedRelease:      "server-2022",
@@ -2110,9 +2814,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 11 21H2 (10.0.22000)
 		{
-			name:                 "Windows 11 21H2 Home",
-			friendNamePowerShell: "Microsoft Windows 11 Home",
-			versionPowerShell:    "10.0.22000.0",
+			name: "Windows 11 21H2 Home",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 11 Home",
+				"os_version": "10.0.22000.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 11 21H2 Home",
 			expectedRelease:      "11-21h2",
@@ -2123,9 +2832,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 11 22H2 (10.0.22621)
 		{
-			name:                 "Windows 11 22H2 Pro",
-			friendNamePowerShell: "Microsoft Windows 11 Pro",
-			versionPowerShell:    "10.0.22621.0",
+			name: "Windows 11 22H2 Pro",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 11 Pro",
+				"os_version": "10.0.22621.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 11 22H2 Pro",
 			expectedRelease:      "11-22h2",
@@ -2136,9 +2850,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 11 23H2 (10.0.22631)
 		{
-			name:                 "Windows 11 23H2 Enterprise",
-			friendNamePowerShell: "Microsoft Windows 11 Enterprise",
-			versionPowerShell:    "10.0.22631.0",
+			name: "Windows 11 23H2 Enterprise",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 11 Enterprise",
+				"os_version": "10.0.22631.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 11 23H2 Enterprise",
 			expectedRelease:      "11-23h2",
@@ -2149,9 +2868,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows Server 23H2 (10.0.25398)
 		{
-			name:                 "Windows Server 23H2 Standard",
-			friendNamePowerShell: "Microsoft Windows Server 23H2 Standard",
-			versionPowerShell:    "10.0.25398.0",
+			name: "Windows Server 23H2 Standard",
+			output: `{
+				"os_friendly_name": "Microsoft Windows Server 23H2 Standard",
+				"os_version": "10.0.25398.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-server",
 			expectedFriendlyName: "Microsoft Windows Server 23H2 Standard",
 			expectedRelease:      "server-23h2",
@@ -2162,9 +2886,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows Server 2025 (10.0.26100)
 		{
-			name:                 "Windows Server 2025 Datacenter Evaluation",
-			friendNamePowerShell: "Microsoft Windows Server 2025 Datacenter Evaluation",
-			versionPowerShell:    "10.0.26100.0",
+			name: "Windows Server 2025 Datacenter Evaluation",
+			output: `{
+				"os_friendly_name": "Microsoft Windows Server 2025 Datacenter Evaluation",
+				"os_version": "10.0.26100.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-server",
 			expectedFriendlyName: "Microsoft Windows Server 2025 Datacenter",
 			expectedRelease:      "server-2025",
@@ -2175,9 +2904,14 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 		},
 		// Windows 11 24H2 (10.0.26100)
 		{
-			name:                 "Windows 11 24H2 Education",
-			friendNamePowerShell: "Microsoft Windows 11 Education",
-			versionPowerShell:    "10.0.26100.0",
+			name: "Windows 11 24H2 Education",
+			output: `{
+				"os_friendly_name": "Microsoft Windows 11 Education",
+				"os_version": "10.0.26100.0",
+				"os_bits": "64-bit",
+				"processor_arch": "AMD64"
+				}
+				`,
 			expectedID:           "windows-client",
 			expectedFriendlyName: "Microsoft Windows 11 24H2 Education",
 			expectedRelease:      "11-24h2",
@@ -2191,102 +2925,246 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			osInfo := newOSInfo()
+			info := newOSInfo()
 
-			transport := newMockTransport()
-			transport.commandResponses["uname -s"] = &commandResponse{
-				err: errors.New("command not found"),
+			transport := mock.NewWinMockTransport()
+			transport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &mock.CommandResult{
+				Stdout: "5.1.19041.1237",
 			}
-
-			transport.powerShellResponses[osFriendlyNamePowerShell] = &commandResponse{
-				stdout: tt.friendNamePowerShell + "\n",
-			}
-			transport.powerShellResponses[osVersionPowerShell] = &commandResponse{
-				stdout: tt.versionPowerShell + "\n",
-			}
-			transport.powerShellResponses[procArchPowerShell] = &commandResponse{
-				stdout: "AMD64\n",
-			}
-			transport.powerShellResponses[osArchPowerShell] = &commandResponse{
-				stdout: "64-bit\n",
+			transport.PowerShellResults[windowsOSDiscoveryScript] = &mock.CommandResult{
+				Stdout: tt.output,
 			}
 
-			err := osInfo.populateOSInfo(transport, transport.fileSystem)
-			if err != nil {
-				t.Fatalf("expected no error for Windows family, got: %v", err)
+			diags := info.populateOSInfo(transport)
+
+			if diags.HasErrors() {
+				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
 
-			if !osInfo.families.Contains("windows") {
-				t.Error("expected 'windows' family to be added, but it was not")
+			if diags.HasWarnings() {
+				t.Fatalf("expected no warnings, got: %v", diags.Warnings())
 			}
 
-			if !osInfo.families.Contains(tt.expectedID) {
+			expectedKernel := "windows"
+			if !info.Families().Contains(expectedKernel) {
+				t.Errorf("expected family %q to be added, but it was not", expectedKernel)
+			}
+
+			if !info.Families().Contains(tt.expectedID) {
 				t.Errorf("expected family %q to be added, but it was not", tt.expectedID)
 			}
 
-			if osInfo.id != tt.expectedID {
-				t.Errorf("expected OS ID to be %q, got: %s", tt.expectedID, osInfo.id)
+			if info.Kernel() != expectedKernel {
+				t.Errorf("expected kernel to be %q, got: %q", expectedKernel, info.Kernel())
 			}
 
-			if osInfo.friendlyName != tt.expectedFriendlyName {
-				t.Errorf("expected friendly name to be %q, got: %s", tt.expectedFriendlyName, osInfo.friendlyName)
+			if info.ID() != tt.expectedID {
+				t.Errorf("expected OS ID to be %q, got: %q", tt.expectedID, info.ID())
 			}
 
-			if osInfo.release != tt.expectedRelease {
-				t.Errorf("expected release to be %q, got: %s", tt.expectedRelease, osInfo.release)
+			if info.FriendlyName() != tt.expectedFriendlyName {
+				t.Errorf("expected friendly name to be %q, got: %q", tt.expectedFriendlyName, info.FriendlyName())
 			}
 
-			if osInfo.majorVersion != tt.expectedMajorVersion {
-				t.Errorf("expected major version to be %q, got: %s", tt.expectedMajorVersion, osInfo.majorVersion)
+			if info.Release() != tt.expectedRelease {
+				t.Errorf("expected release to be %q, got: %q", tt.expectedRelease, info.Release())
 			}
 
-			if osInfo.version != tt.expectedVersion {
-				t.Errorf("expected version to be %q, got: %s", tt.expectedVersion, osInfo.version)
+			if info.MajorVersion() != tt.expectedMajorVersion {
+				t.Errorf("expected major version to be %q, got: %q", tt.expectedMajorVersion, info.MajorVersion())
 			}
 
-			if osInfo.edition != tt.expectedEdition {
-				t.Errorf("expected edition to be %q, got: %s", tt.expectedEdition, osInfo.edition)
+			if info.Version() != tt.expectedVersion {
+				t.Errorf("expected version to be %q, got: %q", tt.expectedVersion, info.Version())
 			}
 
-			if osInfo.editionId != tt.expectedEditionId {
-				t.Errorf("expected edition ID to be %q, got: %s", tt.expectedEditionId, osInfo.editionId)
+			if info.Edition() != tt.expectedEdition {
+				t.Errorf("expected edition to be %q, got: %q", tt.expectedEdition, info.Edition())
+			}
+
+			if info.EditionID() != tt.expectedEditionId {
+				t.Errorf("expected edition ID to be %q, got: %q", tt.expectedEditionId, info.EditionID())
 			}
 		})
 	}
 }
 
-func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
-	osInfo := newOSInfo()
-	osInfo.families.Add("linux")
-	osInfo.families.Add("debian")
-	osInfo.families.Add("ubuntu")
-	osInfo.id = "ubuntu"
-	osInfo.friendlyName = "Ubuntu 22.04.3 LTS"
-	osInfo.release = "jammy"
-	osInfo.majorVersion = "22"
-	osInfo.version = "22.04"
-	osInfo.edition = "LTS"
-	osInfo.editionId = "lts"
-	osInfo.osArch = "amd64"
-	osInfo.osArchBits = 64
-	osInfo.procArch = "amd64"
-	osInfo.procArchBits = 64
+func TestOSInfo_PopulateOSInfo_Windows_Error(t *testing.T) {
 
-	values := osInfo.toMapOfCtyValues()
+	info := newOSInfo()
+
+	transport := mock.NewWinMockTransport()
+	transport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &mock.CommandResult{
+		Stdout: "5.1.19041.1237",
+	}
+	transport.PowerShellResults[windowsOSDiscoveryScript] = &mock.CommandResult{
+		Err: os.ErrPermission,
+	}
+
+	diags := info.populateOSInfo(transport)
+
+	if !diags.HasErrors() {
+		t.Fatalf("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if info.Families().Size() != 1 {
+		t.Errorf("expected 1 family, got: %d", info.Families().Size())
+	}
+
+	expectedKernel := "windows"
+	if !info.Families().Contains(expectedKernel) {
+		t.Errorf("expected family %q to be present, but it was not", expectedKernel)
+	}
+
+	if info.Kernel() != expectedKernel {
+		t.Errorf("expected kernel to be %q, got: %q", expectedKernel, info.Kernel())
+	}
+
+	if info.ID() != "" {
+		t.Errorf("expected ID to be empty, got: %q", info.ID())
+	}
+
+	if info.ProcArch() != "" {
+		t.Errorf("expected processor architecture to be empty, got: %q", info.ProcArch())
+	}
+
+	if info.ProcArchBits() != 0 {
+		t.Errorf("expected processor architecture bits to be 0, got: %d", info.ProcArchBits())
+	}
+
+	if info.OSArch() != "" {
+		t.Errorf("expected OS architecture to be empty, got: %q", info.OSArch())
+	}
+
+	if info.OSArchBits() != 0 {
+		t.Errorf("expected OS architecture bits to be 0, got: %d", info.OSArchBits())
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to get Windows OS information"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected error summary to be %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error executing Windows discovery script: permission denied"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected error detail to be %q, got: %q", expectedDetail, errors[0].Detail)
+	}
+}
+
+func TestOSInfo_PopulateOSInfo_Windows_NotJSON(t *testing.T) {
+
+	info := newOSInfo()
+
+	transport := mock.NewWinMockTransport()
+	transport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &mock.CommandResult{
+		Stdout: "5.1.19041.1237",
+	}
+	transport.PowerShellResults[windowsOSDiscoveryScript] = &mock.CommandResult{
+		Stdout: "This is not JSON output",
+	}
+
+	diags := info.populateOSInfo(transport)
+
+	if !diags.HasErrors() {
+		t.Fatalf("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if info.Families().Size() != 1 {
+		t.Errorf("expected 1 family, got: %d", info.Families().Size())
+	}
+
+	expectedKernel := "windows"
+	if !info.Families().Contains(expectedKernel) {
+		t.Errorf("expected family %q to be present, but it was not", expectedKernel)
+	}
+
+	if info.Kernel() != expectedKernel {
+		t.Errorf("expected kernel to be %q, got: %q", expectedKernel, info.Kernel())
+	}
+
+	if info.ID() != "" {
+		t.Errorf("expected ID to be empty, got: %q", info.ID())
+	}
+
+	if info.ProcArch() != "" {
+		t.Errorf("expected processor architecture to be empty, got: %q", info.ProcArch())
+	}
+
+	if info.ProcArchBits() != 0 {
+		t.Errorf("expected processor architecture bits to be 0, got: %d", info.ProcArchBits())
+	}
+
+	if info.OSArch() != "" {
+		t.Errorf("expected OS architecture to be empty, got: %q", info.OSArch())
+	}
+
+	if info.OSArchBits() != 0 {
+		t.Errorf("expected OS architecture bits to be 0, got: %d", info.OSArchBits())
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to parse Windows discovery output"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected error summary to be %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error parsing JSON output: invalid character 'T' looking for beginning of value"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected error detail to be %q, got: %q", expectedDetail, errors[0].Detail)
+	}
+}
+
+func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
+
+	info := newOSInfo()
+	info.families.Add("linux")
+	info.families.Add("debian")
+	info.families.Add("ubuntu")
+	info.kernel = "linux"
+	info.id = "ubuntu"
+	info.friendlyName = "Ubuntu 22.04.3 LTS"
+	info.release = "jammy"
+	info.majorVersion = "22"
+	info.version = "22.04"
+	info.edition = "LTS"
+	info.editionID = "lts"
+	info.osArch = "amd64"
+	info.osArchBits = 64
+	info.procArch = "amd64"
+	info.procArchBits = 64
+
+	values := info.toMapOfCtyValues()
 
 	if values["os_families"].Type() != cty.Set(cty.String) {
-		t.Errorf("expected os_families to be a set of strings, got %s", values["os_families"].Type().GoString())
+		t.Errorf("expected os_families to be a set of strings, got: %s", values["os_families"].Type().GoString())
 	}
 
 	families := values["os_families"].AsValueSlice()
 
 	if len(families) != 3 {
-		t.Errorf("expected 3 families, got %d", len(families))
+		t.Errorf("expected 3 families, got: %d", len(families))
 	}
 
 	for _, family := range families {
 		if family.Type() != cty.String {
-			t.Errorf("expected family to be a string, got %s", family.Type().GoString())
+			t.Errorf("expected family to be a string, got: %s", family.Type().GoString())
 		}
 
 		if family.AsString() != "linux" && family.AsString() != "debian" && family.AsString() != "ubuntu" {
@@ -2294,90 +3172,98 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 		}
 	}
 
+	if values["os_kernel"].Type() != cty.String {
+		t.Errorf("expected os_kernel to be a string, got: %s", values["os_kernel"].Type().GoString())
+	}
+	if values["os_kernel"].AsString() != "linux" {
+		t.Errorf("expected os_kernel to be 'linux', got: %s", values["os_kernel"].AsString())
+	}
+
 	if values["os_id"].Type() != cty.String {
-		t.Errorf("expected os_id to be a string, got %s", values["os_id"].Type().GoString())
+		t.Errorf("expected os_id to be a string, got: %s", values["os_id"].Type().GoString())
 	}
 	if values["os_id"].AsString() != "ubuntu" {
-		t.Errorf("expected os_id to be 'ubuntu', got %s", values["os_id"].AsString())
+		t.Errorf("expected os_id to be 'ubuntu', got: %s", values["os_id"].AsString())
 	}
 
 	if values["os_friendly_name"].Type() != cty.String {
-		t.Errorf("expected os_friendly_name to be a string, got %s", values["os_friendly_name"].Type().GoString())
+		t.Errorf("expected os_friendly_name to be a string, got: %s", values["os_friendly_name"].Type().GoString())
 	}
 	if values["os_friendly_name"].AsString() != "Ubuntu 22.04.3 LTS" {
-		t.Errorf("expected os_friendly_name to be 'Ubuntu 22.04.3 LTS', got %s", values["os_friendly_name"].AsString())
+		t.Errorf("expected os_friendly_name to be 'Ubuntu 22.04.3 LTS', got: %s", values["os_friendly_name"].AsString())
 	}
 
 	if values["os_release"].Type() != cty.String {
-		t.Errorf("expected os_release to be a string, got %s", values["os_release"].Type().GoString())
+		t.Errorf("expected os_release to be a string, got: %s", values["os_release"].Type().GoString())
 	}
 	if values["os_release"].AsString() != "jammy" {
-		t.Errorf("expected os_release to be 'jammy', got %s", values["os_release"].AsString())
+		t.Errorf("expected os_release to be 'jammy', got: %s", values["os_release"].AsString())
 	}
 
 	if values["os_major_version"].Type() != cty.String {
-		t.Errorf("expected os_major_version to be a string, got %s", values["os_major_version"].Type().GoString())
+		t.Errorf("expected os_major_version to be a string, got: %s", values["os_major_version"].Type().GoString())
 	}
 	if values["os_major_version"].AsString() != "22" {
-		t.Errorf("expected os_major_version to be '22', got %s", values["os_major_version"].AsString())
+		t.Errorf("expected os_major_version to be '22', got: %s", values["os_major_version"].AsString())
 	}
 
 	if values["os_version"].Type() != cty.String {
-		t.Errorf("expected os_version to be a string, got %s", values["os_version"].Type().GoString())
+		t.Errorf("expected os_version to be a string, got: %s", values["os_version"].Type().GoString())
 	}
 	if values["os_version"].AsString() != "22.04" {
-		t.Errorf("expected os_version to be '22.04', got %s", values["os_version"].AsString())
+		t.Errorf("expected os_version to be '22.04', got: %s", values["os_version"].AsString())
 	}
 
 	if values["os_edition"].Type() != cty.String {
-		t.Errorf("expected os_edition to be a string, got %s", values["os_edition"].Type().GoString())
+		t.Errorf("expected os_edition to be a string, got: %s", values["os_edition"].Type().GoString())
 	}
 	if values["os_edition"].AsString() != "LTS" {
-		t.Errorf("expected os_edition to be 'LTS', got %s", values["os_edition"].AsString())
+		t.Errorf("expected os_edition to be 'LTS', got: %s", values["os_edition"].AsString())
 	}
 
 	if values["os_edition_id"].Type() != cty.String {
-		t.Errorf("expected os_edition_id to be a string, got %s", values["os_edition_id"].Type().GoString())
+		t.Errorf("expected os_edition_id to be a string, got: %s", values["os_edition_id"].Type().GoString())
 	}
 	if values["os_edition_id"].AsString() != "lts" {
-		t.Errorf("expected os_edition_id to be 'lts', got %s", values["os_edition_id"].AsString())
+		t.Errorf("expected os_edition_id to be 'lts', got: %s", values["os_edition_id"].AsString())
 	}
 
 	if values["os_architecture"].Type() != cty.String {
-		t.Errorf("expected os_architecture to be a string, got %s", values["os_architecture"].Type().GoString())
+		t.Errorf("expected os_architecture to be a string, got: %s", values["os_architecture"].Type().GoString())
 	}
 	if values["os_architecture"].AsString() != "amd64" {
-		t.Errorf("expected os_architecture to be 'amd64', got %s", values["os_architecture"].AsString())
+		t.Errorf("expected os_architecture to be 'amd64', got: %s", values["os_architecture"].AsString())
 	}
 
 	if values["processor_architecture"].Type() != cty.String {
-		t.Errorf("expected processor_architecture to be a string, got %s", values["processor_architecture"].Type().GoString())
+		t.Errorf("expected processor_architecture to be a string, got: %s", values["processor_architecture"].Type().GoString())
 	}
 	if values["processor_architecture"].AsString() != "amd64" {
-		t.Errorf("expected processor_architecture to be 'amd64', got %s", values["processor_architecture"].AsString())
+		t.Errorf("expected processor_architecture to be 'amd64', got: %s", values["processor_architecture"].AsString())
 	}
 
 	if values["os_architecture_bits"].Type() != cty.Number {
-		t.Errorf("expected os_architecture_bits to be a number, got %s", values["os_architecture_bits"].Type().GoString())
+		t.Errorf("expected os_architecture_bits to be a number, got: %s", values["os_architecture_bits"].Type().GoString())
 	}
 	value, _ := values["os_architecture_bits"].AsBigFloat().Int64()
 	if value != 64 {
-		t.Errorf("expected os_architecture_bits to be 64, got %s", values["os_architecture_bits"].AsString())
+		t.Errorf("expected os_architecture_bits to be 64, got: %s", values["os_architecture_bits"].AsString())
 	}
 
 	if values["processor_architecture_bits"].Type() != cty.Number {
-		t.Errorf("expected processor_architecture_bits to be a number, got %s", values["processor_architecture_bits"].Type().GoString())
+		t.Errorf("expected processor_architecture_bits to be a number, got: %s", values["processor_architecture_bits"].Type().GoString())
 	}
 	value, _ = values["processor_architecture_bits"].AsBigFloat().Int64()
 	if value != 64 {
-		t.Errorf("expected processor_architecture_bits to be 64, got %s", values["processor_architecture_bits"].AsString())
+		t.Errorf("expected processor_architecture_bits to be 64, got: %s", values["processor_architecture_bits"].AsString())
 	}
 }
 
 func TestOSInfo_ToMapOfCtyValues_EmptyValues(t *testing.T) {
-	osInfo := newOSInfo()
 
-	values := osInfo.toMapOfCtyValues()
+	info := newOSInfo()
+
+	values := info.toMapOfCtyValues()
 
 	numberKeys := []string{
 		"os_architecture_bits",
@@ -2385,6 +3271,7 @@ func TestOSInfo_ToMapOfCtyValues_EmptyValues(t *testing.T) {
 	}
 
 	stringKeys := []string{
+		"os_kernel",
 		"os_id",
 		"os_friendly_name",
 		"os_release",
@@ -2403,10 +3290,10 @@ func TestOSInfo_ToMapOfCtyValues_EmptyValues(t *testing.T) {
 	for _, key := range numberKeys {
 		if value, exists := values[key]; exists {
 			if !value.IsNull() {
-				t.Errorf("expected %s to be null, got %s", key, value.GoString())
+				t.Errorf("expected %s to be null, got: %s", key, value.GoString())
 			}
 			if value.Type() != cty.Number {
-				t.Errorf("expected %s to be of type Number, got %s", key, value.Type().GoString())
+				t.Errorf("expected %s to be of type Number, got: %s", key, value.Type().GoString())
 			}
 		} else {
 			t.Errorf("expected key %q to be present in values map", key)
@@ -2416,10 +3303,10 @@ func TestOSInfo_ToMapOfCtyValues_EmptyValues(t *testing.T) {
 	for _, key := range stringKeys {
 		if value, exists := values[key]; exists {
 			if !value.IsNull() {
-				t.Errorf("expected %s to be null, got %s", key, value.GoString())
+				t.Errorf("expected %s to be null, got: %s", key, value.GoString())
 			}
 			if value.Type() != cty.String {
-				t.Errorf("expected %s to be of type String, got %s", key, value.Type().GoString())
+				t.Errorf("expected %s to be of type String, got: %s", key, value.Type().GoString())
 			}
 		} else {
 			t.Errorf("expected key %q to be present in values map", key)
@@ -2429,7 +3316,7 @@ func TestOSInfo_ToMapOfCtyValues_EmptyValues(t *testing.T) {
 	for _, key := range setOfStringsKeys {
 		if value, exists := values[key]; exists {
 			if !value.IsNull() {
-				t.Errorf("expected %s to be null, got %s", key, value.GoString())
+				t.Errorf("expected %s to be null, got: %s", key, value.GoString())
 			}
 			if value.Type() != cty.Set(cty.String) {
 				t.Errorf("expected %s to be of type Set(String), got %s", key, value.Type().GoString())

@@ -1,628 +1,3180 @@
 package info
 
 import (
-	"errors"
+	"os"
 	"testing"
 
-	"github.com/trippsoft/forge/internal/util"
+	"github.com/trippsoft/forge/internal/transport/mock"
+	"github.com/zclconf/go-cty/cty"
 )
 
-func TestPackageManagerInfo_PopulatePackageManagerInfo_Windows(t *testing.T) {
-	osInfo := &osInfo{
-		families: util.NewSet("windows"),
+func TestPackageManagerInfo_PopulatePackageManagerInfo_NoOS(t *testing.T) {
+
+	osInfo := newOSInfo()
+
+	transport := mock.NewMockTransport()
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
 
-	transport := newMockTransport()
-	fileSystem := transport.FileSystem()
-
-	pmInfo := newPackageManagerInfo()
-	err := pmInfo.populatePackageManagerInfo(osInfo, transport, fileSystem)
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if !diags.HasWarnings() {
+		t.Error("Expected warnings, got none")
 	}
 
-	if pmInfo.supported {
-		t.Error("expected package manager to be unsupported on Windows")
+	if info.Name() != "" {
+		t.Errorf("Expected empty package manager name, got: %q", info.Name())
 	}
 
-	if pmInfo.name != "" {
-		t.Errorf("expected empty name, got %q", pmInfo.name)
+	if info.Path() != "" {
+		t.Errorf("Expected empty package manager path, got: %q", info.Path())
 	}
 
-	if pmInfo.path != "" {
-		t.Errorf("expected empty path, got %q", pmInfo.path)
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Missing OS information"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "Skipping package manager information collection due to missing or invalid OS info"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
 	}
 }
 
-func TestPackageManagerInfo_PopulatePackageManagerInfo_EL(t *testing.T) {
-	testCases := []struct {
-		name       string
-		packageMgr string
-		expectName string
-		osTreeBoot bool
+func TestPackageManagerInfo_PopulatePackageManagerInfo_Windows(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "windows-server"
+	osInfo.families.Add("windows")
+
+	transport := mock.NewMockTransport()
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if diags.HasWarnings() {
+		t.Errorf("Expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if info.Name() != "" {
+		t.Errorf("Expected empty package manager name, got: %q", info.Name())
+	}
+
+	if info.Path() != "" {
+		t.Errorf("Expected empty package manager path, got: %q", info.Path())
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_Darwin(t *testing.T) {
+
+	tests := []struct {
+		name         string
+		output       string
+		expectedName string
+		expectedPath string
 	}{
 		{
-			name:       "dnf5",
-			packageMgr: "/usr/bin/dnf5",
-			expectName: "dnf5",
-			osTreeBoot: false,
+			name: "/opt/homebrew/bin/brew",
+			output: `{
+			  "qopensys_pkgs_bin_yum_exists": "0",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "1",
+			  "usr_local_bin_brew_exists": "1",
+			  "opt_local_bin_port_exists": "1",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+			expectedName: "homebrew",
+			expectedPath: "/opt/homebrew/bin/brew",
 		},
 		{
-			name:       "dnf",
-			packageMgr: "/usr/bin/dnf",
-			expectName: "dnf",
-			osTreeBoot: false,
+			name: "/usr/local/bin/brew",
+			output: `{
+			  "qopensys_pkgs_bin_yum_exists": "0",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "1",
+			  "opt_local_bin_port_exists": "1",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+			expectedName: "homebrew",
+			expectedPath: "/usr/local/bin/brew",
 		},
 		{
-			name:       "yum",
-			packageMgr: "/usr/bin/yum",
-			expectName: "yum",
-			osTreeBoot: false,
-		},
-		{
-			name:       "ostree_booted",
-			packageMgr: "/usr/bin/dnf",
-			expectName: "",
-			osTreeBoot: true,
+			name: "/opt/local/bin/port",
+			output: `{
+			  "qopensys_pkgs_bin_yum_exists": "0",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "1",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+			expectedName: "macports",
+			expectedPath: "/opt/local/bin/port",
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			osInfo := &osInfo{
-				families: util.NewSet("linux", "el"),
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			osInfo := newOSInfo()
+			osInfo.id = "macos"
+			osInfo.families.Add("darwin")
+			osInfo.families.Add("macos")
+
+			transport := mock.NewMockTransport()
+			transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+				Stdout: tt.output,
 			}
 
-			transport := newMockTransport()
+			info := newPackageManagerInfo()
+			diags := info.populatePackageManagerInfo(osInfo, transport)
 
-			fileSystem := transport.fileSystem
-
-			// Add package manager file
-			if tc.packageMgr != "" {
-				fileSystem.files[tc.packageMgr] = &mockFile{
-					info: &mockFileInfo{
-						name:  "packagemgr",
-						isDir: false,
-						mode:  0755,
-					},
-				}
+			if diags.HasErrors() {
+				t.Errorf("Expected no error, got: %v", diags.Errors())
 			}
 
-			// Add or omit ostree-booted file
-			if tc.osTreeBoot {
-				fileSystem.files["/run/ostree-booted"] = &mockFile{
-					info: &mockFileInfo{
-						name:  "ostree-booted",
-						isDir: false,
-						mode:  0644,
-					},
-				}
+			if diags.HasWarnings() {
+				t.Errorf("Expected no warnings, got: %v", diags.Warnings())
 			}
 
-			pmInfo := newPackageManagerInfo()
-			err := pmInfo.populatePackageManagerInfo(osInfo, transport, fileSystem)
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
+			if info.Name() != tt.expectedName {
+				t.Errorf("Expected package manager name %q, got: %q", tt.expectedName, info.Name())
 			}
 
-			if tc.osTreeBoot {
-				if pmInfo.supported {
-					t.Error("expected package manager to be unsupported on OSTree system")
-				}
-				return
-			}
-
-			if tc.expectName == "" {
-				if pmInfo.supported {
-					t.Error("expected package manager to be unsupported")
-				}
-				return
-			}
-
-			if !pmInfo.supported {
-				t.Error("expected package manager to be supported")
-			}
-
-			if pmInfo.name != tc.expectName {
-				t.Errorf("expected name %q, got %q", tc.expectName, pmInfo.name)
-			}
-
-			if pmInfo.path != tc.packageMgr {
-				t.Errorf("expected path %q, got %q", tc.packageMgr, pmInfo.path)
+			if info.Path() != tt.expectedPath {
+				t.Errorf("Expected package manager path %q, got: %q", tt.expectedPath, info.Path())
 			}
 		})
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_Darwin_NotFound(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "macos"
+	osInfo.families.Add("darwin")
+	osInfo.families.Add("macos")
+
+	transport := mock.NewMockTransport()
+
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "0",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+	}
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if !diags.HasWarnings() {
+		t.Errorf("Expected warnings, got: %v", diags.Warnings())
+	}
+
+	if info.Name() != "" {
+		t.Errorf("Expected empty package manager name, got: %q", info.Name())
+	}
+
+	if info.Path() != "" {
+		t.Errorf("Expected empty package manager path, got: %q", info.Path())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got: %d", len(warnings))
+	}
+
+	expectedSummary := "No package manager found"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "No known package manager found for macOS. Please ensure Homebrew or MacPorts is installed."
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "archlinux"
+	osInfo.families.Add("archlinux")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "1",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+	}
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if diags.HasWarnings() {
+		t.Errorf("Expected no warnings, got: %v", diags.Warnings())
+	}
+
+	expectedName := "pacman"
+	if info.Name() != expectedName {
+		t.Errorf("Expected package manager name %q, got: %q", expectedName, info.Name())
+	}
+
+	expectedPath := "/usr/bin/pacman"
+	if info.Path() != expectedPath {
+		t.Errorf("Expected package manager path %q, got: %q", expectedPath, info.Path())
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux_NotPacman(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "archlinux"
+	osInfo.families.Add("archlinux")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+	}
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if !diags.HasWarnings() {
+		t.Error("Expected warnings, got none")
+	}
+
+	expectedName := "yum"
+	if info.Name() != expectedName {
+		t.Errorf("Expected package manager name %q, got: %q", expectedName, info.Name())
+	}
+
+	expectedPath := "/QOpenSys/pkgs/bin/yum"
+	if info.Path() != expectedPath {
+		t.Errorf("Expected package manager path %q, got: %q", expectedPath, info.Path())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Primary package manager not found"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "The primary package manager for Arch Linux (pacman) was not found"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux_NotFound(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "archlinux"
+	osInfo.families.Add("archlinux")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "0",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+	}
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if !diags.HasWarnings() {
+		t.Error("Expected warnings, got none")
+	}
+
+	if info.Name() != "" {
+		t.Errorf("Expected empty package manager name, got: %q", info.Name())
+	}
+
+	if info.Path() != "" {
+		t.Errorf("Expected empty package manager path, got: %q", info.Path())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 2 {
+		t.Fatalf("Expected 2 warnings, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Primary package manager not found"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "The primary package manager for Arch Linux (pacman) was not found"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+
+	expectedSummary = "No package manager found"
+	if warnings[1].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[1].Summary)
+	}
+
+	expectedDetail = "No known package manager found"
+	if warnings[1].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[1].Detail)
 	}
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian(t *testing.T) {
-	osInfo := &osInfo{
-		families: util.NewSet("linux", "debian"),
-	}
 
-	mockFS := &mockFileSystem{
-		files: map[string]*mockFile{
-			"/usr/bin/apt-get": {
-				info: &mockFileInfo{
-					name:  "apt-get",
-					isDir: false,
-					mode:  0755,
-				},
-			},
+	tests := []struct {
+		name         string
+		output       string
+		expectedName string
+		expectedPath string
+	}{
+		{
+			name: "apt",
+			output: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "1",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+			expectedName: "apt",
+			expectedPath: "/usr/bin/apt-get",
 		},
-		dirs: make(map[string]*mockFileInfo),
+		{
+			name: "apt-rpm",
+			output: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "1",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": "apt-2.9.8-1.el9.x86_64"
+			}
+			`,
+			expectedName: "apt-rpm",
+			expectedPath: "/usr/bin/apt-get",
+		},
 	}
 
-	mockTransport := &mockTransport{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 
-	pmInfo := newPackageManagerInfo()
-	err := pmInfo.populatePackageManagerInfo(osInfo, mockTransport, mockFS)
+			osInfo := newOSInfo()
+			osInfo.id = "debian"
+			osInfo.families.Add("debian")
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+			transport := mock.NewMockTransport()
+			transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+				Stdout: tt.output,
+			}
+
+			info := newPackageManagerInfo()
+			diags := info.populatePackageManagerInfo(osInfo, transport)
+
+			if diags.HasErrors() {
+				t.Errorf("Expected no error, got: %v", diags.Errors())
+			}
+
+			if diags.HasWarnings() {
+				t.Errorf("Expected no warnings, got: %v", diags.Warnings())
+			}
+
+			if info.Name() != tt.expectedName {
+				t.Errorf("Expected package manager name %q, got: %q", tt.expectedName, info.Name())
+			}
+
+			if info.Path() != tt.expectedPath {
+				t.Errorf("Expected package manager path %q, got: %q", tt.expectedPath, info.Path())
+			}
+		})
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian_NotApt(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "debian"
+	osInfo.families.Add("debian")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
 	}
 
-	if !pmInfo.supported {
-		t.Error("expected package manager to be supported")
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
 
-	if pmInfo.name != "apt" {
-		t.Errorf("expected name 'apt', got %q", pmInfo.name)
+	if !diags.HasWarnings() {
+		t.Error("Expected warnings, got none")
 	}
 
-	if pmInfo.path != "/usr/bin/apt-get" {
-		t.Errorf("expected path '/usr/bin/apt-get', got %q", pmInfo.path)
+	expectedName := "yum"
+	if info.Name() != expectedName {
+		t.Errorf("Expected package manager name %q, got: %q", expectedName, info.Name())
+	}
+
+	expectedPath := "/QOpenSys/pkgs/bin/yum"
+	if info.Path() != expectedPath {
+		t.Errorf("Expected package manager path %q, got: %q", expectedPath, info.Path())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Primary package manager not found"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "The primary package manager for Debian or AltLinux (apt) was not found"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian_NotFound(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "debian"
+	osInfo.families.Add("debian")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "0",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+	}
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if !diags.HasWarnings() {
+		t.Error("Expected warnings, got none")
+	}
+
+	if info.Name() != "" {
+		t.Errorf("Expected empty package manager name, got: %q", info.Name())
+	}
+
+	if info.Path() != "" {
+		t.Errorf("Expected empty package manager path, got: %q", info.Path())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 2 {
+		t.Fatalf("Expected 2 warnings, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Primary package manager not found"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "The primary package manager for Debian or AltLinux (apt) was not found"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+
+	expectedSummary = "No package manager found"
+	if warnings[1].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[1].Summary)
+	}
+
+	expectedDetail = "No known package manager found"
+	if warnings[1].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[1].Detail)
 	}
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux(t *testing.T) {
-	osInfo := &osInfo{
-		families: util.NewSet("linux", "altlinux"),
-	}
 
-	mockFS := &mockFileSystem{
-		files: map[string]*mockFile{
-			"/usr/bin/apt-get": {
-				info: &mockFileInfo{
-					name:  "apt-get",
-					isDir: false,
-					mode:  0755,
-				},
-			},
+	tests := []struct {
+		name         string
+		output       string
+		expectedName string
+		expectedPath string
+	}{
+		{
+			name: "apt",
+			output: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "1",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+			expectedName: "apt",
+			expectedPath: "/usr/bin/apt-get",
 		},
-		dirs: make(map[string]*mockFileInfo),
+		{
+			name: "apt-rpm",
+			output: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "1",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": "apt-2.9.8-1.el9.x86_64"
+			}
+			`,
+			expectedName: "apt-rpm",
+			expectedPath: "/usr/bin/apt-get",
+		},
 	}
 
-	mockTransport := &mockTransport{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 
-	pmInfo := newPackageManagerInfo()
-	err := pmInfo.populatePackageManagerInfo(osInfo, mockTransport, mockFS)
+			osInfo := newOSInfo()
+			osInfo.id = "altlinux"
+			osInfo.families.Add("altlinux")
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+			transport := mock.NewMockTransport()
+			transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+				Stdout: tt.output,
+			}
+
+			info := newPackageManagerInfo()
+			diags := info.populatePackageManagerInfo(osInfo, transport)
+
+			if diags.HasErrors() {
+				t.Errorf("Expected no error, got: %v", diags.Errors())
+			}
+
+			if diags.HasWarnings() {
+				t.Errorf("Expected no warnings, got: %v", diags.Warnings())
+			}
+
+			if info.Name() != tt.expectedName {
+				t.Errorf("Expected package manager name %q, got: %q", tt.expectedName, info.Name())
+			}
+
+			if info.Path() != tt.expectedPath {
+				t.Errorf("Expected package manager path %q, got: %q", tt.expectedPath, info.Path())
+			}
+		})
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux_NotApt(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "altlinux"
+	osInfo.families.Add("altlinux")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
 	}
 
-	if !pmInfo.supported {
-		t.Error("expected package manager to be supported")
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
 
-	if pmInfo.name != "apt-rpm" {
-		t.Errorf("expected name 'apt-rpm', got %q", pmInfo.name)
+	if !diags.HasWarnings() {
+		t.Error("Expected warnings, got none")
 	}
 
-	if pmInfo.path != "/usr/bin/apt-get" {
-		t.Errorf("expected path '/usr/bin/apt-get', got %q", pmInfo.path)
+	expectedName := "yum"
+	if info.Name() != expectedName {
+		t.Errorf("Expected package manager name %q, got: %q", expectedName, info.Name())
+	}
+
+	expectedPath := "/QOpenSys/pkgs/bin/yum"
+	if info.Path() != expectedPath {
+		t.Errorf("Expected package manager path %q, got: %q", expectedPath, info.Path())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Primary package manager not found"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "The primary package manager for Debian or AltLinux (apt) was not found"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux_NotFound(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "altlinux"
+	osInfo.families.Add("altlinux")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "0",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+	}
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if !diags.HasWarnings() {
+		t.Error("Expected warnings, got none")
+	}
+
+	if info.Name() != "" {
+		t.Errorf("Expected empty package manager name, got: %q", info.Name())
+	}
+
+	if info.Path() != "" {
+		t.Errorf("Expected empty package manager path, got: %q", info.Path())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 2 {
+		t.Fatalf("Expected 2 warnings, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Primary package manager not found"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "The primary package manager for Debian or AltLinux (apt) was not found"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+
+	expectedSummary = "No package manager found"
+	if warnings[1].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[1].Summary)
+	}
+
+	expectedDetail = "No known package manager found"
+	if warnings[1].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[1].Detail)
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_EL(t *testing.T) {
+
+	tests := []struct {
+		name         string
+		output       string
+		expectedName string
+		expectedPath string
+	}{
+		{
+			name: "dnf5",
+			output: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "1",
+			  "usr_bin_dnf_3_exists": "1",
+			  "usr_bin_dnf_exists": "1",
+			  "usr_bin_yum_exists": "1",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+			expectedName: "dnf5",
+			expectedPath: "/usr/bin/dnf5",
+		},
+		{
+			name: "dnf-3",
+			output: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "1",
+			  "usr_bin_dnf_exists": "1",
+			  "usr_bin_yum_exists": "1",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+			expectedName: "dnf",
+			expectedPath: "/usr/bin/dnf-3",
+		},
+		{
+			name: "dnf",
+			output: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "1",
+			  "usr_bin_yum_exists": "1",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+			expectedName: "dnf",
+			expectedPath: "/usr/bin/dnf",
+		},
+		{
+			name: "yum",
+			output: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "1",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+			expectedName: "yum",
+			expectedPath: "/usr/bin/yum",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			osInfo := newOSInfo()
+			osInfo.id = "rhel"
+			osInfo.families.Add("el")
+
+			transport := mock.NewMockTransport()
+			transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+				Stdout: tt.output,
+			}
+
+			info := newPackageManagerInfo()
+			diags := info.populatePackageManagerInfo(osInfo, transport)
+
+			if diags.HasErrors() {
+				t.Errorf("Expected no error, got: %v", diags.Errors())
+			}
+
+			if diags.HasWarnings() {
+				t.Errorf("Expected no warnings, got: %v", diags.Warnings())
+			}
+
+			if info.Name() != tt.expectedName {
+				t.Errorf("Expected package manager name %q, got: %q", tt.expectedName, info.Name())
+			}
+
+			if info.Path() != tt.expectedPath {
+				t.Errorf("Expected package manager path %q, got: %q", tt.expectedPath, info.Path())
+			}
+		})
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_EL_NotDnfOrYum(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "rhel"
+	osInfo.families.Add("el")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+	}
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if !diags.HasWarnings() {
+		t.Error("Expected warnings, got none")
+	}
+
+	expectedName := "yum"
+	if info.Name() != expectedName {
+		t.Errorf("Expected package manager name %q, got: %q", expectedName, info.Name())
+	}
+
+	expectedPath := "/QOpenSys/pkgs/bin/yum"
+	if info.Path() != expectedPath {
+		t.Errorf("Expected package manager path %q, got: %q", expectedPath, info.Path())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Primary package manager not found"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "The primary package manager for Enterprise Linux (dnf or yum) was not found"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_EL_NotFound(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "rhel"
+	osInfo.families.Add("el")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "0",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+	}
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if !diags.HasWarnings() {
+		t.Error("Expected warnings, got none")
+	}
+
+	if info.Name() != "" {
+		t.Errorf("Expected empty package manager name, got: %q", info.Name())
+	}
+
+	if info.Path() != "" {
+		t.Errorf("Expected empty package manager path, got: %q", info.Path())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 2 {
+		t.Fatalf("Expected 2 warnings, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Primary package manager not found"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "The primary package manager for Enterprise Linux (dnf or yum) was not found"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+
+	expectedSummary = "No package manager found"
+	if warnings[1].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[1].Summary)
+	}
+
+	expectedDetail = "No known package manager found"
+	if warnings[1].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[1].Detail)
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "gentoo"
+	osInfo.families.Add("gentoo")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "1",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+	}
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if diags.HasWarnings() {
+		t.Errorf("Expected no warnings, got: %v", diags.Warnings())
+	}
+
+	expectedName := "portage"
+	if info.Name() != expectedName {
+		t.Errorf("Expected package manager name %q, got: %q", expectedName, info.Name())
+	}
+
+	expectedPath := "/usr/bin/emerge"
+	if info.Path() != expectedPath {
+		t.Errorf("Expected package manager path %q, got: %q", expectedPath, info.Path())
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo_NotPortage(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "gentoo"
+	osInfo.families.Add("gentoo")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+	}
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if !diags.HasWarnings() {
+		t.Error("Expected warnings, got none")
+	}
+
+	expectedName := "yum"
+	if info.Name() != expectedName {
+		t.Errorf("Expected package manager name %q, got: %q", expectedName, info.Name())
+	}
+
+	expectedPath := "/QOpenSys/pkgs/bin/yum"
+	if info.Path() != expectedPath {
+		t.Errorf("Expected package manager path %q, got: %q", expectedPath, info.Path())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Primary package manager not found"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "The primary package manager for Gentoo (portage) was not found"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo_NotFound(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "gentoo"
+	osInfo.families.Add("gentoo")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "0",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+	}
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if !diags.HasWarnings() {
+		t.Error("Expected warnings, got none")
+	}
+
+	if info.Name() != "" {
+		t.Errorf("Expected empty package manager name, got: %q", info.Name())
+	}
+
+	if info.Path() != "" {
+		t.Errorf("Expected empty package manager path, got: %q", info.Path())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 2 {
+		t.Fatalf("Expected 2 warnings, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Primary package manager not found"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "The primary package manager for Gentoo (portage) was not found"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+
+	expectedSummary = "No package manager found"
+	if warnings[1].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[1].Summary)
+	}
+
+	expectedDetail = "No known package manager found"
+	if warnings[1].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[1].Detail)
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "suse"
+	osInfo.families.Add("suse")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "1",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+	}
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if diags.HasWarnings() {
+		t.Errorf("Expected no warnings, got: %v", diags.Warnings())
+	}
+
+	expectedName := "zypper"
+	if info.Name() != expectedName {
+		t.Errorf("Expected package manager name %q, got: %q", expectedName, info.Name())
+	}
+
+	expectedPath := "/usr/bin/zypper"
+	if info.Path() != expectedPath {
+		t.Errorf("Expected package manager path %q, got: %q", expectedPath, info.Path())
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE_NotZypper(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "suse"
+	osInfo.families.Add("suse")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "1",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+	}
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if !diags.HasWarnings() {
+		t.Error("Expected warnings, got none")
+	}
+
+	expectedName := "yum"
+	if info.Name() != expectedName {
+		t.Errorf("Expected package manager name %q, got: %q", expectedName, info.Name())
+	}
+
+	expectedPath := "/QOpenSys/pkgs/bin/yum"
+	if info.Path() != expectedPath {
+		t.Errorf("Expected package manager path %q, got: %q", expectedPath, info.Path())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Primary package manager not found"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "The primary package manager for SUSE (zypper) was not found"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+}
+
+func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE_NotFound(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "suse"
+	osInfo.families.Add("suse")
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "0",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
+	}
+
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
+	}
+
+	if !diags.HasWarnings() {
+		t.Error("Expected warnings, got none")
+	}
+
+	if info.Name() != "" {
+		t.Errorf("Expected empty package manager name, got: %q", info.Name())
+	}
+
+	if info.Path() != "" {
+		t.Errorf("Expected empty package manager path, got: %q", info.Path())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 2 {
+		t.Fatalf("Expected 2 warnings, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Primary package manager not found"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "The primary package manager for SUSE (zypper) was not found"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
+	}
+
+	expectedSummary = "No package manager found"
+	if warnings[1].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[1].Summary)
+	}
+
+	expectedDetail = "No known package manager found"
+	if warnings[1].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[1].Detail)
 	}
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic(t *testing.T) {
-	testCases := []struct {
-		name       string
-		packageMgr string
-		expectName string
-		families   []string
+
+	tests := []struct {
+		name         string
+		output       string
+		expectedName string
+		expectedPath string
 	}{
 		{
-			name:       "pacman",
-			packageMgr: "/usr/bin/pacman",
-			expectName: "pacman",
-			families:   []string{"linux", "archlinux"},
+			name: "/QOpenSys/pkgs/bin/yum",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "1",
+				"usr_bin_installp_exists": "1",
+				"usr_sbin_sorcery_exists": "1",
+				"usr_bin_swupd_exists": "1",
+				"usr_local_sbin_pkg_exists": "1",
+				"usr_bin_xbps_install_exists": "1",
+				"usr_bin_pkg_exists": "1",
+				"usr_sbin_pkgadd_exists": "1",
+				"usr_bin_emerge_exists": "1",
+				"usr_sbin_swlist_exists": "1",
+				"usr_sbin_pkg_exists": "1",
+				"sbin_apk_exists": "1",
+				"opt_homebrew_bin_brew_exists": "1",
+				"usr_local_bin_brew_exists": "1",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "yum",
+			expectedPath: "/QOpenSys/pkgs/bin/yum",
 		},
 		{
-			name:       "zypper",
-			packageMgr: "/usr/bin/zypper",
-			expectName: "zypper",
-			families:   []string{"linux", "suse"},
+			name: "/usr/bin/installp",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "1",
+				"usr_sbin_sorcery_exists": "1",
+				"usr_bin_swupd_exists": "1",
+				"usr_local_sbin_pkg_exists": "1",
+				"usr_bin_xbps_install_exists": "1",
+				"usr_bin_pkg_exists": "1",
+				"usr_sbin_pkgadd_exists": "1",
+				"usr_bin_emerge_exists": "1",
+				"usr_sbin_swlist_exists": "1",
+				"usr_sbin_pkg_exists": "1",
+				"sbin_apk_exists": "1",
+				"opt_homebrew_bin_brew_exists": "1",
+				"usr_local_bin_brew_exists": "1",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "installp",
+			expectedPath: "/usr/bin/installp",
 		},
 		{
-			name:       "emerge",
-			packageMgr: "/usr/bin/emerge",
-			expectName: "portage",
-			families:   []string{"linux", "gentoo"},
+			name: "/usr/sbin/sorcery",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "1",
+				"usr_bin_swupd_exists": "1",
+				"usr_local_sbin_pkg_exists": "1",
+				"usr_bin_xbps_install_exists": "1",
+				"usr_bin_pkg_exists": "1",
+				"usr_sbin_pkgadd_exists": "1",
+				"usr_bin_emerge_exists": "1",
+				"usr_sbin_swlist_exists": "1",
+				"usr_sbin_pkg_exists": "1",
+				"sbin_apk_exists": "1",
+				"opt_homebrew_bin_brew_exists": "1",
+				"usr_local_bin_brew_exists": "1",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "sorcery",
+			expectedPath: "/usr/sbin/sorcery",
 		},
 		{
-			name:       "homebrew",
-			packageMgr: "/opt/homebrew/bin/brew",
-			expectName: "homebrew",
-			families:   []string{"posix", "darwin"},
+			name: "/usr/bin/swupd",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "1",
+				"usr_local_sbin_pkg_exists": "1",
+				"usr_bin_xbps_install_exists": "1",
+				"usr_bin_pkg_exists": "1",
+				"usr_sbin_pkgadd_exists": "1",
+				"usr_bin_emerge_exists": "1",
+				"usr_sbin_swlist_exists": "1",
+				"usr_sbin_pkg_exists": "1",
+				"sbin_apk_exists": "1",
+				"opt_homebrew_bin_brew_exists": "1",
+				"usr_local_bin_brew_exists": "1",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "swupd",
+			expectedPath: "/usr/bin/swupd",
+		},
+		{
+			name: "/usr/local/sbin/pkg",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "1",
+				"usr_bin_xbps_install_exists": "1",
+				"usr_bin_pkg_exists": "1",
+				"usr_sbin_pkgadd_exists": "1",
+				"usr_bin_emerge_exists": "1",
+				"usr_sbin_swlist_exists": "1",
+				"usr_sbin_pkg_exists": "1",
+				"sbin_apk_exists": "1",
+				"opt_homebrew_bin_brew_exists": "1",
+				"usr_local_bin_brew_exists": "1",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "pkgng",
+			expectedPath: "/usr/local/sbin/pkg",
+		},
+		{
+			name: "/usr/bin/xbps-install",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "1",
+				"usr_bin_pkg_exists": "1",
+				"usr_sbin_pkgadd_exists": "1",
+				"usr_bin_emerge_exists": "1",
+				"usr_sbin_swlist_exists": "1",
+				"usr_sbin_pkg_exists": "1",
+				"sbin_apk_exists": "1",
+				"opt_homebrew_bin_brew_exists": "1",
+				"usr_local_bin_brew_exists": "1",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "xbps",
+			expectedPath: "/usr/bin/xbps-install",
+		},
+		{
+			name: "/usr/bin/pkg",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "1",
+				"usr_sbin_pkgadd_exists": "1",
+				"usr_bin_emerge_exists": "1",
+				"usr_sbin_swlist_exists": "1",
+				"usr_sbin_pkg_exists": "1",
+				"sbin_apk_exists": "1",
+				"opt_homebrew_bin_brew_exists": "1",
+				"usr_local_bin_brew_exists": "1",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "pkg5",
+			expectedPath: "/usr/bin/pkg",
+		},
+		{
+			name: "/usr/sbin/pkgadd",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "1",
+				"usr_bin_emerge_exists": "1",
+				"usr_sbin_swlist_exists": "1",
+				"usr_sbin_pkg_exists": "1",
+				"sbin_apk_exists": "1",
+				"opt_homebrew_bin_brew_exists": "1",
+				"usr_local_bin_brew_exists": "1",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "svr4pkg",
+			expectedPath: "/usr/sbin/pkgadd",
+		},
+		{
+			name: "/usr/bin/emerge",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "1",
+				"usr_sbin_swlist_exists": "1",
+				"usr_sbin_pkg_exists": "1",
+				"sbin_apk_exists": "1",
+				"opt_homebrew_bin_brew_exists": "1",
+				"usr_local_bin_brew_exists": "1",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "portage",
+			expectedPath: "/usr/bin/emerge",
+		},
+		{
+			name: "/usr/sbin/swlist",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "1",
+				"usr_sbin_pkg_exists": "1",
+				"sbin_apk_exists": "1",
+				"opt_homebrew_bin_brew_exists": "1",
+				"usr_local_bin_brew_exists": "1",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "swdepot",
+			expectedPath: "/usr/sbin/swlist",
+		},
+		{
+			name: "/usr/sbin/pkg",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "1",
+				"sbin_apk_exists": "1",
+				"opt_homebrew_bin_brew_exists": "1",
+				"usr_local_bin_brew_exists": "1",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "pkgng",
+			expectedPath: "/usr/sbin/pkg",
+		},
+		{
+			name: "/sbin/apk",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "1",
+				"opt_homebrew_bin_brew_exists": "1",
+				"usr_local_bin_brew_exists": "1",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "apk",
+			expectedPath: "/sbin/apk",
+		},
+		{
+			name: "/opt/homebrew/bin/brew",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "1",
+				"usr_local_bin_brew_exists": "1",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "homebrew",
+			expectedPath: "/opt/homebrew/bin/brew",
+		},
+		{
+			name: "/usr/local/bin/brew",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "1",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "homebrew",
+			expectedPath: "/usr/local/bin/brew",
+		},
+		{
+			name: "/opt/local/bin/port",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "0",
+				"opt_local_bin_port_exists": "1",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "macports",
+			expectedPath: "/opt/local/bin/port",
+		},
+		{
+			name: "/opt/tools/bin/pkgin",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "0",
+				"opt_local_bin_port_exists": "0",
+				"opt_tools_bin_pkgin_exists": "1",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "pkgin",
+			expectedPath: "/opt/tools/bin/pkgin",
+		},
+		{
+			name: "/opt/local/bin/pkgin",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "0",
+				"opt_local_bin_port_exists": "0",
+				"opt_tools_bin_pkgin_exists": "0",
+				"opt_local_bin_pkgin_exists": "1",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "pkgin",
+			expectedPath: "/opt/local/bin/pkgin",
+		},
+		{
+			name: "/usr/pkg/bin/pkgin",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "0",
+				"opt_local_bin_port_exists": "0",
+				"opt_tools_bin_pkgin_exists": "0",
+				"opt_local_bin_pkgin_exists": "0",
+				"usr_pkg_bin_pkgin_exists": "1",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "pkgin",
+			expectedPath: "/usr/pkg/bin/pkgin",
+		},
+		{
+			name: "/bin/opkg",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "0",
+				"opt_local_bin_port_exists": "0",
+				"opt_tools_bin_pkgin_exists": "0",
+				"opt_local_bin_pkgin_exists": "0",
+				"usr_pkg_bin_pkgin_exists": "0",
+				"bin_opkg_exists": "1",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "opkg",
+			expectedPath: "/bin/opkg",
+		},
+		{
+			name: "/usr/bin/pacman",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "0",
+				"opt_local_bin_port_exists": "0",
+				"opt_tools_bin_pkgin_exists": "0",
+				"opt_local_bin_pkgin_exists": "0",
+				"usr_pkg_bin_pkgin_exists": "0",
+				"bin_opkg_exists": "0",
+				"usr_bin_pacman_exists": "1",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "pacman",
+			expectedPath: "/usr/bin/pacman",
+		},
+		{
+			name: "/usr/sbin/urpmi",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "0",
+				"opt_local_bin_port_exists": "0",
+				"opt_tools_bin_pkgin_exists": "0",
+				"opt_local_bin_pkgin_exists": "0",
+				"usr_pkg_bin_pkgin_exists": "0",
+				"bin_opkg_exists": "0",
+				"usr_bin_pacman_exists": "0",
+				"usr_sbin_urpmi_exists": "1",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "urpmi",
+			expectedPath: "/usr/sbin/urpmi",
+		},
+		{
+			name: "/usr/bin/zypper",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "0",
+				"opt_local_bin_port_exists": "0",
+				"opt_tools_bin_pkgin_exists": "0",
+				"opt_local_bin_pkgin_exists": "0",
+				"usr_pkg_bin_pkgin_exists": "0",
+				"bin_opkg_exists": "0",
+				"usr_bin_pacman_exists": "0",
+				"usr_sbin_urpmi_exists": "0",
+				"usr_bin_zypper_exists": "1",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "zypper",
+			expectedPath: "/usr/bin/zypper",
+		},
+		{
+			name: "/usr/bin/apt-get",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "0",
+				"opt_local_bin_port_exists": "0",
+				"opt_tools_bin_pkgin_exists": "0",
+				"opt_local_bin_pkgin_exists": "0",
+				"usr_pkg_bin_pkgin_exists": "0",
+				"bin_opkg_exists": "0",
+				"usr_bin_pacman_exists": "0",
+				"usr_sbin_urpmi_exists": "0",
+				"usr_bin_zypper_exists": "0",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "apt",
+			expectedPath: "/usr/bin/apt-get",
+		},
+		{
+			name: "/usr/bin/apt-get (apt-rpm)",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "0",
+				"opt_local_bin_port_exists": "0",
+				"opt_tools_bin_pkgin_exists": "0",
+				"opt_local_bin_pkgin_exists": "0",
+				"usr_pkg_bin_pkgin_exists": "0",
+				"bin_opkg_exists": "0",
+				"usr_bin_pacman_exists": "0",
+				"usr_sbin_urpmi_exists": "0",
+				"usr_bin_zypper_exists": "0",
+				"usr_bin_apt_get_exists": "1",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": "apt-0.5.15lorg3.95a"
+				}
+				`,
+			expectedName: "apt-rpm",
+			expectedPath: "/usr/bin/apt-get",
+		},
+		{
+			name: "/usr/bin/dnf5",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "0",
+				"opt_local_bin_port_exists": "0",
+				"opt_tools_bin_pkgin_exists": "0",
+				"opt_local_bin_pkgin_exists": "0",
+				"usr_pkg_bin_pkgin_exists": "0",
+				"bin_opkg_exists": "0",
+				"usr_bin_pacman_exists": "0",
+				"usr_sbin_urpmi_exists": "0",
+				"usr_bin_zypper_exists": "0",
+				"usr_bin_apt_get_exists": "0",
+				"usr_bin_dnf5_exists": "1",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "dnf5",
+			expectedPath: "/usr/bin/dnf5",
+		},
+		{
+			name: "/usr/bin/dnf-3",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "0",
+				"opt_local_bin_port_exists": "0",
+				"opt_tools_bin_pkgin_exists": "0",
+				"opt_local_bin_pkgin_exists": "0",
+				"usr_pkg_bin_pkgin_exists": "0",
+				"bin_opkg_exists": "0",
+				"usr_bin_pacman_exists": "0",
+				"usr_sbin_urpmi_exists": "0",
+				"usr_bin_zypper_exists": "0",
+				"usr_bin_apt_get_exists": "0",
+				"usr_bin_dnf5_exists": "0",
+				"usr_bin_dnf_3_exists": "1",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "dnf",
+			expectedPath: "/usr/bin/dnf-3",
+		},
+		{
+			name: "/usr/bin/dnf",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "0",
+				"opt_local_bin_port_exists": "0",
+				"opt_tools_bin_pkgin_exists": "0",
+				"opt_local_bin_pkgin_exists": "0",
+				"usr_pkg_bin_pkgin_exists": "0",
+				"bin_opkg_exists": "0",
+				"usr_bin_pacman_exists": "0",
+				"usr_sbin_urpmi_exists": "0",
+				"usr_bin_zypper_exists": "0",
+				"usr_bin_apt_get_exists": "0",
+				"usr_bin_dnf5_exists": "0",
+				"usr_bin_dnf_3_exists": "0",
+				"usr_bin_dnf_exists": "1",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "dnf",
+			expectedPath: "/usr/bin/dnf",
+		},
+		{
+			name: "/usr/bin/yum",
+			output: `{
+				"qopensys_pkgs_bin_yum_exists": "0",
+				"usr_bin_installp_exists": "0",
+				"usr_sbin_sorcery_exists": "0",
+				"usr_bin_swupd_exists": "0",
+				"usr_local_sbin_pkg_exists": "0",
+				"usr_bin_xbps_install_exists": "0",
+				"usr_bin_pkg_exists": "0",
+				"usr_sbin_pkgadd_exists": "0",
+				"usr_bin_emerge_exists": "0",
+				"usr_sbin_swlist_exists": "0",
+				"usr_sbin_pkg_exists": "0",
+				"sbin_apk_exists": "0",
+				"opt_homebrew_bin_brew_exists": "0",
+				"usr_local_bin_brew_exists": "0",
+				"opt_local_bin_port_exists": "0",
+				"opt_tools_bin_pkgin_exists": "0",
+				"opt_local_bin_pkgin_exists": "0",
+				"usr_pkg_bin_pkgin_exists": "0",
+				"bin_opkg_exists": "0",
+				"usr_bin_pacman_exists": "0",
+				"usr_sbin_urpmi_exists": "0",
+				"usr_bin_zypper_exists": "0",
+				"usr_bin_apt_get_exists": "0",
+				"usr_bin_dnf5_exists": "0",
+				"usr_bin_dnf_3_exists": "0",
+				"usr_bin_dnf_exists": "0",
+				"usr_bin_yum_exists": "1",
+				"apt_provided_by_rpm_package": ""
+				}
+				`,
+			expectedName: "yum",
+			expectedPath: "/usr/bin/yum",
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			osInfo := &osInfo{
-				families: util.NewSet(tc.families...),
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			osInfo := newOSInfo()
+			osInfo.id = "generic"
+
+			transport := mock.NewMockTransport()
+			transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+				Stdout: tt.output,
 			}
 
-			transport := newMockTransport()
-			transport.commandResponses["/usr/bin/rpm -q --whatprovides apt"] = &commandResponse{
-				err: errors.New("error: process exited with status 1"),
+			info := newPackageManagerInfo()
+			diags := info.populatePackageManagerInfo(osInfo, transport)
+
+			if diags.HasErrors() {
+				t.Errorf("Expected no error, got: %v", diags.Errors())
 			}
 
-			fileSystem := transport.fileSystem
-			fileSystem.files[tc.packageMgr] = &mockFile{
-				info: &mockFileInfo{
-					name:  "packagemgr",
-					isDir: false,
-					mode:  0755,
-				},
+			if diags.HasWarnings() {
+				t.Errorf("Expected no warnings, got: %v", diags.Warnings())
 			}
 
-			// Test RPM detection for apt
-			if tc.expectName == "apt" {
-				fileSystem.files["/usr/bin/rpm"] = &mockFile{
-					info: &mockFileInfo{
-						name:  "rpm",
-						isDir: false,
-						mode:  0755,
-					},
-				}
+			if info.Name() != tt.expectedName {
+				t.Errorf("Expected package manager name %q, got: %q", tt.expectedName, info.Name())
 			}
 
-			pmInfo := newPackageManagerInfo()
-			err := pmInfo.populatePackageManagerInfo(osInfo, transport, fileSystem)
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if !pmInfo.supported {
-				t.Error("expected package manager to be supported")
-			}
-
-			if pmInfo.name != tc.expectName {
-				t.Errorf("expected name %q, got %q", tc.expectName, pmInfo.name)
-			}
-
-			if pmInfo.path != tc.packageMgr {
-				t.Errorf("expected path %q, got %q", tc.packageMgr, pmInfo.path)
+			if info.Path() != tt.expectedPath {
+				t.Errorf("Expected package manager path %q, got: %q", tt.expectedPath, info.Path())
 			}
 		})
 	}
 }
 
-func TestPackageManagerInfo_PopulatePackageManagerInfo_AptRpmBacked(t *testing.T) {
-	osInfo := &osInfo{
-		families: util.NewSet("linux", "unknown"),
+func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_NotFound(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "generic"
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `{
+			  "qopensys_pkgs_bin_yum_exists": "0",
+		      "usr_bin_installp_exists": "0",
+		      "usr_sbin_sorcery_exists": "0",
+		      "usr_bin_swupd_exists": "0",
+		      "usr_local_sbin_pkg_exists": "0",
+		      "usr_bin_xbps_install_exists": "0",
+		      "usr_bin_pkg_exists": "0",
+		      "usr_sbin_pkgadd_exists": "0",
+		      "usr_bin_emerge_exists": "0",
+		      "usr_sbin_swlist_exists": "0",
+		      "usr_sbin_pkg_exists": "0",
+		      "sbin_apk_exists": "0",
+			  "opt_homebrew_bin_brew_exists": "0",
+			  "usr_local_bin_brew_exists": "0",
+			  "opt_local_bin_port_exists": "0",
+			  "opt_tools_bin_pkgin_exists": "0",
+			  "opt_local_bin_pkgin_exists": "0",
+			  "usr_pkg_bin_pkgin_exists": "0",
+			  "bin_opkg_exists": "0",
+			  "usr_bin_pacman_exists": "0",
+			  "usr_sbin_urpmi_exists": "0",
+			  "usr_bin_zypper_exists": "0",
+			  "usr_bin_apt_get_exists": "0",
+			  "usr_bin_dnf5_exists": "0",
+			  "usr_bin_dnf_3_exists": "0",
+			  "usr_bin_dnf_exists": "0",
+			  "usr_bin_yum_exists": "0",
+			  "apt_provided_by_rpm_package": ""
+			}
+			`,
 	}
 
-	transport := newMockTransport()
-	transport.commandResponses["/usr/bin/rpm -q --whatprovides apt"] = &commandResponse{
-		stdout: "some-package-provides-apt",
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
 
-	fileSystem := transport.fileSystem
-	fileSystem.files["/usr/bin/apt-get"] = &mockFile{
-		info: &mockFileInfo{
-			name:  "apt-get",
-			isDir: false,
-			mode:  0755,
-		},
-	}
-	fileSystem.files["/usr/bin/rpm"] = &mockFile{
-		info: &mockFileInfo{
-			name:  "rpm",
-			isDir: false,
-			mode:  0755,
-		},
+	if !diags.HasWarnings() {
+		t.Error("Expected warnings, got none")
 	}
 
-	pmInfo := newPackageManagerInfo()
-	err := pmInfo.populatePackageManagerInfo(osInfo, transport, fileSystem)
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if info.Name() != "" {
+		t.Errorf("Expected empty package manager name, got: %q", info.Name())
 	}
 
-	if !pmInfo.supported {
-		t.Error("expected package manager to be supported")
+	if info.Path() != "" {
+		t.Errorf("Expected empty package manager path, got: %q", info.Path())
 	}
 
-	if pmInfo.name != "apt-rpm" {
-		t.Errorf("expected name 'apt-rpm', got %q", pmInfo.name)
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("Expected 1 warning, got: %d", len(warnings))
 	}
 
-	if pmInfo.path != "/usr/bin/apt-get" {
-		t.Errorf("expected path '/usr/bin/apt-get', got %q", pmInfo.path)
+	expectedSummary := "No package manager found"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("Expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "No known package manager found"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("Expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
 	}
 }
 
-func TestPackageManagerInfo_PopulatePackageManagerInfo_NoPackageManager(t *testing.T) {
-	osInfo := &osInfo{
-		families: util.NewSet("linux"),
+func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_Error(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "generic"
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Err: os.ErrPermission,
 	}
 
-	mockFS := &mockFileSystem{
-		files: make(map[string]*mockFile),
-		dirs:  make(map[string]*mockFileInfo),
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
+
+	if !diags.HasErrors() {
+		t.Errorf("Expected errors, got none")
 	}
 
-	mockTransport := &mockTransport{}
-
-	pmInfo := newPackageManagerInfo()
-	err := pmInfo.populatePackageManagerInfo(osInfo, mockTransport, mockFS)
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if diags.HasWarnings() {
+		t.Fatalf("Expected no warnings, got: %v", diags.Warnings())
 	}
 
-	if pmInfo.supported {
-		t.Error("expected package manager to be unsupported when no package managers found")
+	if info.Name() != "" {
+		t.Errorf("Expected empty package manager name, got: %q", info.Name())
 	}
 
-	if pmInfo.name != "" {
-		t.Errorf("expected empty name, got %q", pmInfo.name)
+	if info.Path() != "" {
+		t.Errorf("Expected empty package manager path, got: %q", info.Path())
 	}
 
-	if pmInfo.path != "" {
-		t.Errorf("expected empty path, got %q", pmInfo.path)
-	}
-}
-
-func TestPackageManagerInfo_GetFirstMatchingPackageManager(t *testing.T) {
-	testCases := []struct {
-		name            string
-		managers        []string
-		existingFiles   map[string]bool
-		existingDirs    map[string]bool
-		expectedManager string
-		shouldError     bool
-	}{
-		{
-			name:            "first_match",
-			managers:        []string{"/usr/bin/dnf", "/usr/bin/yum"},
-			existingFiles:   map[string]bool{"/usr/bin/dnf": true},
-			expectedManager: "/usr/bin/dnf",
-		},
-		{
-			name:            "second_match",
-			managers:        []string{"/usr/bin/dnf", "/usr/bin/yum"},
-			existingFiles:   map[string]bool{"/usr/bin/yum": true},
-			expectedManager: "/usr/bin/yum",
-		},
-		{
-			name:            "no_match",
-			managers:        []string{"/usr/bin/dnf", "/usr/bin/yum"},
-			existingFiles:   map[string]bool{},
-			expectedManager: "",
-		},
-		{
-			name:            "skip_directories",
-			managers:        []string{"/usr/bin/dnf", "/usr/bin/yum"},
-			existingDirs:    map[string]bool{"/usr/bin/dnf": true},
-			existingFiles:   map[string]bool{"/usr/bin/yum": true},
-			expectedManager: "/usr/bin/yum",
-		},
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("Expected 1 error, got: %d", len(errors))
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			mockFS := &mockFileSystem{
-				files: make(map[string]*mockFile),
-				dirs:  make(map[string]*mockFileInfo),
-			}
+	expectedSummary := "Failed to check package manager status"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("Expected error summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
 
-			// Add files
-			for path := range tc.existingFiles {
-				mockFS.files[path] = &mockFile{
-					info: &mockFileInfo{
-						name:  "file",
-						isDir: false,
-						mode:  0755,
-					},
-				}
-			}
-
-			// Add directories
-			for path := range tc.existingDirs {
-				mockFS.dirs[path] = &mockFileInfo{
-					name:  "dir",
-					isDir: true,
-					mode:  0755,
-				}
-			}
-
-			pmInfo := newPackageManagerInfo()
-			result, err := pmInfo.getFirstMatchingPackageManager(mockFS, tc.managers)
-
-			if tc.shouldError {
-				if err == nil {
-					t.Error("expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if result != tc.expectedManager {
-				t.Errorf("expected %q, got %q", tc.expectedManager, result)
-			}
-		})
+	expectedDetail := "Error checking package manager status: permission denied"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("Expected error detail %q, got: %q", expectedDetail, errors[0].Detail)
 	}
 }
 
-func TestPackageManagerInfo_IsOSTreeBooted(t *testing.T) {
-	testCases := []struct {
-		name        string
-		fileExists  bool
-		shouldError bool
-		expected    bool
-	}{
-		{
-			name:       "ostree_booted",
-			fileExists: true,
-			expected:   true,
-		},
-		{
-			name:       "not_ostree_booted",
-			fileExists: false,
-			expected:   false,
-		},
+func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_NotJSON(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.id = "generic"
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[packageManagerDiscoveryScript] = &mock.CommandResult{
+		Stdout: `This is not JSON output`,
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			mockFS := &mockFileSystem{
-				files: make(map[string]*mockFile),
-				dirs:  make(map[string]*mockFileInfo),
-			}
+	info := newPackageManagerInfo()
+	diags := info.populatePackageManagerInfo(osInfo, transport)
 
-			if tc.fileExists {
-				mockFS.files["/run/ostree-booted"] = &mockFile{
-					info: &mockFileInfo{
-						name:  "ostree-booted",
-						isDir: false,
-						mode:  0644,
-					},
-				}
-			}
+	if !diags.HasErrors() {
+		t.Errorf("Expected errors, got none")
+	}
 
-			result, err := isOSTreeBooted(mockFS)
+	if diags.HasWarnings() {
+		t.Fatalf("Expected no warnings, got: %v", diags.Warnings())
+	}
 
-			if tc.shouldError {
-				if err == nil {
-					t.Error("expected error but got none")
-				}
-				return
-			}
+	if info.Name() != "" {
+		t.Errorf("Expected empty package manager name, got: %q", info.Name())
+	}
 
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+	if info.Path() != "" {
+		t.Errorf("Expected empty package manager path, got: %q", info.Path())
+	}
 
-			if result != tc.expected {
-				t.Errorf("expected %v, got %v", tc.expected, result)
-			}
-		})
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("Expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to parse package manager information"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("Expected error summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error parsing package manager information: invalid character 'T' looking for beginning of value"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("Expected error detail %q, got: %q", expectedDetail, errors[0].Detail)
 	}
 }
 
 func TestPackageManagerInfo_ToMapOfCtyValues(t *testing.T) {
-	testCases := []struct {
-		name      string
-		supported bool
-		pmName    string
-		pmPath    string
+
+	tests := []struct {
+		name               string
+		packageManagerName string
+		packageManagerPath string
 	}{
 		{
-			name:      "supported",
-			supported: true,
-			pmName:    "dnf",
-			pmPath:    "/usr/bin/dnf",
+			name:               "Homebrew",
+			packageManagerName: "homebrew",
+			packageManagerPath: "/opt/homebrew/bin/brew",
 		},
 		{
-			name:      "not_supported",
-			supported: false,
-			pmName:    "",
-			pmPath:    "",
+			name:               "MacPorts",
+			packageManagerName: "macports",
+			packageManagerPath: "/opt/local/bin/port",
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			pmInfo := &packageManagerInfo{
-				supported: tc.supported,
-				name:      tc.pmName,
-				path:      tc.pmPath,
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			info := newPackageManagerInfo()
+			info.name = tt.packageManagerName
+			info.path = tt.packageManagerPath
+
+			result := info.toMapOfCtyValues()
+
+			if result["package_manager_name"].AsString() != tt.packageManagerName {
+				t.Errorf("Expected package_manager_name to be %q, got: %q", tt.packageManagerName, result["package_manager_name"].AsString())
 			}
 
-			values := pmInfo.toMapOfCtyValues()
-
-			expectedKeys := []string{"package_manager_name", "package_manager_path"}
-			for _, key := range expectedKeys {
-				if _, exists := values[key]; !exists {
-					t.Errorf("expected key %q to be present in values map", key)
-				}
-			}
-
-			if tc.supported {
-				if values["package_manager_name"].AsString() != tc.pmName {
-					t.Errorf("expected name %q, got %q", tc.pmName, values["package_manager_name"].AsString())
-				}
-
-				if values["package_manager_path"].AsString() != tc.pmPath {
-					t.Errorf("expected path %q, got %q", tc.pmPath, values["package_manager_path"].AsString())
-				}
-			} else {
-				if !values["package_manager_name"].IsNull() {
-					t.Error("expected package_manager_name to be null for unsupported")
-				}
-
-				if !values["package_manager_path"].IsNull() {
-					t.Error("expected package_manager_path to be null for unsupported")
-				}
+			if result["package_manager_path"].AsString() != tt.packageManagerPath {
+				t.Errorf("Expected package_manager_path to be %q, got: %q", tt.packageManagerPath, result["package_manager_path"].AsString())
 			}
 		})
 	}
 }
 
-func TestNewPackageManagerInfo(t *testing.T) {
-	pmInfo := newPackageManagerInfo()
+func TestPackageManagerInfo_ToMapOfCtyValues_Empty(t *testing.T) {
 
-	if pmInfo == nil {
-		t.Fatal("expected non-nil packageManagerInfo")
+	info := newPackageManagerInfo()
+
+	result := info.toMapOfCtyValues()
+
+	if result["package_manager_name"].Type() != cty.String {
+		t.Errorf("Expected package_manager_name to be of type string, got: %q", result["package_manager_name"].Type())
 	}
 
-	if pmInfo.supported {
-		t.Error("expected supported to be false initially")
+	if !result["package_manager_name"].IsNull() {
+		t.Errorf("Expected package_manager_name to be null, got: %q", result["package_manager_name"])
 	}
 
-	if pmInfo.name != "" {
-		t.Errorf("expected empty name initially, got %q", pmInfo.name)
+	if result["package_manager_path"].Type() != cty.String {
+		t.Errorf("Expected package_manager_path to be of type string, got: %q", result["package_manager_path"].Type())
 	}
 
-	if pmInfo.path != "" {
-		t.Errorf("expected empty path initially, got %q", pmInfo.path)
-	}
-}
-
-func TestPackageManagerConstants(t *testing.T) {
-	// Test that packageManagerMap has entries for all expected package managers
-	expectedPackageManagers := []string{
-		"/usr/bin/dnf", "/usr/bin/yum", "/usr/bin/apt-get", "/usr/bin/pacman",
-		"/usr/bin/zypper", "/usr/bin/emerge", "/opt/homebrew/bin/brew",
-	}
-
-	for _, pm := range expectedPackageManagers {
-		if _, exists := packageManagerMap[pm]; !exists {
-			t.Errorf("expected package manager %q to be in packageManagerMap", pm)
-		}
-	}
-
-	// Test that EL package managers are all in the main map
-	for _, pm := range elPackageManagers {
-		if _, exists := packageManagerMap[pm]; !exists {
-			t.Errorf("expected EL package manager %q to be in packageManagerMap", pm)
-		}
-	}
-
-	// Test that Debian package managers are all in the main map
-	for _, pm := range debianPackageManagers {
-		if _, exists := packageManagerMap[pm]; !exists {
-			t.Errorf("expected Debian package manager %q to be in packageManagerMap", pm)
-		}
+	if !result["package_manager_path"].IsNull() {
+		t.Errorf("Expected package_manager_path to be null, got: %q", result["package_manager_path"])
 	}
 }

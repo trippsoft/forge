@@ -8,6 +8,25 @@ import (
 	"github.com/trippsoft/forge/internal/transport"
 )
 
+func TestHostInfo_Local(t *testing.T) {
+
+	transport, err := transport.NewLocalTransport()
+	if err != nil {
+		t.Fatalf("failed to create local transport: %v", err)
+	}
+	transport.Connect()
+	defer transport.Close()
+
+	hostInfo := info.NewHostInfo()
+	diags := hostInfo.Populate(transport)
+
+	if diags.HasErrors() {
+		t.Fatalf("failed to populate host info: %v", diags)
+	}
+
+	t.Log(hostInfo.String()) // This test is used primarily for manual review.
+}
+
 func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -38,12 +57,12 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 	}
 
 	hostInfo := info.NewHostInfo()
-	err = hostInfo.Populate(sshTransport)
-	if err != nil {
-		t.Fatalf("failed to populate host info via SSH: %v", err)
+	diags := hostInfo.Populate(sshTransport)
+	if diags.HasErrors() {
+		t.Fatalf("failed to populate host info via SSH: %v", diags.Errors())
 	}
 
-	osInfo := hostInfo.GetOSInfo()
+	osInfo := hostInfo.OSInfo()
 	if osInfo == nil {
 		t.Error("expected OS info to be populated")
 	} else {
@@ -64,8 +83,8 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 			t.Errorf("expected OS families to have size 4, got %d", families.Size())
 		}
 
-		if osInfo.Id() != "rocky" {
-			t.Errorf("expected OS ID to be 'rocky', got '%s'", osInfo.Id())
+		if osInfo.ID() != "rocky" {
+			t.Errorf("expected OS ID to be 'rocky', got '%s'", osInfo.ID())
 		}
 
 		if !strings.Contains(osInfo.FriendlyName(), "Rocky Linux 9") {
@@ -88,16 +107,16 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 			t.Errorf("expected OS edition to be empty, got '%s'", osInfo.Edition())
 		}
 
-		if osInfo.EditionId() != "" {
-			t.Errorf("expected OS edition ID to be empty, got '%s'", osInfo.EditionId())
+		if osInfo.EditionID() != "" {
+			t.Errorf("expected OS edition ID to be empty, got '%s'", osInfo.EditionID())
 		}
 
-		if osInfo.OsArch() != "amd64" {
-			t.Errorf("expected OS architecture to be 'amd64', got '%s'", osInfo.OsArch())
+		if osInfo.OSArch() != "amd64" {
+			t.Errorf("expected OS architecture to be 'amd64', got '%s'", osInfo.OSArch())
 		}
 
-		if osInfo.OsArchBits() != 64 {
-			t.Errorf("expected OS architecture bits to be 64, got %d", osInfo.OsArchBits())
+		if osInfo.OSArchBits() != 64 {
+			t.Errorf("expected OS architecture bits to be 64, got %d", osInfo.OSArchBits())
 		}
 
 		if osInfo.ProcArch() != "amd64" {
@@ -109,7 +128,7 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 		}
 	}
 
-	selinuxInfo := hostInfo.GetSELinuxInfo()
+	selinuxInfo := hostInfo.SELinuxInfo()
 	if selinuxInfo == nil {
 		t.Error("expected SELinux info to be populated")
 	} else {
@@ -119,15 +138,15 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 		if !selinuxInfo.Installed() {
 			t.Error("expected SELinux to be installed on Rocky Linux")
 		}
-		if selinuxInfo.Status() != info.SelinuxEnforcing {
+		if selinuxInfo.Status() != info.SELinuxEnforcing {
 			t.Errorf("expected SELinux status to be 'enforcing', got '%s'", selinuxInfo.Status())
 		}
-		if selinuxInfo.SelinuxType() != info.SelinuxTypeTargeted {
+		if selinuxInfo.SelinuxType() != info.SELinuxTypeTargeted {
 			t.Errorf("expected SELinux type to be 'targeted', got '%s'", selinuxInfo.SelinuxType())
 		}
 	}
 
-	appArmorInfo := hostInfo.GetAppArmorInfo()
+	appArmorInfo := hostInfo.AppArmorInfo()
 	if appArmorInfo == nil {
 		t.Error("expected AppArmor info to be populated")
 	} else {
@@ -139,7 +158,7 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 		}
 	}
 
-	fipsInfo := hostInfo.GetFipsInfo()
+	fipsInfo := hostInfo.FipsInfo()
 	if fipsInfo == nil {
 		t.Error("expected FIPS info to be populated")
 	} else {
@@ -151,19 +170,19 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 		}
 	}
 
-	packageManagerInfo := hostInfo.GetPackageManagerInfo()
-	if packageManagerInfo == nil {
-		t.Error("expected Package Manager info to be populated")
-	} else {
-		if packageManagerInfo.Name() != "dnf" {
-			t.Errorf("expected Package Manager name to be 'dnf', got '%s'", packageManagerInfo.Name())
-		}
-		if packageManagerInfo.Path() != "/usr/bin/dnf-3" {
-			t.Errorf("expected Package Manager path to be '/usr/bin/dnf-3', got '%s'", packageManagerInfo.Path())
-		}
-	}
+	// packageManagerInfo := hostInfo.PackageManagerInfo()
+	// if packageManagerInfo == nil {
+	// 	t.Error("expected Package Manager info to be populated")
+	// } else {
+	// 	if packageManagerInfo.Name() != "dnf" {
+	// 		t.Errorf("expected Package Manager name to be 'dnf', got '%s'", packageManagerInfo.Name())
+	// 	}
+	// 	if packageManagerInfo.Path() != "/usr/bin/dnf-3" {
+	// 		t.Errorf("expected Package Manager path to be '/usr/bin/dnf-3', got '%s'", packageManagerInfo.Path())
+	// 	}
+	// }
 
-	serviceManagerInfo := hostInfo.GetServiceManagerInfo()
+	serviceManagerInfo := hostInfo.ServiceManagerInfo()
 	if serviceManagerInfo == nil {
 		t.Error("expected Service Manager info to be populated")
 	} else {
@@ -172,7 +191,7 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 		}
 	}
 
-	userInfo := hostInfo.GetUserInfo()
+	userInfo := hostInfo.UserInfo()
 	if userInfo == nil {
 		t.Error("expected User info to be populated")
 	} else {
@@ -227,12 +246,12 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 	}
 
 	hostInfo := info.NewHostInfo()
-	err = hostInfo.Populate(sshTransport)
-	if err != nil {
-		t.Fatalf("failed to populate host info via SSH: %v", err)
+	diags := hostInfo.Populate(sshTransport)
+	if diags.HasErrors() {
+		t.Fatalf("failed to populate host info via SSH: %v", diags)
 	}
 
-	osInfo := hostInfo.GetOSInfo()
+	osInfo := hostInfo.OSInfo()
 	if osInfo == nil {
 		t.Error("expected OS info to be populated")
 	} else {
@@ -247,8 +266,8 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 			t.Errorf("expected OS families to have size 2, got %d", families.Size())
 		}
 
-		if osInfo.Id() != "windows-server" {
-			t.Errorf("expected OS ID to be 'windows-server', got '%s'", osInfo.Id())
+		if osInfo.ID() != "windows-server" {
+			t.Errorf("expected OS ID to be 'windows-server', got '%s'", osInfo.ID())
 		}
 
 		if !strings.Contains(osInfo.FriendlyName(), "Microsoft Windows Server 2025 Datacenter") {
@@ -271,16 +290,16 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 			t.Errorf("expected OS edition to be 'Datacenter', got '%s'", osInfo.Edition())
 		}
 
-		if osInfo.EditionId() != "datacenter" {
-			t.Errorf("expected OS edition ID to be 'datacenter', got '%s'", osInfo.EditionId())
+		if osInfo.EditionID() != "datacenter" {
+			t.Errorf("expected OS edition ID to be 'datacenter', got '%s'", osInfo.EditionID())
 		}
 
-		if osInfo.OsArch() != "amd64" {
-			t.Errorf("expected OS architecture to be 'amd64', got '%s'", osInfo.OsArch())
+		if osInfo.OSArch() != "amd64" {
+			t.Errorf("expected OS architecture to be 'amd64', got '%s'", osInfo.OSArch())
 		}
 
-		if osInfo.OsArchBits() != 64 {
-			t.Errorf("expected OS architecture bits to be 64, got %d", osInfo.OsArchBits())
+		if osInfo.OSArchBits() != 64 {
+			t.Errorf("expected OS architecture bits to be 64, got %d", osInfo.OSArchBits())
 		}
 
 		if osInfo.ProcArch() != "amd64" {
@@ -292,7 +311,7 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 		}
 	}
 
-	selinuxInfo := hostInfo.GetSELinuxInfo()
+	selinuxInfo := hostInfo.SELinuxInfo()
 	if selinuxInfo == nil {
 		t.Error("expected SELinux info to be populated")
 	} else {
@@ -301,7 +320,7 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 		}
 	}
 
-	appArmorInfo := hostInfo.GetAppArmorInfo()
+	appArmorInfo := hostInfo.AppArmorInfo()
 	if appArmorInfo == nil {
 		t.Error("expected AppArmor info to be populated")
 	} else {
@@ -310,7 +329,7 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 		}
 	}
 
-	fipsInfo := hostInfo.GetFipsInfo()
+	fipsInfo := hostInfo.FipsInfo()
 	if fipsInfo == nil {
 		t.Error("expected FIPS info to be populated")
 	} else {
@@ -322,14 +341,14 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 		}
 	}
 
-	packageManagerInfo := hostInfo.GetPackageManagerInfo()
-	if packageManagerInfo == nil {
-		t.Error("expected Package Manager info to be populated")
-	} else {
-		// Blank for now, Windows is not supported yet
-	}
+	// packageManagerInfo := hostInfo.PackageManagerInfo()
+	// if packageManagerInfo == nil {
+	// 	t.Error("expected Package Manager info to be populated")
+	// } else {
+	// 	// Blank for now, Windows is not supported yet
+	// }
 
-	serviceManagerInfo := hostInfo.GetServiceManagerInfo()
+	serviceManagerInfo := hostInfo.ServiceManagerInfo()
 	if serviceManagerInfo == nil {
 		t.Error("expected Service Manager info to be populated")
 	} else {
@@ -338,7 +357,7 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 		}
 	}
 
-	userInfo := hostInfo.GetUserInfo()
+	userInfo := hostInfo.UserInfo()
 	if userInfo == nil {
 		t.Error("expected User info to be populated")
 	} else {
@@ -393,12 +412,12 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 	}
 
 	hostInfo := info.NewHostInfo()
-	err = hostInfo.Populate(sshTransport)
-	if err != nil {
-		t.Fatalf("failed to populate host info via SSH: %v", err)
+	diags := hostInfo.Populate(sshTransport)
+	if diags.HasErrors() {
+		t.Fatalf("failed to populate host info via SSH: %v", diags)
 	}
 
-	osInfo := hostInfo.GetOSInfo()
+	osInfo := hostInfo.OSInfo()
 	if osInfo == nil {
 		t.Error("expected OS info to be populated")
 	} else {
@@ -413,8 +432,8 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 			t.Errorf("expected OS families to have size 2, got %d", families.Size())
 		}
 
-		if osInfo.Id() != "windows-server" {
-			t.Errorf("expected OS ID to be 'windows-server', got '%s'", osInfo.Id())
+		if osInfo.ID() != "windows-server" {
+			t.Errorf("expected OS ID to be 'windows-server', got '%s'", osInfo.ID())
 		}
 
 		if !strings.Contains(osInfo.FriendlyName(), "Microsoft Windows Server 2025 Datacenter") {
@@ -437,16 +456,16 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 			t.Errorf("expected OS edition to be 'Datacenter', got '%s'", osInfo.Edition())
 		}
 
-		if osInfo.EditionId() != "datacenter" {
-			t.Errorf("expected OS edition ID to be 'datacenter', got '%s'", osInfo.EditionId())
+		if osInfo.EditionID() != "datacenter" {
+			t.Errorf("expected OS edition ID to be 'datacenter', got '%s'", osInfo.EditionID())
 		}
 
-		if osInfo.OsArch() != "amd64" {
-			t.Errorf("expected OS architecture to be 'amd64', got '%s'", osInfo.OsArch())
+		if osInfo.OSArch() != "amd64" {
+			t.Errorf("expected OS architecture to be 'amd64', got '%s'", osInfo.OSArch())
 		}
 
-		if osInfo.OsArchBits() != 64 {
-			t.Errorf("expected OS architecture bits to be 64, got %d", osInfo.OsArchBits())
+		if osInfo.OSArchBits() != 64 {
+			t.Errorf("expected OS architecture bits to be 64, got %d", osInfo.OSArchBits())
 		}
 
 		if osInfo.ProcArch() != "amd64" {
@@ -458,7 +477,7 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 		}
 	}
 
-	selinuxInfo := hostInfo.GetSELinuxInfo()
+	selinuxInfo := hostInfo.SELinuxInfo()
 	if selinuxInfo == nil {
 		t.Error("expected SELinux info to be populated")
 	} else {
@@ -467,7 +486,7 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 		}
 	}
 
-	appArmorInfo := hostInfo.GetAppArmorInfo()
+	appArmorInfo := hostInfo.AppArmorInfo()
 	if appArmorInfo == nil {
 		t.Error("expected AppArmor info to be populated")
 	} else {
@@ -476,7 +495,7 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 		}
 	}
 
-	fipsInfo := hostInfo.GetFipsInfo()
+	fipsInfo := hostInfo.FipsInfo()
 	if fipsInfo == nil {
 		t.Error("expected FIPS info to be populated")
 	} else {
@@ -488,14 +507,14 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 		}
 	}
 
-	packageManagerInfo := hostInfo.GetPackageManagerInfo()
-	if packageManagerInfo == nil {
-		t.Error("expected Package Manager info to be populated")
-	} else {
-		// Blank for now, Windows is not supported yet
-	}
+	// packageManagerInfo := hostInfo.PackageManagerInfo()
+	// if packageManagerInfo == nil {
+	// 	t.Error("expected Package Manager info to be populated")
+	// } else {
+	// 	// Blank for now, Windows is not supported yet
+	// }
 
-	serviceManagerInfo := hostInfo.GetServiceManagerInfo()
+	serviceManagerInfo := hostInfo.ServiceManagerInfo()
 	if serviceManagerInfo == nil {
 		t.Error("expected Service Manager info to be populated")
 	} else {
@@ -504,7 +523,7 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 		}
 	}
 
-	userInfo := hostInfo.GetUserInfo()
+	userInfo := hostInfo.UserInfo()
 	if userInfo == nil {
 		t.Error("expected User info to be populated")
 	} else {

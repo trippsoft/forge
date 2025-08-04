@@ -2,20 +2,43 @@ package info
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/trippsoft/forge/internal/transport"
+	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/zclconf/go-cty/cty"
 )
 
 const (
+	userPosixDiscoveryScript = `user_name=$(id -nu); ` +
+		`user_id=$(id -u); ` +
+		`user_gid=$(id -g); ` +
+		`user_home_dir="$HOME"; ` +
+		`user_shell="$SHELL"; ` +
+		`user_gecos=$(getent passwd $user_name | cut -d ':' -f 5); ` +
+		`output=$(jq -n ` +
+		`--arg user_name "$user_name" ` +
+		`--arg user_id "$user_id" ` +
+		`--arg user_gid "$user_gid" ` +
+		`--arg user_home_dir "$user_home_dir" ` +
+		`--arg user_shell "$user_shell" ` +
+		`--arg user_gecos "$user_gecos" ` +
+		`'{user_name: $user_name, user_id: $user_id, user_gid: $user_gid, user_home_dir: $user_home_dir, user_shell: $user_shell, user_gecos: $user_gecos}'); ` +
+		`echo "$output"`
+	userWindowsDiscoveryScript = `$userName = $env:USERNAME; ` +
+		`$userId = $userId = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value; ` +
+		`$userHomeDir = $env:USERPROFILE; ` +
+		`$output = @{user_name = $userName; user_id = $userId; user_home_dir = $userHomeDir}; ` +
+		`$json = $output | ConvertTo-Json -Depth 3; ` +
+		`Write-Host $json`
 	UserHomeDirPowerShell = `Write-Host $env:USERPROFILE`
 	UserNamePowerShell    = `Write-Host $env:USERNAME`
 	UserIdPowerShell      = `$obj = [Security.Principal.WindowsIdentity]::GetCurrent(); Write-Host $obj.User.Value`
 )
 
-type userInfo struct {
+type UserInfo struct {
 	name    string
 	userId  string // UID on POSIX systems, SID on Windows
 	groupId string // GID on POSIX systems, not applicable on Windows
@@ -24,35 +47,43 @@ type userInfo struct {
 	gecos   string // User information on POSIX systems, not applicable on Windows
 }
 
-func newUserInfo() *userInfo {
-	return &userInfo{}
+func newUserInfo() *UserInfo {
+	return &UserInfo{}
 }
 
-func (u *userInfo) Name() string {
+func (u *UserInfo) Name() string {
 	return u.name
 }
 
-func (u *userInfo) UserId() string {
+func (u *UserInfo) UserId() string {
 	return u.userId
 }
 
-func (u *userInfo) GroupId() string {
+func (u *UserInfo) GroupId() string {
 	return u.groupId
 }
 
-func (u *userInfo) HomeDir() string {
+func (u *UserInfo) HomeDir() string {
 	return u.homeDir
 }
 
-func (u *userInfo) Shell() string {
+func (u *UserInfo) Shell() string {
 	return u.shell
 }
 
-func (u *userInfo) Gecos() string {
+func (u *UserInfo) Gecos() string {
 	return u.gecos
 }
 
-func (u *userInfo) populateUserInfo(osInfo *osInfo, transport transport.Transport) error {
+func (u *UserInfo) populateUserInfo(osInfo *OSInfo, transport transport.Transport) diag.Diags {
+
+	if osInfo == nil || osInfo.id == "" {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagWarning,
+			Summary:  "Invalid OS information",
+			Detail:   "Skipping user information collection due to missing or invalid OS info",
+		}}
+	}
 
 	if osInfo.families.Contains("posix") {
 		return u.populatePosixUserInfo(transport)
@@ -62,75 +93,73 @@ func (u *userInfo) populateUserInfo(osInfo *osInfo, transport transport.Transpor
 		return u.populateWindowsUserInfo(transport)
 	}
 
-	return errors.New("unsupported OS family for user info population")
+	return diag.Diags{&diag.Diag{
+		Severity: diag.DiagError,
+		Summary:  "Unsupported OS family",
+		Detail:   "User information collection is not supported on this OS",
+	}}
 }
 
-func (u *userInfo) populatePosixUserInfo(transport transport.Transport) error {
+func (u *UserInfo) populatePosixUserInfo(transport transport.Transport) diag.Diags {
 
-	stdout, _, err := transport.ExecuteCommand(context.Background(), "id -nu")
+	stdout, _, err := transport.ExecuteCommand(context.Background(), userPosixDiscoveryScript)
 	if err != nil {
-		return err
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to get user information",
+			Detail:   fmt.Sprintf("Error getting user information on POSIX host: %v", err),
+		}}
 	}
-	u.name = strings.TrimSpace(stdout)
 
-	stdout, _, err = transport.ExecuteCommand(context.Background(), "id -u")
+	discoveredData := make(map[string]string)
+	err = json.Unmarshal([]byte(stdout), &discoveredData)
 	if err != nil {
-		return err
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to parse user information",
+			Detail:   fmt.Sprintf("Error parsing user information on POSIX host: %v", err),
+		}}
 	}
-	u.userId = strings.TrimSpace(stdout)
 
-	stdout, _, err = transport.ExecuteCommand(context.Background(), "id -g")
-	if err != nil {
-		return err
-	}
-	u.groupId = strings.TrimSpace(stdout)
+	u.name, _ = discoveredData["user_name"]
+	u.userId, _ = discoveredData["user_id"]
+	u.groupId, _ = discoveredData["user_gid"]
+	u.homeDir, _ = discoveredData["user_home_dir"]
+	u.shell, _ = discoveredData["user_shell"]
+	u.gecos, _ = discoveredData["user_gecos"]
 
-	stdout, _, err = transport.ExecuteCommand(context.Background(), "echo $HOME")
-	if err != nil {
-		return err
-	}
-	u.homeDir = strings.TrimSpace(stdout)
-
-	stdout, _, err = transport.ExecuteCommand(context.Background(), "echo $SHELL")
-	if err != nil {
-		return err
-	}
-	u.shell = strings.TrimSpace(stdout)
-
-	stdout, _, err = transport.ExecuteCommand(context.Background(), "getent passwd "+u.name+" | cut -d ':' -f 5")
-	if err != nil {
-		return err
-	}
-	u.gecos = strings.TrimSpace(stdout)
-
-	return nil
+	return diag.Diags{}
 }
 
-func (u *userInfo) populateWindowsUserInfo(transport transport.Transport) error {
+func (u *UserInfo) populateWindowsUserInfo(transport transport.Transport) diag.Diags {
 
-	stdout, err := transport.ExecutePowerShell(context.Background(), UserNamePowerShell)
+	stdout, err := transport.ExecutePowerShell(context.Background(), userWindowsDiscoveryScript)
 	if err != nil {
-		return err
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to get user information",
+			Detail:   fmt.Sprintf("Error getting user information on Windows host: %v", err),
+		}}
 	}
 
-	u.name = strings.TrimSpace(stdout)
-
-	stdout, err = transport.ExecutePowerShell(context.Background(), UserIdPowerShell)
+	discoveredData := make(map[string]string)
+	err = json.Unmarshal([]byte(stdout), &discoveredData)
 	if err != nil {
-		return err
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to parse user information",
+			Detail:   fmt.Sprintf("Error parsing user information on Windows host: %v", err),
+		}}
 	}
-	u.userId = strings.TrimSpace(stdout)
 
-	stdout, err = transport.ExecutePowerShell(context.Background(), UserHomeDirPowerShell)
-	if err != nil {
-		return err
-	}
-	u.homeDir = strings.TrimSpace(stdout)
+	u.name, _ = discoveredData["user_name"]
+	u.userId, _ = discoveredData["user_id"]
+	u.homeDir, _ = discoveredData["user_home_dir"]
 
-	return nil
+	return diag.Diags{}
 }
 
-func (u *userInfo) toMapOfCtyValues() map[string]cty.Value {
+func (u *UserInfo) toMapOfCtyValues() map[string]cty.Value {
 	values := make(map[string]cty.Value)
 
 	if u.name != "" {
@@ -172,7 +201,7 @@ func (u *userInfo) toMapOfCtyValues() map[string]cty.Value {
 	return values
 }
 
-func (u *userInfo) String() string {
+func (u *UserInfo) String() string {
 	stringBuilder := &strings.Builder{}
 
 	stringBuilder.WriteString("user_name: ")

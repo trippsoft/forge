@@ -6,7 +6,8 @@ import (
 )
 
 func TestNewNoneTransport(t *testing.T) {
-	transport := NewNoneTransport()
+
+	transport := TransportNone
 	if transport == nil {
 		t.Fatal("NewNoneTransport returned nil transport")
 	}
@@ -14,22 +15,11 @@ func TestNewNoneTransport(t *testing.T) {
 	if transport.Type() != TransportTypeNone {
 		t.Errorf("Expected transport type %s, got %s", TransportTypeNone, transport.Type())
 	}
-
-	// Verify that FileSystem is properly initialized
-	fs := transport.FileSystem()
-	if fs == nil {
-		t.Fatal("FileSystem is nil")
-	}
-
-	// Verify it's the correct type
-	_, ok := fs.(*noneFileSystem)
-	if !ok {
-		t.Error("FileSystem did not return a noneFileSystem instance")
-	}
 }
 
 func TestNoneTransportType(t *testing.T) {
-	transport := NewNoneTransport()
+
+	transport := TransportNone
 
 	if transport.Type() != TransportTypeNone {
 		t.Errorf("Expected transport type %s, got %s", TransportTypeNone, transport.Type())
@@ -37,7 +27,8 @@ func TestNoneTransportType(t *testing.T) {
 }
 
 func TestNoneTransportConnect(t *testing.T) {
-	transport := NewNoneTransport()
+
+	transport := TransportNone
 
 	err := transport.Connect()
 	if err != nil {
@@ -46,7 +37,8 @@ func TestNoneTransportConnect(t *testing.T) {
 }
 
 func TestNoneTransportClose(t *testing.T) {
-	transport := NewNoneTransport()
+
+	transport := TransportNone
 
 	err := transport.Close()
 	if err != nil {
@@ -55,36 +47,10 @@ func TestNoneTransportClose(t *testing.T) {
 }
 
 func TestNoneTransportExecuteCommand(t *testing.T) {
-	transport := NewNoneTransport()
-	ctx := context.Background()
 
-	stdout, stderr, err := transport.ExecuteCommand(ctx, "echo hello")
-	if err == nil {
-		t.Error("Expected error for ExecuteCommand on none transport, but got none")
-	}
+	transport := TransportNone
 
-	expectedError := "no transport available for command execution"
-	if err.Error() != expectedError {
-		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
-	}
-
-	if stdout != "" {
-		t.Errorf("Expected empty stdout, got '%s'", stdout)
-	}
-
-	if stderr != "" {
-		t.Errorf("Expected empty stderr, got '%s'", stderr)
-	}
-}
-
-func TestNoneTransportExecuteCommandWithContext(t *testing.T) {
-	transport := NewNoneTransport()
-
-	// Test with cancelled context
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel immediately
-
-	stdout, stderr, err := transport.ExecuteCommand(ctx, "echo hello")
+	stdout, stderr, err := transport.ExecuteCommand(context.Background(), "echo hello")
 	if err == nil {
 		t.Error("Expected error for ExecuteCommand on none transport, but got none")
 	}
@@ -104,10 +70,10 @@ func TestNoneTransportExecuteCommandWithContext(t *testing.T) {
 }
 
 func TestNoneTransportExecutePowerShell(t *testing.T) {
-	transport := NewNoneTransport()
-	ctx := context.Background()
 
-	stdout, err := transport.ExecutePowerShell(ctx, "Write-Host 'hello'")
+	transport := TransportNone
+
+	stdout, err := transport.ExecutePowerShell(context.Background(), "Write-Host 'hello'")
 	if err == nil {
 		t.Error("Expected error for ExecutePowerShell on none transport, but got none")
 	}
@@ -119,77 +85,15 @@ func TestNoneTransportExecutePowerShell(t *testing.T) {
 
 	if stdout != "" {
 		t.Errorf("Expected empty stdout, got '%s'", stdout)
-	}
-}
-
-func TestNoneTransportExecutePowerShellWithContext(t *testing.T) {
-	transport := NewNoneTransport()
-
-	// Test with cancelled context
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel immediately
-
-	stdout, err := transport.ExecutePowerShell(ctx, "Write-Host 'hello'")
-	if err == nil {
-		t.Error("Expected error for ExecutePowerShell on none transport, but got none")
-	}
-
-	expectedError := "no transport available for PowerShell execution"
-	if err.Error() != expectedError {
-		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
-	}
-
-	if stdout != "" {
-		t.Errorf("Expected empty stdout, got '%s'", stdout)
-	}
-}
-
-func TestNoneTransportFileSystem(t *testing.T) {
-	transport := NewNoneTransport()
-
-	fs := transport.FileSystem()
-	if fs == nil {
-		t.Fatal("FileSystem returned nil")
-	}
-
-	// Test that it's actually a noneFileSystem
-	_, ok := fs.(*noneFileSystem)
-	if !ok {
-		t.Error("FileSystem did not return a noneFileSystem instance")
-	}
-}
-
-func TestNoneFileSystemIsNull(t *testing.T) {
-	fs := &noneFileSystem{}
-
-	if !fs.IsNull() {
-		t.Error("IsNull should return true for none file system")
-	}
-}
-
-func TestNoneFileSystemConnect(t *testing.T) {
-	fs := &noneFileSystem{}
-
-	err := fs.Connect()
-	if err != nil {
-		t.Errorf("Connect should not return error for none file system, got: %v", err)
-	}
-}
-
-func TestNoneFileSystemClose(t *testing.T) {
-	fs := &noneFileSystem{}
-
-	err := fs.Close()
-	if err != nil {
-		t.Errorf("Close should not return error for none file system, got: %v", err)
 	}
 }
 
 func TestNoneFileSystemStat(t *testing.T) {
-	fs := &noneFileSystem{}
+
+	transport := TransportNone
 
 	// Test stat operation (should always fail)
-	info, err := fs.Stat("/some/path/file.txt")
+	info, err := transport.Stat("/some/path/file.txt")
 	if err == nil {
 		t.Error("Expected error for Stat on none file system, but got none")
 	}
@@ -204,11 +108,32 @@ func TestNoneFileSystemStat(t *testing.T) {
 	}
 }
 
+func TestNoneFileSystemCreate(t *testing.T) {
+
+	transport := TransportNone
+
+	// Test create operation (should always fail)
+	file, err := transport.Create("/some/path/file.txt")
+	if err == nil {
+		t.Error("Expected error for Create on none file system, but got none")
+	}
+
+	expectedError := "no file system available"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
+	}
+
+	if file != nil {
+		t.Errorf("Expected nil file, got %v", file)
+	}
+}
+
 func TestNoneFileSystemOpen(t *testing.T) {
-	fs := &noneFileSystem{}
+
+	transport := TransportNone
 
 	// Test open operation (should always fail)
-	file, err := fs.Open("/some/path/file.txt")
+	file, err := transport.Open("/some/path/file.txt")
 	if err == nil {
 		t.Error("Expected error for Open on none file system, but got none")
 	}
@@ -220,5 +145,185 @@ func TestNoneFileSystemOpen(t *testing.T) {
 
 	if file != nil {
 		t.Errorf("Expected nil file, got %v", file)
+	}
+}
+
+func TestNoneFileSystemMkdir(t *testing.T) {
+
+	transport := TransportNone
+
+	err := transport.Mkdir("/some/path/directory")
+	if err == nil {
+		t.Error("Expected error for Mkdir on none file system, but got none")
+	}
+
+	expectedError := "no file system available"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
+	}
+}
+
+func TestNoneFileSystemMkdirAll(t *testing.T) {
+
+	transport := TransportNone
+
+	err := transport.MkdirAll("/some/path/directory")
+	if err == nil {
+		t.Error("Expected error for MkdirAll on none file system, but got none")
+	}
+
+	expectedError := "no file system available"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
+	}
+}
+
+func TestNoneFileSystemRemove(t *testing.T) {
+
+	transport := TransportNone
+
+	err := transport.Remove("/some/path/file.txt")
+	if err == nil {
+		t.Error("Expected error for Remove on none file system, but got none")
+	}
+
+	expectedError := "no file system available"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
+	}
+}
+
+func TestNoneFileSystemRemoveAll(t *testing.T) {
+
+	transport := TransportNone
+
+	err := transport.RemoveAll("/some/path/directory")
+	if err == nil {
+		t.Error("Expected error for RemoveAll on none file system, but got none")
+	}
+
+	expectedError := "no file system available"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
+	}
+}
+
+func TestNoneFileSystemJoin(t *testing.T) {
+
+	transport := TransportNone
+
+	path := transport.Join("some", "path", "file.txt")
+	if path != "" {
+		t.Errorf("Expected empty path from Join on none file system, got '%s'", path)
+	}
+}
+
+func TestNoneFileSystemTempDir(t *testing.T) {
+
+	transport := TransportNone
+
+	dir, err := transport.TempDir()
+	if err == nil {
+		t.Error("Expected error for TempDir on none file system, but got none")
+	}
+
+	expectedError := "no file system available"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
+	}
+
+	if dir != "" {
+		t.Errorf("Expected empty temp dir, got '%s'", dir)
+	}
+}
+
+func TestNoneFileSystemCreateTemp(t *testing.T) {
+
+	transport := TransportNone
+
+	file, err := transport.CreateTemp("", "tempfile")
+	if err == nil {
+		t.Error("Expected error for CreateTemp on none file system, but got none")
+	}
+
+	expectedError := "no file system available"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
+	}
+
+	if file != nil {
+		t.Errorf("Expected nil file from CreateTemp, got %v", file)
+	}
+}
+
+func TestNoneFileSystemMkdirTemp(t *testing.T) {
+
+	transport := TransportNone
+
+	dir, err := transport.MkdirTemp("", "tempdir")
+	if err == nil {
+		t.Error("Expected error for MkdirTemp on none file system, but got none")
+	}
+
+	expectedError := "no file system available"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
+	}
+
+	if dir != "" {
+		t.Errorf("Expected empty temp dir from MkdirTemp, got '%s'", dir)
+	}
+}
+
+func TestNoneFileSystemSymlink(t *testing.T) {
+
+	transport := TransportNone
+
+	err := transport.Symlink("/target/path", "/link/path")
+	if err == nil {
+		t.Error("Expected error for Symlink on none file system, but got none")
+	}
+
+	expectedError := "no file system available"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
+	}
+}
+
+func TestNoneFileSystemReadLink(t *testing.T) {
+
+	transport := TransportNone
+
+	target, err := transport.ReadLink("/link/path")
+	if err == nil {
+		t.Error("Expected error for ReadLink on none file system, but got none")
+	}
+
+	expectedError := "no file system available"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
+	}
+
+	if target != "" {
+		t.Errorf("Expected empty target from Readlink, got '%s'", target)
+	}
+}
+
+func TestNoneFileSystemRealPath(t *testing.T) {
+
+	transport := TransportNone
+
+	realPath, err := transport.RealPath("/some/path")
+	if err == nil {
+		t.Error("Expected error for RealPath on none file system, but got none")
+	}
+
+	expectedError := "no file system available"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
+	}
+
+	if realPath != "" {
+		t.Errorf("Expected empty real path from RealPath, got '%s'", realPath)
 	}
 }

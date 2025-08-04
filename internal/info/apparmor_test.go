@@ -3,94 +3,180 @@ package info
 import (
 	"os"
 	"testing"
-	"time"
+
+	"github.com/trippsoft/forge/internal/transport/mock"
 )
 
-func TestAppArmorInfo_PopulateAppArmorInfo_NonLinux(t *testing.T) {
+func TestAppArmorInfo_PopulateAppArmorInfo_NoOS(t *testing.T) {
 
 	osInfo := newOSInfo()
-	osInfo.families.Add("windows")
 
-	fileSystem := newMockFileSystem()
+	transport := mock.NewMockTransport()
 
-	appArmorInfo := newAppArmorInfo()
-	err := appArmorInfo.populateAppArmorInfo(osInfo, fileSystem)
+	info := newAppArmorInfo()
+	diags := info.populateAppArmorInfo(osInfo, transport)
 
-	if err != nil {
-		t.Fatalf("expected no error for non-Linux system, got: %v", err)
+	if diags.HasErrors() {
+		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
 
-	if appArmorInfo.supported {
+	if !diags.HasWarnings() {
+		t.Fatal("expected warnings, got none")
+	}
+
+	if info.Supported() {
 		t.Error("expected AppArmor to be unsupported on non-Linux system")
 	}
 
-	if appArmorInfo.enabled {
+	if info.Enabled() {
 		t.Error("expected AppArmor to be disabled on non-Linux system")
 	}
-}
 
-func TestAppArmorInfo_PopulateAppArmorInfo_Linux_Enabled(t *testing.T) {
-	osInfo := newOSInfo()
-	osInfo.families.Add("linux")
-
-	fileSystem := newMockFileSystem()
-	fileSystem.dirs["/sys/kernel/security/apparmor"] = &mockFileInfo{
-		name:    "apparmor",
-		isDir:   true,
-		mode:    os.ModeDir | 0755,
-		modTime: time.Now(),
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning, got: %d", len(warnings))
 	}
 
-	appArmorInfo := newAppArmorInfo()
-	err := appArmorInfo.populateAppArmorInfo(osInfo, fileSystem)
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	expectedSummary := "Missing OS information"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, warnings[0].Summary)
 	}
 
-	if !appArmorInfo.supported {
-		t.Error("expected AppArmor to be supported on Linux system")
-	}
-
-	if !appArmorInfo.enabled {
-		t.Error("expected AppArmor to be enabled when directory exists")
+	expectedDetail := "Skipping AppArmor information collection due to missing or invalid OS info"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, warnings[0].Detail)
 	}
 }
 
-func TestAppArmorInfo_PopulateAppArmorInfo_Linux_Disabled(t *testing.T) {
-	osInfo := newOSInfo()
-	osInfo.families.Add("linux")
+func TestAppArmorInfo_PopulateAppArmorInfo_Linux(t *testing.T) {
 
-	fileSystem := newMockFileSystem()
-
-	appArmorInfo := newAppArmorInfo()
-	err := appArmorInfo.populateAppArmorInfo(osInfo, fileSystem)
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	tests := []struct {
+		name            string
+		output          string
+		expectedEnabled bool
+	}{
+		{
+			name:            "AppArmor enabled",
+			output:          "1",
+			expectedEnabled: true,
+		},
+		{
+			name:            "AppArmor disabled",
+			output:          "0",
+			expectedEnabled: false,
+		},
+		{
+			name:            "AppArmor not supported",
+			output:          "",
+			expectedEnabled: false,
+		},
 	}
 
-	if !appArmorInfo.supported {
-		t.Error("expected AppArmor to be supported on Linux system")
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 
-	if appArmorInfo.enabled {
-		t.Error("expected AppArmor to be disabled when directory doesn't exist")
+			osInfo := newOSInfo()
+			osInfo.families.Add("linux")
+			osInfo.id = "ubuntu"
+
+			transport := mock.NewMockTransport()
+			transport.CommandResults[appArmorDiscoveryScript] = &mock.CommandResult{
+				Stdout: tt.output,
+			}
+
+			info := newAppArmorInfo()
+			diags := info.populateAppArmorInfo(osInfo, transport)
+
+			if diags.HasErrors() {
+				t.Fatalf("expected no errors, got: %v", diags.Errors())
+			}
+
+			if diags.HasWarnings() {
+				t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+			}
+
+			if !info.Supported() {
+				t.Error("expected AppArmor to be supported on Linux system")
+			}
+
+			if info.Enabled() != tt.expectedEnabled {
+				t.Errorf("expected AppArmor to be %v, got: %v", tt.expectedEnabled, info.Enabled())
+			}
+		})
 	}
 }
 
-func TestAppArmorInfo_PopulateAppArmorInfo_FileSystemError(t *testing.T) {
-	// Test AppArmor with file system error (not IsNotExist)
+func TestAppArmorInfo_PopulateAppArmorInfo_Linux_Error(t *testing.T) {
+
 	osInfo := newOSInfo()
 	osInfo.families.Add("linux")
+	osInfo.id = "ubuntu"
 
-	fileSystem := newMockFileSystem()
-	fileSystem.errorPaths["/sys/kernel/security/apparmor"] = os.ErrPermission
+	transport := mock.NewMockTransport()
+	transport.CommandResults[appArmorDiscoveryScript] = &mock.CommandResult{
+		Err: os.ErrPermission,
+	}
 
-	appArmorInfo := newAppArmorInfo()
-	err := appArmorInfo.populateAppArmorInfo(osInfo, fileSystem)
-	if err == nil {
-		t.Error("expected error when file system operations fail")
+	info := newAppArmorInfo()
+	diags := info.populateAppArmorInfo(osInfo, transport)
+
+	if !diags.HasErrors() {
+		t.Error("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if !info.Supported() {
+		t.Error("expected AppArmor to be unsupported on Linux system with file system error")
+	}
+
+	if info.Enabled() {
+		t.Error("expected AppArmor to be disabled on Linux system with file system error")
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 diagnostic, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to execute AppArmor discovery script"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error executing command: permission denied"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected detail %q, got: %q", expectedDetail, errors[0].Detail)
+	}
+}
+
+func TestAppArmorInfo_PopulateAppArmorInfo_Windows(t *testing.T) {
+
+	osInfo := newOSInfo()
+	osInfo.families.Add("windows")
+	osInfo.id = "windows-server"
+
+	transport := mock.NewMockTransport()
+
+	info := newAppArmorInfo()
+	diags := info.populateAppArmorInfo(osInfo, transport)
+
+	if diags.HasErrors() {
+		t.Fatalf("expected no errors, got: %v", diags.Errors())
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if info.Supported() {
+		t.Error("expected AppArmor to be unsupported on Windows system")
+	}
+
+	if info.Enabled() {
+		t.Error("expected AppArmor to be disabled on Windows system")
 	}
 }
 
@@ -102,11 +188,11 @@ func TestAppArmorInfo_ToMapOfCtyValues_Supported(t *testing.T) {
 	values := appArmorInfo.toMapOfCtyValues()
 
 	if _, exists := values["apparmor_enabled"]; !exists {
-		t.Error("expected apparmor_enabled key to be present in values map")
+		t.Error("expected 'apparmor_enabled' key to be present in values map")
 	}
 
 	if !values["apparmor_enabled"].True() {
-		t.Error("expected apparmor_enabled to be true")
+		t.Error("expected 'apparmor_enabled' to be true")
 	}
 }
 
@@ -118,11 +204,11 @@ func TestAppArmorInfo_ToMapOfCtyValues_SupportedButDisabled(t *testing.T) {
 	values := appArmorInfo.toMapOfCtyValues()
 
 	if _, exists := values["apparmor_enabled"]; !exists {
-		t.Error("expected apparmor_enabled key to be present in values map")
+		t.Error("expected 'apparmor_enabled' key to be present in values map")
 	}
 
 	if values["apparmor_enabled"].True() {
-		t.Error("expected apparmor_enabled to be false")
+		t.Error("expected 'apparmor_enabled' to be false")
 	}
 }
 
@@ -135,9 +221,9 @@ func TestAppArmorInfo_ToMapOfCtyValues_NotSupported(t *testing.T) {
 
 	if value, exists := values["apparmor_enabled"]; exists {
 		if !value.IsNull() {
-			t.Error("expected apparmor_enabled to be null for unsupported AppArmor")
+			t.Error("expected 'apparmor_enabled' to be null for unsupported AppArmor")
 		}
 	} else {
-		t.Error("expected apparmor_enabled key to be present in values map")
+		t.Error("expected 'apparmor_enabled' key to be present in values map")
 	}
 }

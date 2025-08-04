@@ -1,145 +1,321 @@
 package info
 
 import (
-	"bytes"
-	"io"
+	"os"
 	"testing"
-	"time"
 
+	"github.com/trippsoft/forge/internal/transport/mock"
 	"github.com/zclconf/go-cty/cty"
 )
 
-func TestSelinuxInfo_PopulateSelinuxInfo_NonLinux(t *testing.T) {
+func TestSelinuxInfo_PopulateSelinuxInfo_NoOS(t *testing.T) {
 	osInfo := newOSInfo()
-	osInfo.families.Add("windows")
 
-	fileSystem := newMockFileSystem()
+	transport := mock.NewMockTransport()
 
-	selinuxInfo := &selinuxInfo{}
+	info := newSELinuxInfo()
+	diags := info.populateSelinuxInfo(osInfo, transport)
 
-	err := selinuxInfo.populateSelinuxInfo(osInfo, fileSystem)
-
-	if err != nil {
-		t.Fatalf("expected no error for non-Linux system, got: %v", err)
+	if diags.HasErrors() {
+		t.Fatalf("expected no errors, got: %v", diags)
 	}
 
-	if selinuxInfo.supported {
+	if !diags.HasWarnings() {
+		t.Fatal("expected warnings, got none")
+	}
+
+	if info.Supported() {
 		t.Error("expected SELinux to be unsupported on non-Linux system")
 	}
 
-	if selinuxInfo.status != SelinuxNotSupported {
-		t.Errorf("expected status to be %q, got %q", SelinuxNotSupported, selinuxInfo.status)
+	if info.Installed() {
+		t.Error("expected SELinux to be uninstalled on non-Linux system")
 	}
 
-	if selinuxInfo.selinuxType != SelinuxTypeNotSupported {
-		t.Errorf("expected type to be %q, got %q", SelinuxTypeNotSupported, selinuxInfo.selinuxType)
+	if info.Status() != SELinuxNotSupported {
+		t.Errorf("expected status to be %q, got %q", SELinuxNotSupported, info.Status())
+	}
+
+	if info.SelinuxType() != SELinuxTypeNotSupported {
+		t.Errorf("expected type to be %q, got %q", SELinuxTypeNotSupported, info.SelinuxType())
+	}
+
+	warnings := diags.Warnings()
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 warning, got: %d", len(warnings))
+	}
+
+	expectedSummary := "Missing OS information"
+	if warnings[0].Summary != expectedSummary {
+		t.Errorf("expected warning summary %q, got: %q", expectedSummary, warnings[0].Summary)
+	}
+
+	expectedDetail := "Skipping SELinux information collection due to missing or invalid OS info"
+	if warnings[0].Detail != expectedDetail {
+		t.Errorf("expected warning detail %q, got: %q", expectedDetail, warnings[0].Detail)
 	}
 }
 
-func TestSelinuxInfo_PopulateSelinuxInfo_Linux_NoConfigFile(t *testing.T) {
+func TestSelinuxInfo_PopulateSelinuxInfo_Windows(t *testing.T) {
+
 	osInfo := newOSInfo()
-	osInfo.families.Add("linux")
+	osInfo.families.Add("windows")
+	osInfo.id = "windows-server"
 
-	fileSystem := newMockFileSystem()
+	transport := mock.NewWinMockTransport()
 
-	selinuxInfo := &selinuxInfo{}
-	err := selinuxInfo.populateSelinuxInfo(osInfo, fileSystem)
+	info := newSELinuxInfo()
+	diags := info.populateSelinuxInfo(osInfo, transport)
 
-	if err != nil {
-		t.Fatalf("expected no error when config file doesn't exist, got: %v", err)
+	if diags.HasErrors() {
+		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
 
-	if !selinuxInfo.supported {
-		t.Error("expected SELinux to be supported on Linux system")
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if info.Supported() {
+		t.Error("expected SELinux to be unsupported on non-Linux system")
+	}
+
+	if info.Installed() {
+		t.Error("expected SELinux to be uninstalled on non-Linux system")
+	}
+
+	if info.Status() != SELinuxNotSupported {
+		t.Errorf("expected status to be %q, got %q", SELinuxNotSupported, info.Status())
+	}
+
+	if info.SelinuxType() != SELinuxTypeNotSupported {
+		t.Errorf("expected type to be %q, got %q", SELinuxTypeNotSupported, info.SelinuxType())
 	}
 }
 
-func TestSelinuxInfo_PopulateSelinuxInfo_Linux_WithConfigFile(t *testing.T) {
-	testCases := []struct {
-		name           string
-		configContent  string
-		expectedStatus selinuxStatus
-		expectedType   selinuxType
+func TestSelinuxInfo_PopulateSelinuxInfo_Linux(t *testing.T) {
+
+	tests := []struct {
+		name              string
+		output            string
+		expectedInstalled bool
+		expectedStatus    SELinuxStatus
+		expectedType      SELinuxType
 	}{
 		{
-			name:           "disabled",
-			configContent:  "SELINUX=disabled\nSELINUXTYPE=targeted\n",
-			expectedStatus: SelinuxDisabled,
-			expectedType:   SelinuxTypeNotSupported,
+			name: "not installed",
+			output: `{
+				  "selinux_installed": "0",
+				  "selinux_status": "",
+				  "selinux_type": ""
+				}`,
+			expectedInstalled: false,
+			expectedStatus:    SELinuxNotSupported,
+			expectedType:      SELinuxTypeNotSupported,
 		},
 		{
-			name:           "enforcing_targeted",
-			configContent:  "SELINUX=enforcing\nSELINUXTYPE=targeted\n",
-			expectedStatus: SelinuxEnforcing,
-			expectedType:   SelinuxTypeTargeted,
+			name: "disabled",
+			output: `{
+				  "selinux_installed": "1",
+				  "selinux_status": "disabled",
+				  "selinux_type": ""
+				}`,
+			expectedInstalled: true,
+			expectedStatus:    SELinuxDisabled,
+			expectedType:      SELinuxTypeNotSupported,
 		},
 		{
-			name:           "permissive_minimum",
-			configContent:  "SELINUX=permissive\nSELINUXTYPE=minimum\n",
-			expectedStatus: SelinuxPermissive,
-			expectedType:   SelinuxTypeMinimum,
+			name: "enforcing targeted",
+			output: `{
+				  "selinux_installed": "1",
+				  "selinux_status": "enforcing",
+				  "selinux_type": "targeted"
+				}`,
+			expectedInstalled: true,
+			expectedStatus:    SELinuxEnforcing,
+			expectedType:      SELinuxTypeTargeted,
 		},
 		{
-			name:           "enforcing_mls",
-			configContent:  "SELINUX=enforcing\nSELINUXTYPE=mls\n",
-			expectedStatus: SelinuxEnforcing,
-			expectedType:   SelinuxTypeMLS,
+			name: "permissive minimum",
+			output: `{
+				  "selinux_installed": "1",
+				  "selinux_status": "permissive",
+				  "selinux_type": "minimum"
+				}`,
+			expectedInstalled: true,
+			expectedStatus:    SELinuxPermissive,
+			expectedType:      SELinuxTypeMinimum,
 		},
 		{
-			name:           "with_comments_and_empty_lines",
-			configContent:  "# This is a comment\n\nSELINUX=enforcing\n# Another comment\nSELINUXTYPE=targeted\n\n",
-			expectedStatus: SelinuxEnforcing,
-			expectedType:   SelinuxTypeTargeted,
+			name: "enforcing mls",
+			output: `{
+				  "selinux_installed": "1",
+				  "selinux_status": "enforcing",
+				  "selinux_type": "mls"
+				}`,
+			expectedInstalled: true,
+			expectedStatus:    SELinuxEnforcing,
+			expectedType:      SELinuxTypeMLS,
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
 			osInfo := newOSInfo()
 			osInfo.families.Add("linux")
+			osInfo.id = "ubuntu"
 
-			fileSystem := newMockFileSystem()
-			fileSystem.files["/etc/selinux/config"] = &mockFile{
-				content: io.NopCloser(bytes.NewBufferString(tc.configContent)),
-				info: &mockFileInfo{
-					name:    "config",
-					size:    int64(len(tc.configContent)),
-					mode:    0644,
-					modTime: time.Now(),
-				},
+			transport := mock.NewMockTransport()
+			transport.CommandResults[selinuxDiscoveryScript] = &mock.CommandResult{
+				Stdout: tt.output,
 			}
 
-			selinuxInfo := &selinuxInfo{}
-			err := selinuxInfo.populateSelinuxInfo(osInfo, fileSystem)
+			info := newSELinuxInfo()
+			diags := info.populateSelinuxInfo(osInfo, transport)
 
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
+			if diags.HasErrors() {
+				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
 
-			if !selinuxInfo.supported {
+			if diags.HasWarnings() {
+				t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+			}
+
+			if !info.Supported() {
 				t.Error("expected SELinux to be supported on Linux system")
 			}
 
-			if selinuxInfo.status != tc.expectedStatus {
-				t.Errorf("expected status %q, got %q", tc.expectedStatus, selinuxInfo.status)
+			if info.Installed() != tt.expectedInstalled {
+				t.Errorf("expected SELinux installed to be %v, got: %v", tt.expectedInstalled, info.Installed())
 			}
 
-			if selinuxInfo.selinuxType != tc.expectedType {
-				t.Errorf("expected type %q, got %q", tc.expectedType, selinuxInfo.selinuxType)
+			if info.Status() != tt.expectedStatus {
+				t.Errorf("expected status to be %q, got %q", tt.expectedStatus, info.Status())
+			}
+
+			if info.SelinuxType() != tt.expectedType {
+				t.Errorf("expected type to be %q, got %q", tt.expectedType, info.SelinuxType())
 			}
 		})
 	}
 }
 
-func TestSelinuxInfo_ToMapOfCtyValues_Supported(t *testing.T) {
-	selinuxInfo := &selinuxInfo{
-		supported:   true,
-		installed:   true,
-		status:      SelinuxEnforcing,
-		selinuxType: SelinuxTypeTargeted,
+func TestSelinuxInfo_PopulateSelinuxInfo_Linux_Error(t *testing.T) {
+	osInfo := newOSInfo()
+	osInfo.families.Add("linux")
+	osInfo.id = "ubuntu"
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[selinuxDiscoveryScript] = &mock.CommandResult{
+		Err: os.ErrPermission,
 	}
 
-	values := selinuxInfo.toMapOfCtyValues()
+	info := newSELinuxInfo()
+	diags := info.populateSelinuxInfo(osInfo, transport)
+
+	if !diags.HasErrors() {
+		t.Fatalf("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if !info.supported {
+		t.Error("expected SELinux to be supported on Linux system")
+	}
+
+	if info.Installed() {
+		t.Error("expected SELinux to be not installed on Linux system with config file stat error")
+	}
+
+	if info.Status() != SELinuxNotSupported {
+		t.Errorf("expected status to be %q, got %q", SELinuxNotSupported, info.Status())
+	}
+
+	if info.SelinuxType() != SELinuxTypeNotSupported {
+		t.Errorf("expected type to be %q, got %q", SELinuxTypeNotSupported, info.SelinuxType())
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to execute SELinux discovery script"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected error summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error executing SELinux discovery script: permission denied"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected error detail %q, got: %q", expectedDetail, errors[0].Detail)
+	}
+}
+
+func TestSelinuxInfo_PopulateSelinuxInfo_Linux_NotJSON(t *testing.T) {
+	osInfo := newOSInfo()
+	osInfo.families.Add("linux")
+	osInfo.id = "ubuntu"
+
+	transport := mock.NewMockTransport()
+	transport.CommandResults[selinuxDiscoveryScript] = &mock.CommandResult{
+		Stdout: "Not a valid JSON output",
+	}
+
+	info := newSELinuxInfo()
+	diags := info.populateSelinuxInfo(osInfo, transport)
+
+	if !diags.HasErrors() {
+		t.Fatalf("expected errors, got none")
+	}
+
+	if diags.HasWarnings() {
+		t.Fatalf("expected no warnings, got: %v", diags.Warnings())
+	}
+
+	if !info.supported {
+		t.Error("expected SELinux to be supported on Linux system")
+	}
+
+	if info.Installed() {
+		t.Error("expected SELinux to be not installed on Linux system with config file stat error")
+	}
+
+	if info.Status() != SELinuxNotSupported {
+		t.Errorf("expected status to be %q, got %q", SELinuxNotSupported, info.Status())
+	}
+
+	if info.SelinuxType() != SELinuxTypeNotSupported {
+		t.Errorf("expected type to be %q, got %q", SELinuxTypeNotSupported, info.SelinuxType())
+	}
+
+	errors := diags.Errors()
+	if len(errors) != 1 {
+		t.Fatalf("expected 1 error, got: %d", len(errors))
+	}
+
+	expectedSummary := "Failed to parse SELinux discovery script output"
+	if errors[0].Summary != expectedSummary {
+		t.Errorf("expected error summary %q, got: %q", expectedSummary, errors[0].Summary)
+	}
+
+	expectedDetail := "Error parsing SELinux discovery script output: invalid character 'N' looking for beginning of value"
+	if errors[0].Detail != expectedDetail {
+		t.Errorf("expected error detail %q, got: %q", expectedDetail, errors[0].Detail)
+	}
+}
+
+func TestSelinuxInfo_ToMapOfCtyValues_Supported(t *testing.T) {
+
+	info := &SELinuxInfo{
+		supported:   true,
+		installed:   true,
+		status:      SELinuxEnforcing,
+		selinuxType: SELinuxTypeTargeted,
+	}
+
+	values := info.toMapOfCtyValues()
 
 	expectedKeys := []string{"selinux_installed", "selinux_status", "selinux_type"}
 	for _, key := range expectedKeys {
@@ -148,28 +324,29 @@ func TestSelinuxInfo_ToMapOfCtyValues_Supported(t *testing.T) {
 		}
 	}
 
-	if values["selinux_installed"].True() != selinuxInfo.installed {
+	if values["selinux_installed"].True() != info.installed {
 		t.Errorf("expected selinux_installed to be true, got %s", values["selinux_installed"].GoString())
 	}
 
-	if values["selinux_status"].AsString() != string(SelinuxEnforcing) {
-		t.Errorf("expected selinux_status to be %q, got %q", SelinuxEnforcing, values["selinux_status"].AsString())
+	if values["selinux_status"].AsString() != string(SELinuxEnforcing) {
+		t.Errorf("expected selinux_status to be %q, got %q", SELinuxEnforcing, values["selinux_status"].AsString())
 	}
 
-	if values["selinux_type"].AsString() != string(SelinuxTypeTargeted) {
-		t.Errorf("expected selinux_type to be %q, got %q", SelinuxTypeTargeted, values["selinux_type"].AsString())
+	if values["selinux_type"].AsString() != string(SELinuxTypeTargeted) {
+		t.Errorf("expected selinux_type to be %q, got %q", SELinuxTypeTargeted, values["selinux_type"].AsString())
 	}
 }
 
 func TestSelinuxInfo_ToMapOfCtyValues_NotInstalled(t *testing.T) {
-	selinuxInfo := &selinuxInfo{
+
+	info := &SELinuxInfo{
 		supported:   true,
 		installed:   false,
-		status:      SelinuxEnforcing,    // Value doesn't matter here and should be ignored
-		selinuxType: SelinuxTypeTargeted, // Value doesn't matter here and should be ignored
+		status:      SELinuxEnforcing,    // Value doesn't matter here and should be ignored
+		selinuxType: SELinuxTypeTargeted, // Value doesn't matter here and should be ignored
 	}
 
-	values := selinuxInfo.toMapOfCtyValues()
+	values := info.toMapOfCtyValues()
 
 	expectedKeys := []string{"selinux_installed", "selinux_status", "selinux_type"}
 	for _, key := range expectedKeys {
@@ -187,14 +364,15 @@ func TestSelinuxInfo_ToMapOfCtyValues_NotInstalled(t *testing.T) {
 }
 
 func TestSelinuxInfo_ToMapOfCtyValues_NotSupported(t *testing.T) {
-	selinuxInfo := &selinuxInfo{
+
+	info := &SELinuxInfo{
 		supported:   false,
 		installed:   true,                    // Value doesn't matter here and should be ignored
-		status:      SelinuxNotSupported,     // Value doesn't matter here and should be ignored
-		selinuxType: SelinuxTypeNotSupported, // Value doesn't matter here and should be ignored
+		status:      SELinuxNotSupported,     // Value doesn't matter here and should be ignored
+		selinuxType: SELinuxTypeNotSupported, // Value doesn't matter here and should be ignored
 	}
 
-	values := selinuxInfo.toMapOfCtyValues()
+	values := info.toMapOfCtyValues()
 
 	expectedKeys := []string{"selinux_status", "selinux_type"}
 	for _, key := range expectedKeys {
@@ -204,40 +382,6 @@ func TestSelinuxInfo_ToMapOfCtyValues_NotSupported(t *testing.T) {
 			}
 		} else {
 			t.Errorf("expected key %q to be present in values map", key)
-		}
-	}
-}
-
-func TestSelinuxConstants(t *testing.T) {
-	// Test status constants
-	statusValues := []selinuxStatus{
-		SelinuxEnforcing,
-		SelinuxDisabled,
-		SelinuxPermissive,
-		SelinuxNotSupported,
-	}
-
-	expectedStatuses := []string{"enforcing", "disabled", "permissive", ""}
-
-	for i, status := range statusValues {
-		if string(status) != expectedStatuses[i] {
-			t.Errorf("expected status constant %d to be %q, got %q", i, expectedStatuses[i], string(status))
-		}
-	}
-
-	// Test type constants
-	typeValues := []selinuxType{
-		SelinuxTypeTargeted,
-		SelinuxTypeMinimum,
-		SelinuxTypeMLS,
-		SelinuxTypeNotSupported,
-	}
-
-	expectedTypes := []string{"targeted", "minimum", "mls", ""}
-
-	for i, selinuxType := range typeValues {
-		if string(selinuxType) != expectedTypes[i] {
-			t.Errorf("expected type constant %d to be %q, got %q", i, expectedTypes[i], string(selinuxType))
 		}
 	}
 }

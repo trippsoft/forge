@@ -1,23 +1,22 @@
 package info
 
 import (
-	"errors"
 	"maps"
 	"strings"
 
-	"github.com/trippsoft/forge/internal/log"
 	"github.com/trippsoft/forge/internal/transport"
+	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/zclconf/go-cty/cty"
 )
 
 type HostInfo struct {
-	osInfo             *osInfo
-	selinuxInfo        *selinuxInfo
-	appArmorInfo       *appArmorInfo
-	fipsInfo           *fipsInfo
-	packageManagerInfo *packageManagerInfo
-	serviceManagerInfo *serviceManagerInfo
-	userInfo           *userInfo
+	osInfo             *OSInfo
+	selinuxInfo        *SELinuxInfo
+	appArmorInfo       *AppArmorInfo
+	fipsInfo           *FIPSInfo
+	packageManagerInfo *PackageManagerInfo
+	serviceManagerInfo *ServiceManagerInfo
+	userInfo           *UserInfo
 }
 
 func NewHostInfo() *HostInfo {
@@ -32,110 +31,68 @@ func NewHostInfo() *HostInfo {
 	}
 }
 
-func (i *HostInfo) GetOSInfo() *osInfo {
+func (i *HostInfo) OSInfo() *OSInfo {
 	return i.osInfo
 }
 
-func (i *HostInfo) GetSELinuxInfo() *selinuxInfo {
+func (i *HostInfo) SELinuxInfo() *SELinuxInfo {
 	return i.selinuxInfo
 }
 
-func (i *HostInfo) GetAppArmorInfo() *appArmorInfo {
+func (i *HostInfo) AppArmorInfo() *AppArmorInfo {
 	return i.appArmorInfo
 }
 
-func (i *HostInfo) GetFipsInfo() *fipsInfo {
+func (i *HostInfo) FipsInfo() *FIPSInfo {
 	return i.fipsInfo
 }
 
-func (i *HostInfo) GetPackageManagerInfo() *packageManagerInfo {
+func (i *HostInfo) PackageManagerInfo() *PackageManagerInfo {
 	return i.packageManagerInfo
 }
 
-func (i *HostInfo) GetServiceManagerInfo() *serviceManagerInfo {
+func (i *HostInfo) ServiceManagerInfo() *ServiceManagerInfo {
 	return i.serviceManagerInfo
 }
 
-func (i *HostInfo) GetUserInfo() *userInfo {
+func (i *HostInfo) UserInfo() *UserInfo {
 	return i.userInfo
 }
 
-func (i *HostInfo) Populate(transport transport.Transport) error {
+func (i *HostInfo) Populate(transport transport.Transport) diag.Diags {
 
 	if transport == nil {
-		return errors.New("transport cannot be nil")
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Invalid transport",
+			Detail:   "Transport cannot be nil",
+		}}
 	}
 
-	fileSystem := transport.FileSystem()
+	diags := diag.Diags{}
 
-	if fileSystem == nil || fileSystem.IsNull() {
-		return errors.New("file system is null or not supported")
-	}
+	moreDiags := i.osInfo.populateOSInfo(transport)
+	diags = diags.AppendAll(moreDiags)
 
-	defer fileSystem.Close()
+	moreDiags = i.selinuxInfo.populateSelinuxInfo(i.osInfo, transport)
+	diags = diags.AppendAll(moreDiags)
 
-	osInfoFailed := false
-	err := i.osInfo.populateOSInfo(transport, fileSystem)
-	if err != nil {
-		osInfoFailed = true
-		log.Errorf("failed to populate OS info: %v", err)
-	}
+	moreDiags = i.appArmorInfo.populateAppArmorInfo(i.osInfo, transport)
+	diags = diags.AppendAll(moreDiags)
 
-	if !osInfoFailed {
-		err = i.selinuxInfo.populateSelinuxInfo(i.osInfo, fileSystem)
-		if err != nil {
-			log.Errorf("failed to populate SELinux info: %v", err)
-		}
-	} else {
-		log.Warn("SELinux info population skipped due to OS info failure")
-	}
+	moreDiags = i.fipsInfo.populateFipsInfo(i.osInfo, transport)
+	diags = diags.AppendAll(moreDiags)
 
-	if !osInfoFailed {
-		err = i.appArmorInfo.populateAppArmorInfo(i.osInfo, fileSystem)
-		if err != nil {
-			log.Errorf("failed to populate AppArmor info: %v", err)
-		}
-	} else {
-		log.Warn("AppArmor info population skipped due to OS info failure")
-	}
+	moreDiags = i.packageManagerInfo.populatePackageManagerInfo(i.osInfo, transport)
+	diags = diags.AppendAll(moreDiags)
 
-	if !osInfoFailed {
-		err = i.fipsInfo.populateFipsInfo(i.osInfo, transport)
-		if err != nil {
-			log.Errorf("failed to populate FIPS info: %v", err)
-		}
-	} else {
-		log.Warn("FIPS info population skipped due to OS info failure")
-	}
+	moreDiags = i.serviceManagerInfo.populateServiceManagerInfo(i.osInfo, transport)
+	diags = diags.AppendAll(moreDiags)
 
-	if !osInfoFailed {
-		err = i.packageManagerInfo.populatePackageManagerInfo(i.osInfo, transport, fileSystem)
-		if err != nil {
-			log.Errorf("failed to populate Package Manager info: %v", err)
-		}
-	} else {
-		log.Warn("Package Manager info population skipped due to OS info failure")
-	}
+	moreDiags = i.userInfo.populateUserInfo(i.osInfo, transport)
+	diags = diags.AppendAll(moreDiags)
 
-	if !osInfoFailed {
-		err = i.serviceManagerInfo.populateServiceManagerInfo(i.osInfo, transport, fileSystem)
-		if err != nil {
-			log.Errorf("failed to populate Service Manager info: %v", err)
-		}
-	} else {
-		log.Warn("Service Manager info population skipped due to OS info failure")
-	}
-
-	if !osInfoFailed {
-		err = i.userInfo.populateUserInfo(i.osInfo, transport)
-		if err != nil {
-			log.Errorf("failed to populate User info: %v", err)
-		}
-	} else {
-		log.Warn("User info population skipped due to OS info failure")
-	}
-
-	return nil
+	return diags
 }
 
 func (i *HostInfo) ToMapOfCtyValues() map[string]cty.Value {
@@ -155,25 +112,25 @@ func (i *HostInfo) ToMapOfCtyValues() map[string]cty.Value {
 func (i *HostInfo) String() string {
 	stringBuilder := &strings.Builder{}
 
-	stringBuilder.WriteString(i.osInfo.String())
+	stringBuilder.WriteString(i.OSInfo().String())
 	stringBuilder.WriteString("\n")
 
-	stringBuilder.WriteString(i.selinuxInfo.String())
+	stringBuilder.WriteString(i.SELinuxInfo().String())
 	stringBuilder.WriteString("\n")
 
-	stringBuilder.WriteString(i.appArmorInfo.String())
+	stringBuilder.WriteString(i.AppArmorInfo().String())
 	stringBuilder.WriteString("\n")
 
-	stringBuilder.WriteString(i.fipsInfo.String())
+	stringBuilder.WriteString(i.FipsInfo().String())
 	stringBuilder.WriteString("\n")
 
-	stringBuilder.WriteString(i.packageManagerInfo.String())
+	stringBuilder.WriteString(i.PackageManagerInfo().String())
 	stringBuilder.WriteString("\n")
 
-	stringBuilder.WriteString(i.serviceManagerInfo.String())
+	stringBuilder.WriteString(i.ServiceManagerInfo().String())
 	stringBuilder.WriteString("\n")
 
-	stringBuilder.WriteString(i.userInfo.String())
+	stringBuilder.WriteString(i.UserInfo().String())
 
 	return stringBuilder.String()
 }
