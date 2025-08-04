@@ -1,0 +1,46 @@
+package inventory
+
+import "github.com/hashicorp/hcl/v2"
+
+type intermediateTransport struct {
+	name   string
+	config map[string]*hcl.Attribute
+
+	hclRange *hcl.Range
+}
+
+type intermediateHost struct {
+	name string
+
+	vars      map[string]*hcl.Attribute
+	transport *intermediateTransport
+
+	parentGroup string
+
+	allGroups []string
+
+	hclRange *hcl.Range
+}
+
+type intermediateGroup struct {
+	name string
+
+	parent         string
+	childHosts     map[string]*intermediateHost
+	hostReferences []string
+
+	vars      map[string]*hcl.Attribute
+	transport *intermediateTransport
+
+	hclRange *hcl.Range
+}
+
+type intermediateInventory struct {
+	vars      map[string]*hcl.Attribute
+	transport *intermediateTransport
+
+	groups map[string]*intermediateGroup
+	hosts  map[string]*intermediateHost
+
+	allHosts map[string]*intermediateHost
+}

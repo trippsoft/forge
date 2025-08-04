@@ -1,0 +1,40 @@
+# Staging environment
+vars {
+  staging_environment = "staging"
+  staging_log_level = "debug"
+  staging_replicas = 1
+}
+
+group "staging_web" {
+  vars {
+    role = "web"
+    domain = "staging.${vars.base_domain}"
+    app_port = 8080
+  }
+  host "staging-web1" {
+    vars {
+      ip = "10.2.1.10"
+      tier = "single"
+    }
+    transport "ssh" {
+      host = "${vars.ip}"
+    }
+  }
+}
+
+group "staging_api" {
+  vars {
+    role = "api"
+    domain = "staging-api.${vars.base_domain}"
+    app_port = 9000
+  }
+  host "staging-api1" {
+    vars {
+      ip = "10.2.2.10"
+      tier = "single"
+    }
+    transport "ssh" {
+      host = "${vars.ip}"
+    }
+  }
+}
