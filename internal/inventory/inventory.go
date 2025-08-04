@@ -3,6 +3,8 @@ package inventory
 import (
 	"errors"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/trippsoft/forge/internal/function"
 	"github.com/trippsoft/forge/internal/info"
 	"github.com/trippsoft/forge/internal/transport"
 	"github.com/zclconf/go-cty/cty"
@@ -13,18 +15,20 @@ type Host struct {
 
 	transport transport.Transport
 
-	taskContexts []map[string]cty.Value
-	info         *info.HostInfo
-	vars         map[string]cty.Value
+	taskContexts    []map[string]cty.Value
+	procedureInputs []map[string]cty.Value
+	info            *info.HostInfo
+	vars            map[string]cty.Value
 }
 
 func newHost(name string, transport transport.Transport, vars map[string]cty.Value) *Host {
 	return &Host{
-		name:         name,
-		transport:    transport,
-		taskContexts: []map[string]cty.Value{make(map[string]cty.Value)},
-		info:         info.NewHostInfo(),
-		vars:         vars,
+		name:            name,
+		transport:       transport,
+		taskContexts:    []map[string]cty.Value{make(map[string]cty.Value)},
+		procedureInputs: []map[string]cty.Value{},
+		info:            info.NewHostInfo(),
+		vars:            vars,
 	}
 }
 
@@ -55,8 +59,9 @@ func (h *Host) StoreTask(key string, value cty.Value) error {
 	return nil
 }
 
-func (h *Host) StartProcedure() {
+func (h *Host) StartProcedure(inputs map[string]cty.Value) {
 	h.taskContexts = append(h.taskContexts, make(map[string]cty.Value))
+	h.procedureInputs = append(h.procedureInputs, inputs)
 }
 
 func (h *Host) EndProcedure() error {
@@ -64,6 +69,10 @@ func (h *Host) EndProcedure() error {
 		return errors.New("no task context to end")
 	}
 	h.taskContexts = h.taskContexts[:len(h.taskContexts)-1]
+	if len(h.procedureInputs) < 1 {
+		return errors.New("no procedure inputs to end")
+	}
+	h.procedureInputs = h.procedureInputs[:len(h.procedureInputs)-1]
 	return nil
 }
 
@@ -74,6 +83,14 @@ func (h *Host) getCurrentContextTasks() (map[string]cty.Value, error) {
 	}
 
 	return h.taskContexts[len(h.taskContexts)-1], nil
+}
+
+func (h *Host) getCurrentProcedureInputs() map[string]cty.Value {
+	if len(h.procedureInputs) == 0 {
+		return nil
+	}
+
+	return h.procedureInputs[len(h.procedureInputs)-1]
 }
 
 type Inventory struct {
@@ -122,4 +139,35 @@ func (i *Inventory) Target(name string) ([]*Host, bool) {
 // This includes the pseudo-group 'all' and hostnames as targets.
 func (i *Inventory) Targets() map[string][]*Host {
 	return i.targets
+}
+
+func (i *Inventory) GetHostEvalContext(hostName string) (*hcl.EvalContext, error) {
+	variables := make(map[string]cty.Value)
+	hostVars := make(map[string]cty.Value)
+	for name, host := range i.hosts {
+		hostVars[name] = cty.ObjectVal(host.Vars())
+		if hostName == name {
+
+			variables["vars"] = hostVars[name]
+			variables["info"] = cty.ObjectVal(host.Info().ToMapOfCtyValues())
+
+			tasks, err := host.getCurrentContextTasks()
+			variables["tasks"] = cty.ObjectVal(tasks)
+			if err != nil {
+				return nil, err
+			}
+
+			procedureInputs := host.getCurrentProcedureInputs()
+			if procedureInputs != nil {
+				variables["input"] = cty.ObjectVal(procedureInputs)
+			}
+		}
+	}
+
+	variables["hostvars"] = cty.ObjectVal(hostVars)
+
+	return &hcl.EvalContext{
+		Variables: variables,
+		Functions: function.HCLFunctions(),
+	}, nil
 }
