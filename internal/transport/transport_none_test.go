@@ -1,9 +1,7 @@
 package transport
 
 import (
-	"bytes"
 	"context"
-	"strings"
 	"testing"
 )
 
@@ -53,9 +51,6 @@ func TestNoneTransportExecuteCommand(t *testing.T) {
 	transport := TransportNone
 
 	cmd := transport.NewCommand("echo hello")
-	var outBuf, errBuf bytes.Buffer
-	cmd.Stdout = &outBuf
-	cmd.Stderr = &errBuf
 
 	err := cmd.Run(context.Background())
 	if err == nil {
@@ -66,39 +61,24 @@ func TestNoneTransportExecuteCommand(t *testing.T) {
 	if err.Error() != expectedError {
 		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
 	}
-
-	stdout := strings.TrimSpace(outBuf.String())
-	if stdout != "" {
-		t.Errorf("Expected empty stdout, got '%s'", stdout)
-	}
-
-	stderr := strings.TrimSpace(errBuf.String())
-	if stderr != "" {
-		t.Errorf("Expected empty stderr, got '%s'", stderr)
-	}
 }
 
 func TestNoneTransportExecutePowerShell(t *testing.T) {
 
 	transport := TransportNone
 
-	cmd := transport.NewPowerShellCommand("Write-Host 'hello'")
-	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
-
-	err := cmd.Run(context.Background())
+	cmd, err := transport.NewPowerShellCommand("Write-Host 'hello'")
 	if err == nil {
-		t.Error("Expected error for ExecutePowerShell on none transport, but got none")
+		t.Error("Expected error for NewPowerShellCommand on none transport, but got none")
+	}
+
+	if cmd != nil {
+		t.Error("Expected nil command for NewPowerShellCommand on none transport, but got a command")
 	}
 
 	expectedError := "no transport available for PowerShell execution"
 	if err.Error() != expectedError {
 		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
-	}
-
-	stdout := strings.TrimSpace(outBuf.String())
-	if stdout != "" {
-		t.Errorf("Expected empty stdout, got '%s'", stdout)
 	}
 }
 

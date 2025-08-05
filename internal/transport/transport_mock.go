@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -89,16 +90,85 @@ func (m *MockFile) Write(p []byte) (n int, err error) {
 	return n, nil
 }
 
-type CommandResult struct {
+type MockCmd struct {
+	completed bool
+
+	stdin io.Reader
+
 	Stdout string
 	Stderr string
 	Err    error
 }
 
+// Run implements Cmd.
+func (m *MockCmd) Run(ctx context.Context) error {
+	return m.Start(ctx)
+}
+
+// Start implements Cmd.
+func (m *MockCmd) Start(ctx context.Context) error {
+
+	if m.completed {
+		return fmt.Errorf("command already completed")
+	}
+
+	m.completed = true
+
+	if m.Err != nil {
+		return m.Err
+	}
+
+	return nil
+}
+
+// Wait implements Cmd.
+func (m *MockCmd) Wait() error {
+	return nil // Mock commands do not wait for execution
+}
+
+// SetStdout implements Cmd.
+func (m *MockCmd) SetStdout(stdout io.Writer) error {
+
+	if m.completed {
+		return fmt.Errorf("command already completed")
+	}
+
+	_, err := stdout.Write([]byte(m.Stdout))
+	return err
+}
+
+// SetStderr implements Cmd.
+func (m *MockCmd) SetStderr(stderr io.Writer) error {
+
+	if m.completed {
+		return fmt.Errorf("command already completed")
+	}
+
+	_, err := stderr.Write([]byte(m.Stderr))
+	return err
+}
+
+// StdoutPipe implements Cmd.
+func (m *MockCmd) StdoutPipe() (io.ReadCloser, error) {
+	return io.NopCloser(bytes.NewReader([]byte(m.Stdout))), nil
+}
+
+// StderrPipe implements Cmd.
+func (m *MockCmd) StderrPipe() (io.ReadCloser, error) {
+	return io.NopCloser(bytes.NewReader([]byte(m.Stderr))), nil
+}
+
+// StdinPipe implements Cmd.
+func (m *MockCmd) StdinPipe() (io.WriteCloser, error) { // This is not used in the mock
+	pipeReader, pipeWriter := io.Pipe()
+	m.stdin = pipeReader
+	return pipeWriter, nil
+}
+
 type MockTransport struct {
 	TransportType TransportType
 
-	CommandResults map[string]*CommandResult
+	CommandResults map[string]*MockCmd
 
 	ErrorPaths map[string]error
 	Files      map[string]*MockFile
@@ -108,7 +178,7 @@ type MockTransport struct {
 func NewMockTransport() *MockTransport {
 	return &MockTransport{
 		TransportType:  TransportTypeSSH,
-		CommandResults: make(map[string]*CommandResult),
+		CommandResults: make(map[string]*MockCmd),
 		ErrorPaths:     make(map[string]error),
 		Files:          make(map[string]*MockFile),
 		Dirs:           make(map[string]*MockFileInfo),
@@ -127,27 +197,22 @@ func (w *MockTransport) Close() error {
 	return nil
 }
 
-func (w *MockTransport) NewCommand(command string) *Cmd {
-	return NewCmd(w, command)
-}
+func (w *MockTransport) NewCommand(command string) Cmd {
 
-func (w *MockTransport) NewPowerShellCommand(command string) *PowerShellCmd {
-	return NewPowerShellCmd(w, command)
-}
-
-func (w *MockTransport) executeCommand(ctx context.Context, cmd *Cmd) error {
-
-	if result, exists := w.CommandResults[cmd.command]; exists {
-		cmd.Stdout.Write([]byte(result.Stdout))
-		cmd.Stderr.Write([]byte(result.Stderr))
-		return result.Err
+	cmd, exists := w.CommandResults[command]
+	if exists {
+		cmd.completed = false // Reset completed state for reuse
+		cmd.stdin = nil
+		return cmd
 	}
 
-	return fmt.Errorf("command not found in mock transport: %s", cmd.command)
+	return &MockCmd{
+		Err: fmt.Errorf("command not found in mock transport: %s", command),
+	}
 }
 
-func (w *MockTransport) executePowerShell(ctx context.Context, cmd *PowerShellCmd) error {
-	return errors.New("PowerShell execution not supported in mock transport")
+func (w *MockTransport) NewPowerShellCommand(command string) (Cmd, error) {
+	return nil, errors.New("PowerShell execution not supported in mock transport")
 }
 
 // Stat implements Transport.

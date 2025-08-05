@@ -464,9 +464,18 @@ func TestSSHTransportExecuteCommand_Linux(t *testing.T) {
 	defer sshTransport.Close()
 
 	cmd := sshTransport.NewCommand("echo 'Hello from Linux'")
+
 	var outBuf, errBuf bytes.Buffer
-	cmd.Stdout = &outBuf
-	cmd.Stderr = &errBuf
+
+	err = cmd.SetStdout(&outBuf)
+	if err != nil {
+		t.Fatalf("Failed to set stdout: %v", err)
+	}
+
+	err = cmd.SetStderr(&errBuf)
+	if err != nil {
+		t.Fatalf("Failed to set stderr: %v", err)
+	}
 
 	err = cmd.Run(context.Background())
 	stderr := strings.TrimSpace(errBuf.String())
@@ -513,9 +522,17 @@ func TestSSHTransportExecuteCommand_WinPowerShell(t *testing.T) {
 	defer sshTransport.Close()
 
 	cmd := sshTransport.NewCommand(`echo "Hello from Windows"`)
+
 	var outBuf, errBuf bytes.Buffer
-	cmd.Stdout = &outBuf
-	cmd.Stderr = &errBuf
+	err = cmd.SetStdout(&outBuf)
+	if err != nil {
+		t.Fatalf("Failed to set stdout: %v", err)
+	}
+
+	err = cmd.SetStderr(&errBuf)
+	if err != nil {
+		t.Fatalf("Failed to set stderr: %v", err)
+	}
 
 	err = cmd.Run(context.Background())
 	stderr := strings.TrimSpace(errBuf.String())
@@ -562,9 +579,17 @@ func TestSSHTransportExecuteCommand_WinCmd(t *testing.T) {
 	defer sshTransport.Close()
 
 	cmd := sshTransport.NewCommand("echo Hello from CMD")
+
 	var outBuf, errBuf bytes.Buffer
-	cmd.Stdout = &outBuf
-	cmd.Stderr = &errBuf
+	err = cmd.SetStdout(&outBuf)
+	if err != nil {
+		t.Fatalf("Failed to set stdout: %v", err)
+	}
+
+	err = cmd.SetStderr(&errBuf)
+	if err != nil {
+		t.Fatalf("Failed to set stderr: %v", err)
+	}
 
 	err = cmd.Run(context.Background())
 	stderr := strings.TrimSpace(errBuf.String())
@@ -610,21 +635,20 @@ func TestSSHTransportExecutePowerShell_Linux(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	cmd := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'")
-	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd, err := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'")
+	if err == nil {
+		t.Fatal("Expected error for NewPowerShellCommand on Linux, but got none")
+	}
 
-	err = cmd.Run(context.Background())
+	if cmd != nil {
+		t.Fatal("Expected nil command for NewPowerShellCommand on Linux, but got a command")
+	}
+
 	expectedErr := "PowerShell is not available on the remote system"
 	if err == nil {
 		t.Error("Expected PowerShell command to fail on Linux, but it succeeded")
 	} else if !strings.Contains(err.Error(), expectedErr) {
 		t.Errorf("Expected error to contain '%s', got: %s", expectedErr, err.Error())
-	}
-
-	stdout := strings.TrimSpace(outBuf.String())
-	if stdout != "" {
-		t.Errorf("Expected PowerShell output to be empty on Linux, got: %s", stdout)
 	}
 }
 
@@ -656,9 +680,16 @@ func TestSSHTransportExecutePowerShell_WinPowerShell(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	cmd := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'")
+	cmd, err := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'")
+	if err != nil {
+		t.Fatalf("NewPowerShellCommand failed: %v", err)
+	}
+
 	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	err = cmd.SetStdout(&outBuf)
+	if err != nil {
+		t.Fatalf("Failed to set stdout: %v", err)
+	}
 
 	err = cmd.Run(context.Background())
 	if err != nil {
@@ -699,9 +730,16 @@ func TestSSHTransportExecutePowerShell_WinCmd(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	cmd := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'")
+	cmd, err := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'")
+	if err != nil {
+		t.Fatalf("NewPowerShellCommand failed: %v", err)
+	}
+
 	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	err = cmd.SetStdout(&outBuf)
+	if err != nil {
+		t.Fatalf("Failed to set stdout: %v", err)
+	}
 
 	err = cmd.Run(context.Background())
 	if err != nil {

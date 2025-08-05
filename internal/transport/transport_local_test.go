@@ -146,18 +146,35 @@ func TestLocalTransportExecuteCommand(t *testing.T) {
 	}
 
 	cmd := transport.NewCommand(command)
+
 	var outBuf, errBuf bytes.Buffer
-	cmd.Stdout = &outBuf
-	cmd.Stderr = &errBuf
+
+	err = cmd.SetStdout(&outBuf)
+	if err != nil {
+		t.Fatalf("Failed to create stdout pipe: %v", err)
+	}
+
+	err = cmd.SetStderr(&errBuf)
+	if err != nil {
+		t.Fatalf("Failed to create stderr pipe: %v", err)
+	}
 
 	err = cmd.Run(ctx)
 	if err != nil {
-		t.Fatalf("ExecuteCommand failed: %v", err)
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	if err != nil {
+		t.Fatalf("Failed to read stdout: %v", err)
 	}
 
 	stdout := strings.TrimSpace(outBuf.String())
 	if !strings.Contains(stdout, "hello") {
 		t.Errorf("Expected stdout to contain 'hello', got: %s", stdout)
+	}
+
+	if err != nil {
+		t.Fatalf("Failed to read stderr: %v", err)
 	}
 
 	stderr := strings.TrimSpace(errBuf.String())
@@ -221,9 +238,13 @@ func TestLocalTransportExecutePowerShell_Windows(t *testing.T) {
 
 	ctx := context.Background()
 
-	cmd := transport.NewPowerShellCommand("Write-Host 'Hello PowerShell'")
+	cmd, err := transport.NewPowerShellCommand("Write-Host 'Hello PowerShell'")
+	if err != nil {
+		t.Fatalf("NewPowerShellCommand failed: %v", err)
+	}
+
 	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd.SetStdout(&outBuf)
 
 	err = cmd.Run(ctx)
 	if err != nil {
@@ -247,14 +268,14 @@ func TestLocalTransportExecutePowerShell_NonWindows(t *testing.T) {
 		t.Fatalf("NewLocalTransport failed: %v", err)
 	}
 
-	ctx := context.Background()
-
 	// Test PowerShell command on non-Windows (should fail)
-	cmd := transport.NewPowerShellCommand("Write-Host 'Hello PowerShell'")
-
-	err = cmd.Run(ctx)
+	cmd, err := transport.NewPowerShellCommand("Write-Host 'Hello PowerShell'")
 	if err == nil {
-		t.Error("Expected error for PowerShell on non-Windows platform, but got none")
+		t.Fatal("Expected error for NewPowerShellCommand on non-Windows platform, but got a command")
+	}
+
+	if cmd != nil {
+		t.Fatal("Expected nil command for NewPowerShellCommand on non-Windows platform, but got a command")
 	}
 
 	expectedErr := "PowerShell execution is only supported on Windows"

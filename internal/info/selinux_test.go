@@ -166,7 +166,7 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Linux(t *testing.T) {
 			osInfo.id = "ubuntu"
 
 			mockTransport := transport.NewMockTransport()
-			mockTransport.CommandResults[selinuxDiscoveryScript] = &transport.CommandResult{
+			mockTransport.CommandResults[selinuxDiscoveryScript] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -206,7 +206,7 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Linux_Error(t *testing.T) {
 	osInfo.id = "ubuntu"
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[selinuxDiscoveryScript] = &transport.CommandResult{
+	mockTransport.CommandResults[selinuxDiscoveryScript] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 
@@ -259,7 +259,7 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Linux_NotJSON(t *testing.T) {
 	osInfo.id = "ubuntu"
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[selinuxDiscoveryScript] = &transport.CommandResult{
+	mockTransport.CommandResults[selinuxDiscoveryScript] = &transport.MockCmd{
 		Stdout: "Not a valid JSON output",
 	}
 

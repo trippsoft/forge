@@ -219,7 +219,7 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, transpor
 
 	cmd := transport.NewCommand(packageManagerDiscoveryScript)
 	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd.SetStdout(&outBuf)
 
 	err := cmd.Run(context.Background())
 	if err != nil {

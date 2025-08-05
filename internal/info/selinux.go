@@ -98,7 +98,7 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, transport transport.Tr
 
 	cmd := transport.NewCommand(selinuxDiscoveryScript)
 	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd.SetStdout(&outBuf)
 
 	err := cmd.Run(context.Background())
 	if err != nil {

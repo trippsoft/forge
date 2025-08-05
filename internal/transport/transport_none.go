@@ -3,10 +3,56 @@ package transport
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 )
 
-var TransportNone Transport = &noneTransport{}
+var (
+	TransportNone Transport = &noneTransport{}
+	cmdNone       Cmd       = &noneCmd{}
+)
+
+type noneCmd struct{}
+
+// Run implements Cmd.
+func (n *noneCmd) Run(ctx context.Context) error {
+	return errors.New("no transport available for command execution")
+}
+
+// Start implements Cmd.
+func (n *noneCmd) Start(ctx context.Context) error {
+	return errors.New("no transport available for command execution")
+}
+
+// Wait implements Cmd.
+func (n *noneCmd) Wait() error {
+	return errors.New("no transport available for command execution")
+}
+
+// SetStdout implements Cmd.
+func (n *noneCmd) SetStdout(stdout io.Writer) error {
+	return errors.New("no transport available for command execution")
+}
+
+// SetStderr implements Cmd.
+func (n *noneCmd) SetStderr(stderr io.Writer) error {
+	return errors.New("no transport available for command execution")
+}
+
+// StdoutPipe implements Cmd.
+func (n *noneCmd) StdoutPipe() (io.ReadCloser, error) {
+	return nil, errors.New("no transport available for command execution")
+}
+
+// StderrPipe implements Cmd.
+func (n *noneCmd) StderrPipe() (io.ReadCloser, error) {
+	return nil, errors.New("no transport available for command execution")
+}
+
+// StdinPipe implements Cmd.
+func (n *noneCmd) StdinPipe() (io.WriteCloser, error) {
+	return nil, errors.New("no transport available for command execution")
+}
 
 type noneTransport struct{}
 
@@ -26,23 +72,13 @@ func (n *noneTransport) Close() error {
 }
 
 // NewCommand creates a new command to be executed on the managed system.
-func (n *noneTransport) NewCommand(command string) *Cmd {
-	return NewCmd(n, command)
+func (n *noneTransport) NewCommand(command string) Cmd {
+	return cmdNone
 }
 
 // NewPowerShellCommand creates a new PowerShell command to be executed on the managed system.
-func (n *noneTransport) NewPowerShellCommand(command string) *PowerShellCmd {
-	return NewPowerShellCmd(n, command)
-}
-
-// executeCommand implements Transport.
-func (n *noneTransport) executeCommand(ctx context.Context, cmd *Cmd) error {
-	return errors.New("no transport available for command execution")
-}
-
-// executePowerShell implements Transport.
-func (n *noneTransport) executePowerShell(ctx context.Context, cmd *PowerShellCmd) error {
-	return errors.New("no transport available for PowerShell execution")
+func (n *noneTransport) NewPowerShellCommand(command string) (Cmd, error) {
+	return nil, errors.New("no transport available for PowerShell execution")
 }
 
 // Stat implements Transport.

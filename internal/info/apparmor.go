@@ -57,8 +57,9 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, transport transport.
 	a.supported = true
 
 	cmd := transport.NewCommand(appArmorDiscoveryScript)
+
 	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd.SetStdout(&outBuf)
 
 	err := cmd.Run(context.Background())
 	if err != nil {

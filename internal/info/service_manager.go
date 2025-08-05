@@ -187,7 +187,7 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(transport transport
 
 	cmd := transport.NewCommand(linuxServiceManagerDiscoveryScript)
 	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd.SetStdout(&outBuf)
 
 	err := cmd.Run(context.Background())
 	if err != nil {

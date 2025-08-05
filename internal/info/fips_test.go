@@ -109,7 +109,7 @@ func TestFipsInfo_PopulateFipsInfo_Linux(t *testing.T) {
 			osInfo.id = "ubuntu"
 
 			mockTransport := transport.NewMockTransport()
-			mockTransport.CommandResults[fipsLinuxDiscoveryScript] = &transport.CommandResult{
+			mockTransport.CommandResults[fipsLinuxDiscoveryScript] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -141,7 +141,7 @@ func TestFipsInfo_PopulateFipsInfo_Linux_Error(t *testing.T) {
 	osInfo.id = "ubuntu"
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[fipsLinuxDiscoveryScript] = &transport.CommandResult{
+	mockTransport.CommandResults[fipsLinuxDiscoveryScript] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 
@@ -212,7 +212,7 @@ func TestFipsInfo_PopulateFipsInfo_Windows(t *testing.T) {
 			osInfo.id = "windows-server"
 
 			mockTransport := transport.NewWinMockTransport()
-			mockTransport.PowerShellResults[fipsWindowsDiscoveryScript] = &transport.CommandResult{
+			mockTransport.PowerShellResults[fipsWindowsDiscoveryScript] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -244,7 +244,7 @@ func TestFipsInfo_PopulateFipsInfo_Windows_Error(t *testing.T) {
 	osInfo.id = "windows-server"
 
 	mockTransport := transport.NewWinMockTransport()
-	mockTransport.PowerShellResults[fipsWindowsDiscoveryScript] = &transport.CommandResult{
+	mockTransport.PowerShellResults[fipsWindowsDiscoveryScript] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 

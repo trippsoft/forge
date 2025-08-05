@@ -105,7 +105,7 @@ func (u *UserInfo) populatePosixUserInfo(transport transport.Transport) diag.Dia
 
 	cmd := transport.NewCommand(userPosixDiscoveryScript)
 	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd.SetStdout(&outBuf)
 
 	err := cmd.Run(context.Background())
 	if err != nil {
@@ -140,11 +140,19 @@ func (u *UserInfo) populatePosixUserInfo(transport transport.Transport) diag.Dia
 
 func (u *UserInfo) populateWindowsUserInfo(transport transport.Transport) diag.Diags {
 
-	cmd := transport.NewPowerShellCommand(userWindowsDiscoveryScript)
-	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd, err := transport.NewPowerShellCommand(userWindowsDiscoveryScript)
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to get user information",
+			Detail:   fmt.Sprintf("Error getting user information on Windows host: %v", err),
+		}}
+	}
 
-	err := cmd.Run(context.Background())
+	var outBuf bytes.Buffer
+	cmd.SetStdout(&outBuf)
+
+	err = cmd.Run(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,

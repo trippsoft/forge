@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -225,6 +226,231 @@ func (b *SSHTransportBuilder) Build() (Transport, error) {
 	}, nil
 }
 
+type sshCmd struct {
+	transport *sshTransport
+	session   *ssh.Session
+	ctx       context.Context
+	completed bool
+
+	command string
+
+	stdout io.Writer
+	stderr io.Writer
+	stdin  io.Reader
+}
+
+// Run implements Cmd.
+func (s *sshCmd) Run(ctx context.Context) error {
+
+	err := s.createSession(ctx)
+	if err != nil {
+		return err
+	}
+	defer s.session.Close()
+
+	outputChannel := make(chan error)
+
+	go func() {
+		err := s.session.Run(s.command)
+		outputChannel <- err
+	}()
+
+	select {
+	case <-s.ctx.Done():
+		s.session.Signal(ssh.SIGINT) // Send interrupt signal to the session
+		s.session = nil
+		s.completed = true
+		return s.ctx.Err()
+	case err = <-outputChannel:
+		s.session = nil
+		s.completed = true
+		return err
+	}
+}
+
+// Start implements Cmd.
+func (s *sshCmd) Start(ctx context.Context) error {
+
+	err := s.createSession(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = s.session.Start(s.command)
+	if err != nil {
+		s.session.Close()
+		s.session = nil
+		s.completed = true
+		return fmt.Errorf("failed to start SSH command '%s': %w", s.command, err)
+	}
+
+	return nil
+}
+
+// Wait implements Cmd.
+func (s *sshCmd) Wait() error {
+
+	if s.completed {
+		return errors.New("command already completed")
+	}
+
+	if s.session == nil {
+		return errors.New("command not started")
+	}
+	defer s.session.Close()
+
+	outputChannel := make(chan error)
+
+	go func() {
+		err := s.session.Wait()
+		outputChannel <- err
+	}()
+
+	var err error
+	select {
+	case <-s.ctx.Done():
+		s.session.Signal(ssh.SIGINT) // Send interrupt signal to the session
+		s.session = nil
+		s.completed = true
+		return s.ctx.Err()
+	case err = <-outputChannel:
+		s.session = nil
+		s.completed = true
+		return err
+	}
+}
+
+// SetStdout implements Cmd.
+func (s *sshCmd) SetStdout(stdout io.Writer) error {
+
+	if s.completed {
+		return errors.New("command already completed")
+	}
+
+	if s.session != nil {
+		return fmt.Errorf("command already started")
+	}
+
+	if s.stdout != nil {
+		return errors.New("stdout already set")
+	}
+
+	s.stdout = stdout
+	return nil
+}
+
+// SetStderr implements Cmd.
+func (s *sshCmd) SetStderr(stderr io.Writer) error {
+
+	if s.completed {
+		return errors.New("command already completed")
+	}
+
+	if s.session != nil {
+		return fmt.Errorf("command already started")
+	}
+
+	if s.stderr != nil {
+		return errors.New("stderr already set")
+	}
+
+	s.stderr = stderr
+	return nil
+}
+
+// StdoutPipe implements Cmd.
+func (s *sshCmd) StdoutPipe() (io.ReadCloser, error) {
+
+	if s.session != nil {
+		return nil, fmt.Errorf("command already started")
+	}
+
+	if s.stdout != nil {
+		return nil, fmt.Errorf("stdout already set for command")
+	}
+
+	pipeReader, pipeWriter := io.Pipe()
+	s.stdout = pipeWriter
+	return pipeReader, nil
+}
+
+// StderrPipe implements Cmd.
+func (s *sshCmd) StderrPipe() (io.ReadCloser, error) {
+
+	if s.completed {
+		return nil, errors.New("command already completed")
+	}
+
+	if s.session != nil {
+		return nil, fmt.Errorf("command already started")
+	}
+
+	if s.stderr != nil {
+		return nil, fmt.Errorf("stderr already set for command")
+	}
+
+	pipeReader, pipeWriter := io.Pipe()
+	s.stderr = pipeWriter
+	return pipeReader, nil
+}
+
+// StdinPipe implements Cmd.
+func (s *sshCmd) StdinPipe() (io.WriteCloser, error) {
+
+	if s.completed {
+		return nil, errors.New("command already completed")
+	}
+
+	if s.session != nil {
+		return nil, fmt.Errorf("command already started")
+	}
+
+	if s.stdin != nil {
+		return nil, fmt.Errorf("stdin already set for command")
+	}
+
+	pipeReader, pipeWriter := io.Pipe()
+	s.stdin = pipeReader
+	return pipeWriter, nil
+}
+
+func (s *sshCmd) createSession(ctx context.Context) error {
+
+	if s.completed {
+		return errors.New("command already completed")
+	}
+
+	if s.session != nil {
+		return errors.New("command already started")
+	}
+
+	err := s.transport.Connect()
+	if err != nil {
+		return err
+	}
+
+	s.session, err = s.transport.client.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create SSH session: %w", err)
+	}
+
+	s.ctx = ctx
+
+	if s.stdout != nil {
+		s.session.Stdout = s.stdout
+	}
+
+	if s.stderr != nil {
+		s.session.Stderr = s.stderr
+	}
+
+	if s.stdin != nil {
+		s.session.Stdin = s.stdin
+	}
+
+	return nil
+}
+
 type sshTransport struct {
 	host string
 	port uint16
@@ -312,95 +538,31 @@ func (s *sshTransport) Close() error {
 }
 
 // NewCommand creates a new command to be executed on the managed system.
-func (s *sshTransport) NewCommand(command string) *Cmd {
-	return NewCmd(s, command)
+func (s *sshTransport) NewCommand(command string) Cmd {
+	return &sshCmd{
+		transport: s,
+		command:   command,
+	}
 }
 
 // NewPowerShellCommand creates a new PowerShell command to be executed on the managed system.
-func (s *sshTransport) NewPowerShellCommand(command string) *PowerShellCmd {
-	return NewPowerShellCmd(s, command)
-}
-
-// executeCommand implements Transport.
-func (s *sshTransport) executeCommand(ctx context.Context, cmd *Cmd) error {
-
-	err := s.Connect() // Ensure we are connected
-	if err != nil {
-		return fmt.Errorf("failed to connect to SSH transport: %w", err)
-	}
-
-	session, err := s.client.NewSession()
-	if err != nil {
-		return fmt.Errorf("failed to create SSH session: %w", err)
-	}
-	defer session.Close()
-
-	outputChannel := make(chan error)
-
-	go func() {
-		session.Stdout = cmd.Stdout
-		session.Stderr = cmd.Stderr
-
-		err := session.Run(cmd.command)
-		outputChannel <- err
-	}()
-
-	select {
-	case <-ctx.Done():
-		session.Signal(ssh.SIGINT) // Send interrupt signal to the session
-		return ctx.Err()
-	case err = <-outputChannel:
-		return err
-	}
-}
-
-// executePowerShell implements Transport.
-func (s *sshTransport) executePowerShell(ctx context.Context, cmd *PowerShellCmd) error {
-
-	err := s.Connect() // Ensure we are connected
-	if err != nil {
-		return fmt.Errorf("failed to connect to SSH transport: %w", err)
-	}
+func (s *sshTransport) NewPowerShellCommand(command string) (Cmd, error) {
 
 	if !s.canRunPowerShell {
-		return errors.New("PowerShell is not available on the remote system")
+		return nil, errors.New("PowerShell is not available on the remote system")
 	}
 
-	session, err := s.client.NewSession()
+	encodedCommand, err := encodePowerShellAsUTF16LEBase64(command)
 	if err != nil {
-		return fmt.Errorf("failed to create SSH session: %w", err)
-	}
-	defer session.Close()
-
-	encodedCommand, err := encodePowerShellAsUTF16LEBase64(cmd.command)
-	if err != nil {
-		return fmt.Errorf("failed to encode PowerShell command: %w", err)
+		return nil, fmt.Errorf("failed to encode PowerShell command: %w", err)
 	}
 
-	commandBuilder := &strings.Builder{}
+	command = fmt.Sprintf("powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand %s", encodedCommand)
 
-	commandBuilder.WriteString("powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ")
-	commandBuilder.WriteString(encodedCommand)
-
-	command := commandBuilder.String()
-
-	outputChannel := make(chan error)
-
-	go func() {
-		session.Stdout = cmd.Stdout
-		session.Stderr = cmd.Stderr
-
-		err := session.Run(command)
-		outputChannel <- err
-	}()
-
-	select {
-	case <-ctx.Done():
-		session.Signal(ssh.SIGINT) // Send interrupt signal to the session
-		return ctx.Err()
-	case err := <-outputChannel:
-		return err
-	}
+	return &sshCmd{
+		transport: s,
+		command:   command,
+	}, nil
 }
 
 // Stat implements Transport.
@@ -556,15 +718,20 @@ func (s *sshTransport) TempDir() (string, error) {
 		return "", fmt.Errorf("failed to connect to SSH transport: %w", err)
 	}
 
-	cmd := s.NewPowerShellCommand("$path = [System.IO.Path]::GetTempPath(); Write-Host $path")
+	cmd, err := s.NewPowerShellCommand("$path = [System.IO.Path]::GetTempPath(); Write-Host $path")
+	if err != nil {
+		return "", fmt.Errorf("failed to create PowerShell command: %w", err)
+	}
+
 	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd.SetStdout(&outBuf)
 
 	err = cmd.Run(context.Background())
-	stdout := strings.TrimRight(strings.TrimSpace(outBuf.String()), string(s.pathSeparator))
 	if err != nil {
 		return "", fmt.Errorf("failed to get temp dir: %w", err)
 	}
+
+	stdout := strings.TrimRight(strings.TrimSpace(outBuf.String()), string(s.pathSeparator))
 
 	s.tempDir = stdout
 
@@ -732,23 +899,35 @@ func (s *sshTransport) populatePathPrefixes() error {
 	}
 
 	var stdout string
-	var err error
 	if s.canRunPowerShell {
-		cmd := s.NewPowerShellCommand("Write-Host $env:PATH")
+
+		cmd, err := s.NewPowerShellCommand("Write-Host $env:PATH")
+		if err != nil {
+			return fmt.Errorf("failed to create PowerShell command: %w", err)
+		}
+
 		var outBuf bytes.Buffer
-		cmd.Stdout = &outBuf
+		cmd.SetStdout(&outBuf)
+
 		err = cmd.Run(context.Background())
+		if err != nil {
+			return fmt.Errorf("failed to run PowerShell command: %w", err)
+		}
+
 		stdout = strings.TrimSpace(outBuf.String())
 	} else {
-		cmd := s.NewCommand("echo $PATH")
-		var outBuf bytes.Buffer
-		cmd.Stdout = &outBuf
-		err = cmd.Run(context.Background())
-		stdout = strings.TrimSpace(outBuf.String())
-	}
 
-	if err != nil {
-		return fmt.Errorf("failed to get PATH environment variable: %w", err)
+		cmd := s.NewCommand("echo $PATH")
+
+		var outBuf bytes.Buffer
+		cmd.SetStdout(&outBuf)
+
+		err := cmd.Run(context.Background())
+		if err != nil {
+			return fmt.Errorf("failed to run command to get PATH: %w", err)
+		}
+
+		stdout = strings.TrimSpace(outBuf.String())
 	}
 
 	pathOutput := strings.TrimRight(strings.TrimSpace(stdout), string(s.pathListSeparator))

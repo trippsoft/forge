@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -20,8 +19,8 @@ var (
 type MockWinTransport struct {
 	TransportType TransportType
 
-	CommandResults    map[string]*CommandResult
-	PowerShellResults map[string]*CommandResult
+	CommandResults    map[string]*MockCmd
+	PowerShellResults map[string]*MockCmd
 
 	ErrorPaths map[string]error
 	Files      map[string]*MockFile
@@ -31,8 +30,8 @@ type MockWinTransport struct {
 func NewWinMockTransport() *MockWinTransport {
 	return &MockWinTransport{
 		TransportType:     TransportTypeSSH,
-		CommandResults:    make(map[string]*CommandResult),
-		PowerShellResults: make(map[string]*CommandResult),
+		CommandResults:    make(map[string]*MockCmd),
+		PowerShellResults: make(map[string]*MockCmd),
 	}
 }
 
@@ -48,34 +47,30 @@ func (w *MockWinTransport) Close() error {
 	return nil
 }
 
-func (w *MockWinTransport) NewCommand(command string) *Cmd {
-	return NewCmd(w, command)
-}
+func (w *MockWinTransport) NewCommand(command string) Cmd {
 
-func (w *MockWinTransport) NewPowerShellCommand(command string) *PowerShellCmd {
-	return NewPowerShellCmd(w, command)
-}
-
-func (w *MockWinTransport) executeCommand(ctx context.Context, cmd *Cmd) error {
-
-	if result, exists := w.CommandResults[cmd.command]; exists {
-		cmd.Stdout.Write([]byte(result.Stdout))
-		cmd.Stderr.Write([]byte(result.Stderr))
-		return result.Err
+	if cmd, exists := w.CommandResults[command]; exists {
+		cmd.completed = false // Reset completion status for reuse
+		cmd.stdin = nil       // Reset stdin for new command execution
+		return cmd
 	}
 
-	return fmt.Errorf("command not found in mock transport: %s", cmd.command)
+	return &MockCmd{
+		Err: fmt.Errorf("command not found in mock transport: %s", command),
+	}
 }
 
-func (w *MockWinTransport) executePowerShell(ctx context.Context, cmd *PowerShellCmd) error {
+func (w *MockWinTransport) NewPowerShellCommand(command string) (Cmd, error) {
 
-	if result, exists := w.PowerShellResults[cmd.command]; exists {
-		cmd.Stdout.Write([]byte(result.Stdout))
-		cmd.Stderr.Write([]byte(result.Stderr))
-		return result.Err
+	if cmd, exists := w.PowerShellResults[command]; exists {
+		cmd.completed = false // Reset completion status for reuse
+		cmd.stdin = nil       // Reset stdin for new command execution
+		return cmd, nil
 	}
 
-	return fmt.Errorf("PowerShell command not found in mock transport: %s", cmd.command)
+	return &MockCmd{
+		Err: fmt.Errorf("PowerShell command not found in mock transport: %s", command),
+	}, nil
 }
 
 // Stat implements Transport.

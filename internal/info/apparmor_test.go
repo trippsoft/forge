@@ -80,7 +80,7 @@ func TestAppArmorInfo_PopulateAppArmorInfo_Linux(t *testing.T) {
 			osInfo.id = "ubuntu"
 
 			mockTransport := transport.NewMockTransport()
-			mockTransport.CommandResults[appArmorDiscoveryScript] = &transport.CommandResult{
+			mockTransport.CommandResults[appArmorDiscoveryScript] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -113,7 +113,7 @@ func TestAppArmorInfo_PopulateAppArmorInfo_Linux_Error(t *testing.T) {
 	osInfo.id = "ubuntu"
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[appArmorDiscoveryScript] = &transport.CommandResult{
+	mockTransport.CommandResults[appArmorDiscoveryScript] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 

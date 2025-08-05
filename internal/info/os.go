@@ -228,8 +228,9 @@ func (o *OSInfo) ProcArchBits() int {
 func (o *OSInfo) populateOSInfo(transport transport.Transport) diag.Diags {
 
 	cmd := transport.NewCommand("uname -s")
+
 	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd.SetStdout(&outBuf)
 
 	unameErr := cmd.Run(context.Background())
 	o.kernel = strings.ToLower(strings.TrimSpace(outBuf.String()))
@@ -245,9 +246,16 @@ func (o *OSInfo) populateOSInfo(transport transport.Transport) diag.Diags {
 		}
 	}
 
-	psCmd := transport.NewPowerShellCommand("Write-Host $PSVersionTable.PSVersion")
+	psCmd, psErr := transport.NewPowerShellCommand("Write-Host $PSVersionTable.PSVersion")
+	if psErr != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Unsupported OS family",
+			Detail:   fmt.Sprintf("uname error: %v, PowerShell error: %v", unameErr, psErr),
+		}}
+	}
 
-	psErr := psCmd.Run(context.Background())
+	psErr = psCmd.Run(context.Background())
 	if psErr == nil {
 		o.families.Add("windows")
 		o.kernel = "windows"
@@ -268,7 +276,7 @@ func (o *OSInfo) populateDarwinOSInfo(transport transport.Transport) diag.Diags 
 
 	cmd := transport.NewCommand(darwinOSDiscoveryScript)
 	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd.SetStdout(&outBuf)
 
 	err := cmd.Run(context.Background())
 	if err != nil {
@@ -328,7 +336,7 @@ func (o *OSInfo) populateLinuxOSInfo(transport transport.Transport) diag.Diags {
 
 	cmd := transport.NewCommand(linuxOSDiscoveryScript)
 	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd.SetStdout(&outBuf)
 
 	err := cmd.Run(context.Background())
 	if err != nil {
@@ -414,11 +422,19 @@ func (o *OSInfo) populateLinuxOSInfo(transport transport.Transport) diag.Diags {
 
 func (o *OSInfo) populateWindowsOSInfo(transport transport.Transport) diag.Diags {
 
-	cmd := transport.NewPowerShellCommand(windowsOSDiscoveryScript)
-	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd, err := transport.NewPowerShellCommand(windowsOSDiscoveryScript)
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to get Windows OS information",
+			Detail:   fmt.Sprintf("Error executing Windows discovery script: %v", err),
+		}}
+	}
 
-	err := cmd.Run(context.Background())
+	var outBuf bytes.Buffer
+	cmd.SetStdout(&outBuf)
+
+	err = cmd.Run(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,

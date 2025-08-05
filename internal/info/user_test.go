@@ -98,7 +98,7 @@ func TestUserInfo_PopulateUserInfo_Posix(t *testing.T) {
 			info := newUserInfo()
 
 			mockTransport := transport.NewMockTransport()
-			mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.CommandResult{
+			mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -143,7 +143,7 @@ func TestUserInfo_PopulateUserInfo_Posix_Error(t *testing.T) {
 	info := newUserInfo()
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.CommandResult{
+	mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 
@@ -206,7 +206,7 @@ func TestUserInfo_PopulateUserInfo_Posix_NotJSON(t *testing.T) {
 	info := newUserInfo()
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.CommandResult{
+	mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.MockCmd{
 		Stdout: "Not a valid JSON output",
 	}
 
@@ -303,7 +303,7 @@ func TestUserInfo_PopulateUserInfo_Windows(t *testing.T) {
 			info := newUserInfo()
 
 			mockTransport := transport.NewWinMockTransport()
-			mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.CommandResult{
+			mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -337,7 +337,7 @@ func TestUserInfo_PopulateUserInfo_Windows_Error(t *testing.T) {
 	info := newUserInfo()
 
 	mockTransport := transport.NewWinMockTransport()
-	mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.CommandResult{
+	mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 
@@ -385,7 +385,7 @@ func TestUserInfo_PopulateUserInfo_Windows_NotJSON(t *testing.T) {
 	info := newUserInfo()
 
 	mockTransport := transport.NewWinMockTransport()
-	mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.CommandResult{
+	mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.MockCmd{
 		Stdout: "Not a valid JSON output",
 	}
 

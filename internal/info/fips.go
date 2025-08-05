@@ -68,8 +68,9 @@ func (f *FIPSInfo) populateFipsInfo(osInfo *OSInfo, transport transport.Transpor
 func (f *FIPSInfo) populateLinuxFipsInfo(transport transport.Transport) diag.Diags {
 
 	cmd := transport.NewCommand(fipsLinuxDiscoveryScript)
+
 	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd.SetStdout(&outBuf)
 
 	err := cmd.Run(context.Background())
 	if err != nil {
@@ -94,11 +95,19 @@ func (f *FIPSInfo) populateLinuxFipsInfo(transport transport.Transport) diag.Dia
 
 func (f *FIPSInfo) populateWindowsFipsInfo(transport transport.Transport) diag.Diags {
 
-	cmd := transport.NewPowerShellCommand(fipsWindowsDiscoveryScript)
-	var outBuf bytes.Buffer
-	cmd.Stdout = &outBuf
+	cmd, err := transport.NewPowerShellCommand(fipsWindowsDiscoveryScript)
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to create PowerShell command",
+			Detail:   fmt.Sprintf("Error creating PowerShell command: %v", err),
+		}}
+	}
 
-	err := cmd.Run(context.Background())
+	var outBuf bytes.Buffer
+	cmd.SetStdout(&outBuf)
+
+	err = cmd.Run(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
