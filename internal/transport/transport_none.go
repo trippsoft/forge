@@ -13,8 +13,8 @@ var (
 
 type noneCmd struct{}
 
-// CombinedOutput implements Cmd.
-func (n *noneCmd) CombinedOutput(ctx context.Context) (stdout []byte, stderr []byte, err error) {
+// OutputWithError implements Cmd.
+func (n *noneCmd) OutputWithError(ctx context.Context) (stdout []byte, stderr []byte, err error) {
 	return nil, nil, errors.New("no transport available for command execution")
 }
 

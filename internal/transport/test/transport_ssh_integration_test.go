@@ -465,7 +465,7 @@ func TestSSHTransportCommand_Linux(t *testing.T) {
 
 	cmd := sshTransport.NewCommand("echo 'Hello from Linux'")
 
-	stdoutBytes, stderrBytes, err := cmd.CombinedOutput(context.Background())
+	stdoutBytes, stderrBytes, err := cmd.OutputWithError(context.Background())
 	stderr := strings.TrimSpace(string(stderrBytes))
 	if err != nil {
 		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
@@ -518,7 +518,7 @@ func TestSSHTransportEscalatedCommand_Linux_SudoNoPassword(t *testing.T) {
 		t.Fatalf("Failed to create escalated command: %v", err)
 	}
 
-	stdoutBytes, stderrBytes, err := cmd.CombinedOutput(context.Background())
+	stdoutBytes, stderrBytes, err := cmd.OutputWithError(context.Background())
 	stderr := strings.TrimSpace(string(stderrBytes))
 	if err != nil {
 		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
@@ -571,7 +571,7 @@ func TestSSHTransportEscalatedCommand_Linux_SudoPassword(t *testing.T) {
 		t.Fatalf("Failed to create escalated command: %v", err)
 	}
 
-	stdoutBytes, stderrBytes, err := cmd.CombinedOutput(context.Background())
+	stdoutBytes, stderrBytes, err := cmd.OutputWithError(context.Background())
 	stderr := strings.TrimSpace(string(stderrBytes))
 	if err != nil {
 		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
@@ -617,7 +617,7 @@ func TestSSHTransportCommand_WinPowerShell(t *testing.T) {
 
 	cmd := sshTransport.NewCommand(`echo "Hello from Windows"`)
 
-	stdoutBytes, stderrBytes, err := cmd.CombinedOutput(context.Background())
+	stdoutBytes, stderrBytes, err := cmd.OutputWithError(context.Background())
 	stderr := strings.TrimSpace(string(stderrBytes))
 	if err != nil {
 		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
@@ -663,7 +663,7 @@ func TestSSHTransportCommand_WinCmd(t *testing.T) {
 
 	cmd := sshTransport.NewCommand("echo Hello from CMD")
 
-	stdoutBytes, stderrBytes, err := cmd.CombinedOutput(context.Background())
+	stdoutBytes, stderrBytes, err := cmd.OutputWithError(context.Background())
 	stderr := strings.TrimSpace(string(stderrBytes))
 	if err != nil {
 		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)

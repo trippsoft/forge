@@ -23,8 +23,8 @@ type sshSudoCmd struct {
 	password string
 }
 
-// CombinedOutput implements Cmd.
-func (s *sshSudoCmd) CombinedOutput(ctx context.Context) ([]byte, []byte, error) {
+// OutputWithError implements Cmd.
+func (s *sshSudoCmd) OutputWithError(ctx context.Context) ([]byte, []byte, error) {
 
 	err := s.createSession(ctx)
 	if err != nil {

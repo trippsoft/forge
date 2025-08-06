@@ -236,8 +236,8 @@ type sshCmd struct {
 	command string
 }
 
-// CombinedOutput implements Cmd.
-func (s *sshCmd) CombinedOutput(ctx context.Context) ([]byte, []byte, error) {
+// OutputWithError implements Cmd.
+func (s *sshCmd) OutputWithError(ctx context.Context) ([]byte, []byte, error) {
 
 	err := s.createSession(ctx)
 	if err != nil {

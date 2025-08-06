@@ -100,8 +100,8 @@ type MockCmd struct {
 	Err    error
 }
 
-// CombinedOutput implements Cmd.
-func (m *MockCmd) CombinedOutput(ctx context.Context) (stdout []byte, stderr []byte, err error) {
+// OutputWithError implements Cmd.
+func (m *MockCmd) OutputWithError(ctx context.Context) (stdout []byte, stderr []byte, err error) {
 
 	if m.completed {
 		return nil, nil, fmt.Errorf("command already completed")

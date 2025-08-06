@@ -69,8 +69,8 @@ type Transport interface {
 
 // Cmd interface defines methods for executing commands on the managed system.
 type Cmd interface {
-	// CombinedOutput executes the command and returns its combined standard output and standard error.
-	CombinedOutput(ctx context.Context) (stdout []byte, stderr []byte, err error)
+	// OutputWithError executes the command and returns its combined standard output and standard error.
+	OutputWithError(ctx context.Context) (stdout []byte, stderr []byte, err error)
 	// Output executes the command and returns its standard output.
 	Output(ctx context.Context) ([]byte, error)
 	// Run executes the command on the managed system with no output.
