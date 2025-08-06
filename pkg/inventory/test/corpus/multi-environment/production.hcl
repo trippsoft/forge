@@ -8,7 +8,7 @@ vars {
 group "prod_web" {
   vars {
     role = "web"
-    domain = "www.${vars.base_domain}"
+    domain = "www.${var.base_domain}"
     app_port = 8080
   }
   host "prod-web1" {
@@ -17,7 +17,7 @@ group "prod_web" {
       tier = "primary"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "prod-web2" {
@@ -26,7 +26,7 @@ group "prod_web" {
       tier = "secondary"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "prod-web3" {
@@ -35,7 +35,7 @@ group "prod_web" {
       tier = "secondary"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }
@@ -43,7 +43,7 @@ group "prod_web" {
 group "prod_api" {
   vars {
     role = "api"
-    domain = "api.${vars.base_domain}"
+    domain = "api.${var.base_domain}"
     app_port = 9000
   }
   host "prod-api1" {
@@ -52,7 +52,7 @@ group "prod_api" {
       tier = "primary"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "prod-api2" {
@@ -61,7 +61,7 @@ group "prod_api" {
       tier = "secondary"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }

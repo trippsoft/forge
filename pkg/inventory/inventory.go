@@ -148,7 +148,7 @@ func (i *Inventory) GetHostEvalContext(hostName string) (*hcl.EvalContext, error
 		hostVars[name] = cty.ObjectVal(host.Vars())
 		if hostName == name {
 
-			variables["vars"] = hostVars[name]
+			variables["var"] = hostVars[name]
 			variables["info"] = cty.ObjectVal(host.Info().ToMapOfCtyValues())
 
 			tasks, err := host.getCurrentContextTasks()

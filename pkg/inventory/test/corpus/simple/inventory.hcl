@@ -19,19 +19,19 @@ group "webservers" {
   host "web1" {
     vars {
       ip = "10.0.1.10"
-      hostname = "web1.${vars.domain}"
+      hostname = "web1.${var.domain}"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "web2" {
     vars {
       ip = "10.0.1.11"
-      hostname = "web2.${vars.domain}"
+      hostname = "web2.${var.domain}"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }
@@ -44,10 +44,10 @@ group "databases" {
   host "db1" {
     vars {
       ip = "10.0.2.10"
-      hostname = "db1.${vars.domain}"
+      hostname = "db1.${var.domain}"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
       user = "dbuser"
     }
   }

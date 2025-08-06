@@ -6,7 +6,7 @@ vars {
 }
 
 transport "ssh" {
-  user = "${vars.ssh_user}"
+  user = "${var.ssh_user}"
   connection_timeout = "30s"
   use_known_hosts = false
 }

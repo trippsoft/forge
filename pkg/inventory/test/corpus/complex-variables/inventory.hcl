@@ -15,8 +15,8 @@ group "base" {
   vars {
     monitoring = true
     log_retention_days = 30
-    environment = "${vars.global_env}"
-    fqdn_suffix = "${vars.base_domain}"
+    environment = "${var.global_env}"
+    fqdn_suffix = "${var.base_domain}"
   }
 }
 
@@ -26,7 +26,7 @@ group "app_tier" {
   vars {
     app_version = "2.1.0"
     health_check_port = 8080
-    service_url = "https://app.${vars.fqdn_suffix}"
+    service_url = "https://app.${var.fqdn_suffix}"
   }
 }
 
@@ -35,40 +35,40 @@ group "frontend" {
   parent = "app_tier"
   vars {
     role = "frontend"
-    load_balancer_pool = "frontend-${vars.environment}"
+    load_balancer_pool = "frontend-${var.environment}"
     replicas = 3
   }
   host "web1" {
     vars {
       ip = "10.0.1.10"
-      hostname = "web1.${vars.fqdn_suffix}"
+      hostname = "web1.${var.fqdn_suffix}"
       server_id = 1
       memory_limit = "2GB"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "web2" {
     vars {
       ip = "10.0.1.11"
-      hostname = "web2.${vars.fqdn_suffix}"
+      hostname = "web2.${var.fqdn_suffix}"
       server_id = 2
       memory_limit = "2GB"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "web3" {
     vars {
       ip = "10.0.1.12"
-      hostname = "web3.${vars.fqdn_suffix}"
+      hostname = "web3.${var.fqdn_suffix}"
       server_id = 3
       memory_limit = "4GB"  # More memory for this instance
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }
@@ -78,27 +78,27 @@ group "backend" {
   parent = "app_tier"
   vars {
     role = "backend"
-    database_url = "postgres://db.${vars.fqdn_suffix}:5432/app"
+    database_url = "postgres://db.${var.fqdn_suffix}:5432/app"
     api_prefix = "/api/v2"
   }
   host "api1" {
     vars {
       ip = "10.0.2.10"
-      hostname = "api1.${vars.fqdn_suffix}"
+      hostname = "api1.${var.fqdn_suffix}"
       instance_type = "primary"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "api2" {
     vars {
       ip = "10.0.2.11"
-      hostname = "api2.${vars.fqdn_suffix}"
+      hostname = "api2.${var.fqdn_suffix}"
       instance_type = "secondary"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }
@@ -123,24 +123,24 @@ group "databases" {
   host "db1" {
     vars {
       ip = "10.0.3.10"
-      hostname = "db1.${vars.fqdn_suffix}"
+      hostname = "db1.${var.fqdn_suffix}"
       is_primary = true
       storage_size = "100GB"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
       user = "postgres"
     }
   }
   host "db2" {
     vars {
       ip = "10.0.3.11"
-      hostname = "db2.${vars.fqdn_suffix}"
+      hostname = "db2.${var.fqdn_suffix}"
       is_primary = false
       storage_size = "100GB"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
       user = "postgres"
     }
   }

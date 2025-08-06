@@ -8,34 +8,34 @@ group "prod_web" {
   parent = "infrastructure"
   vars {
     role = "web"
-    environment = "${vars.prod_env}"
-    instance_count = "${vars.prod_count}"
+    environment = "${var.prod_env}"
+    instance_count = "${var.prod_count}"
   }
   host "prod-web-1" {
     vars {
       ip = "10.1.1.10"
-      hostname = "prod-web-1.${vars.domain}"
+      hostname = "prod-web-1.${var.domain}"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "prod-web-2" {
     vars {
       ip = "10.1.1.11"
-      hostname = "prod-web-2.${vars.domain}"
+      hostname = "prod-web-2.${var.domain}"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "prod-web-3" {
     vars {
       ip = "10.1.1.12"
-      hostname = "prod-web-3.${vars.domain}"
+      hostname = "prod-web-3.${var.domain}"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }

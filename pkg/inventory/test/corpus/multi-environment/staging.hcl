@@ -8,7 +8,7 @@ vars {
 group "staging_web" {
   vars {
     role = "web"
-    domain = "staging.${vars.base_domain}"
+    domain = "staging.${var.base_domain}"
     app_port = 8080
   }
   host "staging-web1" {
@@ -17,7 +17,7 @@ group "staging_web" {
       tier = "single"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }
@@ -25,7 +25,7 @@ group "staging_web" {
 group "staging_api" {
   vars {
     role = "api"
-    domain = "staging-api.${vars.base_domain}"
+    domain = "staging-api.${var.base_domain}"
     app_port = 9000
   }
   host "staging-api1" {
@@ -34,7 +34,7 @@ group "staging_api" {
       tier = "single"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }

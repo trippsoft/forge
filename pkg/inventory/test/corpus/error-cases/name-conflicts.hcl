@@ -8,7 +8,7 @@ group "server1" {
       ip = "10.0.1.2"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }
@@ -20,6 +20,6 @@ host "server1" {
     role = "host"
   }
   transport "ssh" {
-    host = "${vars.ip}"
+    host = "${var.ip}"
   }
 }

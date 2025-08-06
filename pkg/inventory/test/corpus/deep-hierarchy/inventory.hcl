@@ -64,7 +64,7 @@ group "user_service" {
       cpu_cores = 2
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "user-svc-2" {
@@ -74,7 +74,7 @@ group "user_service" {
       cpu_cores = 2
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "user-svc-3" {
@@ -84,7 +84,7 @@ group "user_service" {
       cpu_cores = 4  # Higher capacity instance
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }
@@ -107,7 +107,7 @@ group "payment_service" {
       secure_enclave = true
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "payment-svc-2" {
@@ -118,7 +118,7 @@ group "payment_service" {
       secure_enclave = true
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }
@@ -149,7 +149,7 @@ group "analytics_db" {
       is_primary = true
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
       user = "postgres"
     }
   }
@@ -162,7 +162,7 @@ group "analytics_db" {
       is_primary = false
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
       user = "postgres"
     }
   }
@@ -175,7 +175,7 @@ group "analytics_db" {
       is_primary = false
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
       user = "postgres"
     }
   }

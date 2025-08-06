@@ -8,7 +8,7 @@ vars {
 # Global SSH transport
 transport "ssh" {
   user = "deploy"
-  private_key_path = "${vars.ssh_key_path}"
+  private_key_path = "${var.ssh_key_path}"
   connection_timeout = "30s"
   use_known_hosts = false
 }
@@ -21,7 +21,7 @@ group "secure_servers" {
   }
   transport "ssh" {
     user = "secure_deploy"
-    address = "${vars.bastion_host}"
+    address = "${var.bastion_host}"
     port = 2222
   }
   host "secure1" {
@@ -31,7 +31,7 @@ group "secure_servers" {
     }    
     # Host-specific transport override
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
       user = "root"
       port = 22
     }
@@ -42,7 +42,7 @@ group "secure_servers" {
       role = "security"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }
@@ -59,7 +59,7 @@ group "standard_servers" {
       role = "web"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "web2" {
@@ -68,7 +68,7 @@ group "standard_servers" {
       role = "web"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }
@@ -79,7 +79,7 @@ group "admin_servers" {
     admin_access = true
   }
   transport "ssh" {
-    user = "${vars.admin_user}"
+    user = "${var.admin_user}"
     port = 22
   }
   host "admin1" {
@@ -88,7 +88,7 @@ group "admin_servers" {
       role = "admin"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }

@@ -37,7 +37,7 @@ group "frontend" {
       tier = "primary"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "web2" {
@@ -46,7 +46,7 @@ group "frontend" {
       tier = "secondary"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "web3" {
@@ -55,7 +55,7 @@ group "frontend" {
       tier = "secondary"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }
@@ -74,7 +74,7 @@ group "backend" {
       tier = "primary"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "api2" {
@@ -83,7 +83,7 @@ group "backend" {
       tier = "secondary"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }
@@ -101,7 +101,7 @@ group "cdn" {
       tier = "edge"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }

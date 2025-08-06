@@ -8,16 +8,16 @@ group "staging_web" {
   parent = "infrastructure"
   vars {
     role = "web"
-    environment = "${vars.staging_env}"
-    instance_count = "${vars.staging_count}"
+    environment = "${var.staging_env}"
+    instance_count = "${var.staging_count}"
   }
   host "staging-web-1" {
     vars {
       ip = "10.2.1.10"
-      hostname = "staging-web-1.${vars.domain}"
+      hostname = "staging-web-1.${var.domain}"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }

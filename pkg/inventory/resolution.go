@@ -420,7 +420,7 @@ func evaluateVarsIteratively(vars map[string]*hcl.Attribute) (map[string]cty.Val
 				Functions: hclfunction.HCLFunctions(),
 			}
 			evalCtx.Variables = map[string]cty.Value{
-				"vars": cty.ObjectVal(evaluatedVars),
+				"var": cty.ObjectVal(evaluatedVars),
 			}
 
 			value, moreDiags := attr.Expr.Value(evalCtx)
@@ -639,7 +639,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 
 	evalCtx := &hcl.EvalContext{
 		Variables: map[string]cty.Value{
-			"vars": cty.ObjectVal(vars),
+			"var": cty.ObjectVal(vars),
 		},
 		Functions: hclfunction.HCLFunctions(),
 	}

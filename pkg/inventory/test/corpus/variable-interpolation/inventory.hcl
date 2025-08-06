@@ -6,24 +6,24 @@ vars {
   datacenter = "us-east-1"
   
   # Computed variables
-  internal_domain = "internal.${vars.domain}"
-  external_domain = "external.${vars.domain}"
+  internal_domain = "internal.${var.domain}"
+  external_domain = "external.${var.domain}"
 
   # Network configuration
   network_prefix = "10.0"
-  web_subnet = "${vars.network_prefix}.1"
-  api_subnet = "${vars.network_prefix}.2"
-  db_subnet = "${vars.network_prefix}.3"
+  web_subnet = "${var.network_prefix}.1"
+  api_subnet = "${var.network_prefix}.2"
+  db_subnet = "${var.network_prefix}.3"
   
   # Application configuration
   app_name = "myapp"
   app_version = "1.2.3"
-  app_image = "${vars.app_name}:${vars.app_version}"
+  app_image = "${var.app_name}:${var.app_version}"
 
   # Port configuration
   base_port = 8000
-  web_port = "${vars.base_port + 80}"
-  api_port = "${vars.base_port + 90}"
+  web_port = "${var.base_port + 80}"
+  api_port = "${var.base_port + 90}"
   
   # List variables
   availability_zones = ["a", "b", "c"]
@@ -39,32 +39,32 @@ transport "ssh" {
 group "web" {
   vars {
     role = "web"
-    cluster_name = "${vars.app_name}-web-${vars.environment}"
-    service_url = "https://web.${vars.external_domain}:${vars.web_port}"
-    internal_url = "http://web.${vars.internal_domain}:${vars.web_port}"
+    cluster_name = "${var.app_name}-web-${var.environment}"
+    service_url = "https://web.${var.external_domain}:${var.web_port}"
+    internal_url = "http://web.${var.internal_domain}:${var.web_port}"
   }
   host "web1" {
     vars {
       host_id = 1
-      ip = "${vars.web_subnet}.10"
-      hostname = "web${vars.host_id}.${vars.internal_domain}"
-      fqdn = "${vars.hostname}"
-      zone = "${vars.availability_zones[0]}"
+      ip = "${var.web_subnet}.10"
+      hostname = "web${var.host_id}.${var.internal_domain}"
+      fqdn = "${var.hostname}"
+      zone = "${var.availability_zones[0]}"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
   host "web2" {
     vars {
       host_id = 2
-      ip = "${vars.web_subnet}.11"
-      hostname = "web${vars.host_id}.${vars.internal_domain}"
-      fqdn = "${vars.hostname}"
-      zone = "${vars.availability_zones[1]}"
+      ip = "${var.web_subnet}.11"
+      hostname = "web${var.host_id}.${var.internal_domain}"
+      fqdn = "${var.hostname}"
+      zone = "${var.availability_zones[1]}"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
     }
   }
 }
@@ -72,20 +72,20 @@ group "web" {
 group "database" {
   vars {
     role = "database"
-    cluster_name = "${vars.app_name}-db-${vars.environment}"
-    internal_url = "postgres://db.${vars.internal_domain}:5432"
+    cluster_name = "${var.app_name}-db-${var.environment}"
+    internal_url = "postgres://db.${var.internal_domain}:5432"
   }
   host "db1" {
     vars {
       host_id = 1
-      ip = "${vars.db_subnet}.10"
-      hostname = "db${vars.host_id}.${vars.internal_domain}"
-      fqdn = "${vars.hostname}"
-      zone = "${vars.availability_zones[0]}"
+      ip = "${var.db_subnet}.10"
+      hostname = "db${var.host_id}.${var.internal_domain}"
+      fqdn = "${var.hostname}"
+      zone = "${var.availability_zones[0]}"
       role = "primary"
     }
     transport "ssh" {
-      host = "${vars.ip}"
+      host = "${var.ip}"
       user = "postgres"
     }
   }
