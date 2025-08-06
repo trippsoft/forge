@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	LogSecretFilter *secretFilter = &secretFilter{
+	SecretFilter *secretFilter = &secretFilter{
 		secrets: util.NewSet[string](),
 		writer:  io.Discard,
 	}

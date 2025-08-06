@@ -65,3 +65,7 @@ var (
 		},
 	})
 )
+
+func Sum(input cty.Value) (cty.Value, error) {
+	return SumFunc.Call([]cty.Value{input})
+}

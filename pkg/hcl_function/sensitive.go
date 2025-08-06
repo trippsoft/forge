@@ -21,7 +21,11 @@ var (
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			value := args[0].AsString()
 
-			log.LogSecretFilter.AddSecret(value)
+			if value == "" {
+				return args[0], nil // Skip registering empty strings
+			}
+
+			log.SecretFilter.AddSecret(value)
 
 			return args[0], nil
 		},

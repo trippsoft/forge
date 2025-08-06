@@ -770,7 +770,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 			cachedPrivateKeyFiles[privateKeyPath] = privateKey // Cache the private key
 		}
 		if privateKeyPass != "" {
-			log.LogSecretFilter.AddSecret(privateKeyPass)
+			log.SecretFilter.AddSecret(privateKeyPass)
 			builder = builder.PublicKeyAuthWithPass(privateKey, privateKeyPass)
 		} else {
 			builder = builder.PublicKeyAuth(privateKey)
@@ -778,7 +778,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 	}
 
 	if password != "" {
-		log.LogSecretFilter.AddSecret(password)
+		log.SecretFilter.AddSecret(password)
 		builder = builder.PasswordAuth(password)
 	}
 

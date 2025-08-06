@@ -2,256 +2,162 @@ package hcl_function
 
 import (
 	"encoding/base64"
+	"fmt"
 	"testing"
 
 	"github.com/zclconf/go-cty/cty"
+	"golang.org/x/text/encoding/ianaindex"
 )
 
-func TestTextEncodeBase64(t *testing.T) {
-	tests := []struct {
-		name        string
-		input       string
-		encoding    string
-		expectedErr bool
-		validate    func(t *testing.T, result cty.Value)
+func getTextEncodeBase64TestCases() []struct {
+	name     string
+	input    string
+	encoding string
+} {
+	return []struct {
+		name     string
+		input    string
+		encoding string
 	}{
 		{
-			name:        "UTF-8 encoding",
-			input:       "Hello, World!",
-			encoding:    "UTF-8",
-			expectedErr: false,
-			validate: func(t *testing.T, result cty.Value) {
-				if result.Type() != cty.String {
-					t.Errorf("Expected string type, got %v", result.Type())
-				}
-				// Decode the base64 result to verify
-				decoded, err := base64.StdEncoding.DecodeString(result.AsString())
-				if err != nil {
-					t.Errorf("Failed to decode base64 result: %v", err)
-				}
-				if string(decoded) != "Hello, World!" {
-					t.Errorf("Expected 'Hello, World!', got %q", string(decoded))
-				}
-			},
+			name:     "UTF-8 encoding",
+			input:    "Hello, World!",
+			encoding: "UTF-8",
 		},
 		{
-			name:        "ASCII encoding",
-			input:       "ASCII text",
-			encoding:    "US-ASCII",
-			expectedErr: false,
-			validate: func(t *testing.T, result cty.Value) {
-				if result.Type() != cty.String {
-					t.Errorf("Expected string type, got %v", result.Type())
-				}
-				// Verify it's valid base64
-				decoded, err := base64.StdEncoding.DecodeString(result.AsString())
-				if err != nil {
-					t.Errorf("Failed to decode base64 result: %v", err)
-				}
-				if string(decoded) != "ASCII text" {
-					t.Errorf("Expected 'ASCII text', got %q", string(decoded))
-				}
-			},
+			name:     "ASCII encoding",
+			input:    "ASCII text",
+			encoding: "US-ASCII",
 		},
 		{
-			name:        "ISO-8859-1 encoding",
-			input:       "café",
-			encoding:    "ISO-8859-1",
-			expectedErr: false,
-			validate: func(t *testing.T, result cty.Value) {
-				if result.Type() != cty.String {
-					t.Errorf("Expected string type, got %v", result.Type())
-				}
-				// Verify it's valid base64
-				_, err := base64.StdEncoding.DecodeString(result.AsString())
-				if err != nil {
-					t.Errorf("Failed to decode base64 result: %v", err)
-				}
-			},
+			name:     "ISO-8859-1 encoding",
+			input:    "café",
+			encoding: "ISO-8859-1",
 		},
 		{
-			name:        "Windows-1252 encoding",
-			input:       "Windows text",
-			encoding:    "Windows-1252",
-			expectedErr: false,
-			validate: func(t *testing.T, result cty.Value) {
-				if result.Type() != cty.String {
-					t.Errorf("Expected string type, got %v", result.Type())
-				}
-				// Verify it's valid base64
-				_, err := base64.StdEncoding.DecodeString(result.AsString())
-				if err != nil {
-					t.Errorf("Failed to decode base64 result: %v", err)
-				}
-			},
+			name:     "Windows-1252 encoding",
+			input:    "Windows text",
+			encoding: "Windows-1252",
 		},
 		{
-			name:        "empty string",
-			input:       "",
-			encoding:    "UTF-8",
-			expectedErr: false,
-			validate: func(t *testing.T, result cty.Value) {
-				if result.Type() != cty.String {
-					t.Errorf("Expected string type, got %v", result.Type())
-				}
-				// Empty input should result in empty base64
-				if result.AsString() != "" {
-					t.Errorf("Expected empty string for empty input, got %q", result.AsString())
-				}
-			},
+			name:     "empty string",
+			input:    "",
+			encoding: "UTF-8",
 		},
 		{
-			name:        "unicode characters",
-			input:       "Hello 世界! 🌍",
-			encoding:    "UTF-8",
-			expectedErr: false,
-			validate: func(t *testing.T, result cty.Value) {
-				if result.Type() != cty.String {
-					t.Errorf("Expected string type, got %v", result.Type())
-				}
-				// Decode and verify unicode is preserved
-				decoded, err := base64.StdEncoding.DecodeString(result.AsString())
-				if err != nil {
-					t.Errorf("Failed to decode base64 result: %v", err)
-				}
-				if string(decoded) != "Hello 世界! 🌍" {
-					t.Errorf("Expected 'Hello 世界! 🌍', got %q", string(decoded))
-				}
-			},
+			name:     "unicode characters",
+			input:    "Hello 世界! 🌍",
+			encoding: "UTF-8",
 		},
 		{
-			name:        "invalid encoding",
-			input:       "test",
-			encoding:    "INVALID-ENCODING",
-			expectedErr: true,
-			validate:    nil,
+			name:     "case insensitive encoding name",
+			input:    "test",
+			encoding: "utf-8",
 		},
 		{
-			name:        "case insensitive encoding name",
-			input:       "test",
-			encoding:    "utf-8",
-			expectedErr: false,
-			validate: func(t *testing.T, result cty.Value) {
-				if result.Type() != cty.String {
-					t.Errorf("Expected string type, got %v", result.Type())
-				}
-			},
+			name:     "special characters",
+			input:    "!@#$%^&*()_+-=[]{}|;':\",./<>?",
+			encoding: "UTF-8",
 		},
 		{
-			name:        "special characters",
-			input:       "!@#$%^&*()_+-=[]{}|;':\",./<>?",
-			encoding:    "UTF-8",
-			expectedErr: false,
-			validate: func(t *testing.T, result cty.Value) {
-				if result.Type() != cty.String {
-					t.Errorf("Expected string type, got %v", result.Type())
-				}
-				// Decode and verify special characters are preserved
-				decoded, err := base64.StdEncoding.DecodeString(result.AsString())
-				if err != nil {
-					t.Errorf("Failed to decode base64 result: %v", err)
-				}
-				if string(decoded) != "!@#$%^&*()_+-=[]{}|;':\",./<>?" {
-					t.Errorf("Special characters not preserved correctly")
-				}
-			},
-		},
-		{
-			name:        "newlines and tabs",
-			input:       "line1\nline2\tindented",
-			encoding:    "UTF-8",
-			expectedErr: false,
-			validate: func(t *testing.T, result cty.Value) {
-				if result.Type() != cty.String {
-					t.Errorf("Expected string type, got %v", result.Type())
-				}
-				// Decode and verify whitespace is preserved
-				decoded, err := base64.StdEncoding.DecodeString(result.AsString())
-				if err != nil {
-					t.Errorf("Failed to decode base64 result: %v", err)
-				}
-				if string(decoded) != "line1\nline2\tindented" {
-					t.Errorf("Whitespace not preserved correctly")
-				}
-			},
+			name:     "newlines and tabs",
+			input:    "line1\nline2\tindented",
+			encoding: "UTF-8",
 		},
 	}
+}
+
+func getExpectedBase64Value(t *testing.T, input string, encoding string) cty.Value {
+
+	e, err := ianaindex.IANA.Encoding(encoding)
+	if err != nil {
+		t.Fatalf("failed to get encoding %q: %v", encoding, err)
+	}
+
+	encoder := e.NewEncoder()
+	encoded, err := encoder.Bytes([]byte(input))
+	if err != nil {
+		t.Fatalf("failed to encode input %q as %q: %v", input, encoding, err)
+	}
+	base64Encoded := base64.StdEncoding.EncodeToString(encoded)
+
+	return cty.StringVal(base64Encoded)
+}
+
+func TestTextEncodeBase64(t *testing.T) {
+
+	tests := getTextEncodeBase64TestCases()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := TextEncodeBase64(cty.StringVal(tt.input), cty.StringVal(tt.encoding))
 
-			if (err != nil) != tt.expectedErr {
-				t.Errorf("TextEncodeBase64() error = %v, expectedErr %v", err, tt.expectedErr)
-				return
+			expected := getExpectedBase64Value(t, tt.input, tt.encoding)
+
+			input := cty.StringVal(tt.input)
+			encoding := cty.StringVal(tt.encoding)
+
+			actual, err := TextEncodeBase64(input, encoding)
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
 			}
 
-			if !tt.expectedErr && tt.validate != nil {
-				tt.validate(t, result)
-			}
+			assertCtyValueEqual(t, actual, expected)
 		})
 	}
 }
 
-func TestTextEncodeBase64Func(t *testing.T) {
-	// Test calling the function directly
-	result, err := TextEncodeBase64Func.Call([]cty.Value{
-		cty.StringVal("test"),
-		cty.StringVal("UTF-8"),
-	})
+func TestTextEncodeBase64_InvalidEncoding(t *testing.T) {
 
-	if err != nil {
-		t.Fatalf("TextEncodeBase64Func.Call() failed: %v", err)
+	// Test with an invalid encoding
+	encoding := cty.StringVal("INVALID_ENCODING")
+	input := cty.StringVal("test")
+
+	_, err := TextEncodeBase64(input, encoding)
+	if err == nil {
+		t.Fatalf("expected error for invalid encoding, got none")
 	}
 
-	if result.Type() != cty.String {
-		t.Errorf("Expected string type, got %v", result.Type())
-	}
-
-	// Verify the result is valid base64
-	decoded, err := base64.StdEncoding.DecodeString(result.AsString())
-	if err != nil {
-		t.Errorf("Result is not valid base64: %v", err)
-	}
-
-	if string(decoded) != "test" {
-		t.Errorf("Expected 'test', got %q", string(decoded))
+	expectedError := fmt.Sprintf("invalid encoding %q", encoding.AsString())
+	if err.Error() != expectedError {
+		t.Fatalf("expected error %q, got %q", expectedError, err.Error())
 	}
 }
 
-func TestTextEncodeBase64WithInvalidArgs(t *testing.T) {
-	// Test with wrong number of arguments
-	_, err := TextEncodeBase64Func.Call([]cty.Value{
-		cty.StringVal("test"),
-	})
+func TestTextEncodeBase64Func(t *testing.T) {
+
+	tests := getTextEncodeBase64TestCases()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			expected := getExpectedBase64Value(t, tt.input, tt.encoding)
+
+			input := cty.StringVal(tt.input)
+			encoding := cty.StringVal(tt.encoding)
+
+			actual, err := TextEncodeBase64Func.Call([]cty.Value{input, encoding})
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+
+			assertCtyValueEqual(t, actual, expected)
+		})
+	}
+}
+
+func TestTextEncodeBase64Func_InvalidEncoding(t *testing.T) {
+
+	// Test with an invalid encoding
+	encoding := cty.StringVal("INVALID_ENCODING")
+	input := cty.StringVal("test")
+
+	_, err := TextEncodeBase64Func.Call([]cty.Value{input, encoding})
 	if err == nil {
-		t.Error("Expected error with insufficient arguments")
+		t.Fatalf("expected error for invalid encoding, got none")
 	}
 
-	// Test with too many arguments
-	_, err = TextEncodeBase64Func.Call([]cty.Value{
-		cty.StringVal("test"),
-		cty.StringVal("UTF-8"),
-		cty.StringVal("extra"),
-	})
-	if err == nil {
-		t.Error("Expected error with too many arguments")
-	}
-
-	// Test with wrong argument types
-	_, err = TextEncodeBase64Func.Call([]cty.Value{
-		cty.NumberIntVal(123),
-		cty.StringVal("UTF-8"),
-	})
-	if err == nil {
-		t.Error("Expected error with wrong input type")
-	}
-
-	_, err = TextEncodeBase64Func.Call([]cty.Value{
-		cty.StringVal("test"),
-		cty.NumberIntVal(123),
-	})
-	if err == nil {
-		t.Error("Expected error with wrong encoding type")
+	expectedError := fmt.Sprintf("invalid encoding %q", encoding.AsString())
+	if err.Error() != expectedError {
+		t.Fatalf("expected error %q, got %q", expectedError, err.Error())
 	}
 }

@@ -3,174 +3,150 @@ package hcl_function
 import (
 	"encoding/base64"
 	"os"
-	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/zclconf/go-cty/cty"
 )
 
-func TestFileBase64(t *testing.T) {
-	// Create a temporary directory for test files
-	tempDir, err := os.MkdirTemp("", "filebase64_test")
+func setupTempDir(t *testing.T) string {
+
+	tempDir, err := os.MkdirTemp("", "filebase64_test*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	return tempDir
+}
 
-	tests := []struct {
-		name        string
-		setupFile   func() (string, string) // returns (filepath, content)
-		expectedErr bool
+func getFileBase64TestCases() []struct {
+	name    string
+	content []byte
+} {
+	return []struct {
+		name    string
+		content []byte
 	}{
 		{
-			name: "text file",
-			setupFile: func() (string, string) {
-				content := "Hello, World!"
-				filepath := filepath.Join(tempDir, "test.txt")
-				err := os.WriteFile(filepath, []byte(content), 0644)
-				if err != nil {
-					t.Fatalf("Failed to create test file: %v", err)
-				}
-				return filepath, content
-			},
-			expectedErr: false,
+			name:    "text file",
+			content: []byte("Hello, World!"),
 		},
 		{
-			name: "empty file",
-			setupFile: func() (string, string) {
-				content := ""
-				filepath := filepath.Join(tempDir, "empty.txt")
-				err := os.WriteFile(filepath, []byte(content), 0644)
-				if err != nil {
-					t.Fatalf("Failed to create test file: %v", err)
-				}
-				return filepath, content
-			},
-			expectedErr: false,
+			name:    "empty file",
+			content: []byte(""),
 		},
 		{
-			name: "binary file",
-			setupFile: func() (string, string) {
-				content := "\x00\x01\x02\x03\xFF"
-				filepath := filepath.Join(tempDir, "binary.bin")
-				err := os.WriteFile(filepath, []byte(content), 0644)
-				if err != nil {
-					t.Fatalf("Failed to create test file: %v", err)
-				}
-				return filepath, content
-			},
-			expectedErr: false,
+			name:    "binary file",
+			content: []byte("\x00\x01\x02\x03\xFF"),
 		},
 		{
-			name: "unicode content",
-			setupFile: func() (string, string) {
-				content := "Hello 世界! 🌍"
-				filepath := filepath.Join(tempDir, "unicode.txt")
-				err := os.WriteFile(filepath, []byte(content), 0644)
-				if err != nil {
-					t.Fatalf("Failed to create test file: %v", err)
-				}
-				return filepath, content
-			},
-			expectedErr: false,
-		},
-		{
-			name: "non-existent file",
-			setupFile: func() (string, string) {
-				return filepath.Join(tempDir, "nonexistent.txt"), ""
-			},
-			expectedErr: true,
+			name:    "unicode content",
+			content: []byte("Hello 世界! 🌍"),
 		},
 	}
+}
+
+func createTempFile(t *testing.T, dir string, content []byte) string {
+
+	file, err := os.CreateTemp(dir, "testfile_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+
+	_, err = file.Write(content)
+	if err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+
+	err = file.Sync()
+	if err != nil {
+		t.Fatalf("Failed to sync temp file: %v", err)
+	}
+
+	err = file.Close()
+	if err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+
+	return file.Name()
+}
+
+func encodeExpectedAsBase64(content []byte) cty.Value {
+	encoded := base64.StdEncoding.EncodeToString(content)
+	return cty.StringVal(encoded)
+}
+
+func TestFileBase64(t *testing.T) {
+
+	tempDir := setupTempDir(t)
+	defer os.RemoveAll(tempDir)
+
+	tests := getFileBase64TestCases()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filepath, originalContent := tt.setupFile()
 
-			result, err := FileBase64(cty.StringVal(filepath))
-			if (err != nil) != tt.expectedErr {
-				t.Errorf("FileBase64() error = %v, expectedErr %v", err, tt.expectedErr)
-				return
+			path := createTempFile(t, tempDir, tt.content)
+
+			expected := encodeExpectedAsBase64(tt.content)
+
+			actual, err := FileBase64(cty.StringVal(path))
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
 			}
 
-			if !tt.expectedErr {
-				// Verify it's a string
-				if result.Type() != cty.String {
-					t.Errorf("FileBase64() returned type %v, want %v", result.Type(), cty.String)
-				}
-
-				// Decode the base64 and verify it matches original content
-				encodedContent := result.AsString()
-				decodedBytes, decodeErr := base64.StdEncoding.DecodeString(encodedContent)
-				if decodeErr != nil {
-					t.Errorf("FileBase64() returned invalid base64: %v", decodeErr)
-				}
-
-				if string(decodedBytes) != originalContent {
-					t.Errorf("FileBase64() decoded content = %v, want %v", string(decodedBytes), originalContent)
-				}
-			}
+			assertCtyValueEqual(t, actual, expected)
 		})
 	}
 }
 
-func TestFileBase64Func(t *testing.T) {
-	// Create a temporary file for testing
-	tempDir, err := os.MkdirTemp("", "filebase64_func_test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
+func TestFileBase64_NonExistentFile(t *testing.T) {
+
+	// Test with a non-existent file
+	_, err := FileBase64(cty.StringVal("non_existent_file.txt"))
+	if err == nil {
+		t.Fatal("expected an error for non-existent file, got nil")
 	}
+
+	expectedErr := "failed to read file \"non_existent_file.txt\""
+	if !strings.HasPrefix(err.Error(), expectedErr) {
+		t.Fatalf("expected error '%s', got '%s'", expectedErr, err.Error())
+	}
+}
+
+func TestFileBase64Func(t *testing.T) {
+
+	tempDir := setupTempDir(t)
 	defer os.RemoveAll(tempDir)
 
-	content := "test content"
-	filepath := filepath.Join(tempDir, "test.txt")
-	err = os.WriteFile(filepath, []byte(content), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	tests := []struct {
-		name        string
-		input       []cty.Value
-		expectedErr bool
-	}{
-		{
-			name:        "function call with valid file",
-			input:       []cty.Value{cty.StringVal(filepath)},
-			expectedErr: false,
-		},
-		{
-			name:        "function call with non-existent file",
-			input:       []cty.Value{cty.StringVal("/nonexistent/file.txt")},
-			expectedErr: true,
-		},
-	}
+	tests := getFileBase64TestCases()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := FileBase64Func.Call(tt.input)
-			if (err != nil) != tt.expectedErr {
-				t.Errorf("FileBase64Func.Call() error = %v, expectedErr %v", err, tt.expectedErr)
-				return
+
+			path := createTempFile(t, tempDir, tt.content)
+
+			expected := encodeExpectedAsBase64(tt.content)
+
+			actual, err := FileBase64Func.Call([]cty.Value{cty.StringVal(path)})
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
 			}
 
-			if !tt.expectedErr {
-				// Verify it's a string
-				if result.Type() != cty.String {
-					t.Errorf("FileBase64Func.Call() returned type %v, want %v", result.Type(), cty.String)
-				}
-
-				// Decode and verify content matches
-				encodedContent := result.AsString()
-				decodedBytes, decodeErr := base64.StdEncoding.DecodeString(encodedContent)
-				if decodeErr != nil {
-					t.Errorf("FileBase64Func.Call() returned invalid base64: %v", decodeErr)
-				}
-
-				if string(decodedBytes) != content {
-					t.Errorf("FileBase64Func.Call() decoded content = %v, want %v", string(decodedBytes), content)
-				}
-			}
+			assertCtyValueEqual(t, actual, expected)
 		})
+	}
+}
+
+func TestFileBase64Func_NonExistentFile(t *testing.T) {
+
+	// Test with a non-existent file
+	_, err := FileBase64Func.Call([]cty.Value{cty.StringVal("non_existent_file.txt")})
+	if err == nil {
+		t.Fatal("expected an error for non-existent file, got nil")
+	}
+
+	expectedErr := "failed to read file \"non_existent_file.txt\""
+	if !strings.HasPrefix(err.Error(), expectedErr) {
+		t.Fatalf("expected error '%s', got '%s'", expectedErr, err.Error())
 	}
 }

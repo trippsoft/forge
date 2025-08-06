@@ -1,18 +1,24 @@
 package diag
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestDiagError(t *testing.T) {
 
+	summary := "Test error"
+	detail := "This is a test error detail."
+
 	diag := &Diag{
 		Severity: DiagError,
-		Summary:  "Test error",
-		Detail:   "This is a test error detail.",
+		Summary:  summary,
+		Detail:   detail,
 	}
 
-	expected := "Test error; This is a test error detail."
-	if diag.Error() != expected {
-		t.Errorf("Expected '%s', got '%s'", expected, diag.Error())
+	expectedError := fmt.Sprintf("%s; %s", summary, detail)
+	if diag.Error() != expectedError {
+		t.Errorf("Expected %q, got %q", expectedError, diag.Error())
 	}
 }
 
