@@ -1,7 +1,6 @@
-package hcl_function
+package hclfunction
 
 import (
-	"bytes"
 	"encoding/base64"
 
 	"github.com/zclconf/go-cty/cty"
@@ -10,7 +9,7 @@ import (
 )
 
 var (
-	TextDecodeBase64Func = function.New(&function.Spec{
+	TextEncodeBase64Func = function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
 				Name: "input",
@@ -36,25 +35,17 @@ var (
 			}
 
 			input := args[0].AsString()
-			base64Decoded, err := base64.StdEncoding.DecodeString(input)
+			encoder := encoding.NewEncoder()
+			encoded, err := encoder.Bytes([]byte(input))
 			if err != nil {
-				switch err := err.(type) {
-				case base64.CorruptInputError:
-					return cty.UnknownVal(cty.String), function.NewArgErrorf(0, "the input has invalid base64 character at offset: %d", int(err))
-				default:
-					return cty.UnknownVal(cty.String), function.NewArgErrorf(0, "failed to decode input: %w", err)
-				}
+				return cty.UnknownVal(cty.String), function.NewArgErrorf(0, "failed to encode input as %q", encodingName)
 			}
-			decoder := encoding.NewDecoder()
-			decoded, err := decoder.Bytes([]byte(base64Decoded))
-			if err != nil || bytes.ContainsRune(decoded, '�') {
-				return cty.UnknownVal(cty.String), function.NewArgErrorf(0, "failed to decode input as %q", encodingName)
-			}
-			return cty.StringVal(string(decoded)), nil
+			base64Encoded := base64.StdEncoding.EncodeToString(encoded)
+			return cty.StringVal(base64Encoded), nil
 		},
 	})
 )
 
-func TextDecodeBase64(input, encoding cty.Value) (cty.Value, error) {
-	return TextDecodeBase64Func.Call([]cty.Value{input, encoding})
+func TextEncodeBase64(input, encoding cty.Value) (cty.Value, error) {
+	return TextEncodeBase64Func.Call([]cty.Value{input, encoding})
 }

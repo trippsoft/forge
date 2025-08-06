@@ -1,4 +1,4 @@
-package hcl_function
+package hclfunction
 
 import (
 	"strings"
@@ -8,15 +8,14 @@ import (
 )
 
 var (
-	StartsWithFunc = function.New(&function.Spec{
+	EndsWithFunc = function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
-				Name:         "value",
-				Type:         cty.String,
-				AllowUnknown: false,
+				Name: "value",
+				Type: cty.String,
 			},
 			{
-				Name: "prefix",
+				Name: "suffix",
 				Type: cty.String,
 			},
 		},
@@ -26,13 +25,13 @@ var (
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			value := args[0].AsString()
-			prefix := args[1].AsString()
+			suffix := args[1].AsString()
 
-			return cty.BoolVal(strings.HasPrefix(value, prefix)), nil
+			return cty.BoolVal(strings.HasSuffix(value, suffix)), nil
 		},
 	})
 )
 
-func StartsWith(value, prefix cty.Value) (cty.Value, error) {
-	return StartsWithFunc.Call([]cty.Value{value, prefix})
+func EndsWith(value, suffix cty.Value) (cty.Value, error) {
+	return EndsWithFunc.Call([]cty.Value{value, suffix})
 }

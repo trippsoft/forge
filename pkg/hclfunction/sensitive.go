@@ -1,4 +1,4 @@
-package hcl_function
+package hclfunction
 
 import (
 	"github.com/trippsoft/forge/pkg/log"

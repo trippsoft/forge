@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/hashicorp/hcl/v2"
-	function "github.com/trippsoft/forge/pkg/hcl_function"
+	"github.com/trippsoft/forge/pkg/hclfunction"
 	"github.com/trippsoft/forge/pkg/info"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
@@ -168,6 +168,6 @@ func (i *Inventory) GetHostEvalContext(hostName string) (*hcl.EvalContext, error
 
 	return &hcl.EvalContext{
 		Variables: variables,
-		Functions: function.HCLFunctions(),
+		Functions: hclfunction.HCLFunctions(),
 	}, nil
 }

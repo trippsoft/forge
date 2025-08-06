@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	function "github.com/trippsoft/forge/pkg/hcl_function"
+	"github.com/trippsoft/forge/pkg/hclfunction"
 	"github.com/trippsoft/forge/pkg/log"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/trippsoft/forge/pkg/util"
@@ -417,7 +417,7 @@ func evaluateVarsIteratively(vars map[string]*hcl.Attribute) (map[string]cty.Val
 			}
 
 			evalCtx := &hcl.EvalContext{
-				Functions: function.HCLFunctions(),
+				Functions: hclfunction.HCLFunctions(),
 			}
 			evalCtx.Variables = map[string]cty.Value{
 				"vars": cty.ObjectVal(evaluatedVars),
@@ -641,7 +641,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 		Variables: map[string]cty.Value{
 			"vars": cty.ObjectVal(vars),
 		},
-		Functions: function.HCLFunctions(),
+		Functions: hclfunction.HCLFunctions(),
 	}
 
 	if attr, exists := transportSSH["host"]; exists && attr != nil {

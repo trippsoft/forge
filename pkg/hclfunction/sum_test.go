@@ -1,4 +1,4 @@
-package hcl_function
+package hclfunction
 
 import (
 	"math/big"
