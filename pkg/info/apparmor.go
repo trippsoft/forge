@@ -3,7 +3,6 @@ package info
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/trippsoft/forge/pkg/transport"
@@ -37,7 +36,7 @@ func (a *AppArmorInfo) Enabled() bool {
 	return a.enabled
 }
 
-func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, transport transport.Transport) diag.Diags {
+func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, t transport.Transport) diag.Diags {
 
 	if osInfo == nil || osInfo.id == "" {
 		return diag.Diags{&diag.Diag{
@@ -55,9 +54,16 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, transport transport.
 
 	a.supported = true
 
-	cmd := transport.NewCommand(appArmorDiscoveryScript)
+	cmd, err := t.NewCommand(appArmorDiscoveryScript, &transport.NoEscalate{})
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to create AppArmor discovery command",
+			Detail:   fmt.Sprintf("Error creating command: %v", err),
+		}}
+	}
 
-	stdoutBytes, err := cmd.Output(context.Background())
+	stdout, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -65,8 +71,6 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, transport transport.
 			Detail:   fmt.Sprintf("Error executing command: %v", err),
 		}}
 	}
-
-	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	if stdout == "" {
 		a.enabled = false

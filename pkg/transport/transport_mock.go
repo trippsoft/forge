@@ -101,35 +101,40 @@ type MockCmd struct {
 }
 
 // OutputWithError implements Cmd.
-func (m *MockCmd) OutputWithError(ctx context.Context) (stdout []byte, stderr []byte, err error) {
+func (m *MockCmd) OutputWithError(ctx context.Context) (stdout string, stderr string, err error) {
 
 	if m.completed {
-		return nil, nil, fmt.Errorf("command already completed")
+		return "", "", fmt.Errorf("command already completed")
 	}
 
 	m.completed = true
 
+	m.Stdout = strings.TrimSpace(m.Stdout)
+	m.Stderr = strings.TrimSpace(m.Stderr)
+
 	if m.Err != nil {
-		return []byte(m.Stdout), []byte(m.Stderr), m.Err
+		return m.Stdout, m.Stderr, m.Err
 	}
 
-	return []byte(m.Stdout), []byte(m.Stderr), nil
+	return m.Stdout, m.Stderr, nil
 }
 
 // Output implements Cmd.
-func (m *MockCmd) Output(ctx context.Context) ([]byte, error) {
+func (m *MockCmd) Output(ctx context.Context) (string, error) {
 
 	if m.completed {
-		return nil, fmt.Errorf("command already completed")
+		return "", fmt.Errorf("command already completed")
 	}
 
 	m.completed = true
 
+	m.Stdout = strings.TrimSpace(m.Stdout)
+
 	if m.Err != nil {
-		return []byte(m.Stdout), m.Err
+		return m.Stdout, m.Err
 	}
 
-	return []byte(m.Stdout), nil
+	return m.Stdout, nil
 }
 
 // Run implements Cmd.
@@ -180,21 +185,7 @@ func (w *MockTransport) Close() error {
 	return nil
 }
 
-func (w *MockTransport) NewCommand(command string) Cmd {
-
-	cmd, exists := w.CommandResults[command]
-	if exists {
-		cmd.completed = false // Reset completed state for reuse
-		cmd.stdin = nil
-		return cmd
-	}
-
-	return &MockCmd{
-		Err: fmt.Errorf("command not found in mock transport: %s", command),
-	}
-}
-
-func (w *MockTransport) NewEscalatedCommand(command string, escalationConfig *EscalationConfig) (Cmd, error) {
+func (w *MockTransport) NewCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
 
 	cmd, exists := w.CommandResults[command]
 	if exists {
@@ -208,11 +199,7 @@ func (w *MockTransport) NewEscalatedCommand(command string, escalationConfig *Es
 	}, nil
 }
 
-func (w *MockTransport) NewPowerShellCommand(command string) (Cmd, error) {
-	return nil, errors.New("PowerShell execution not supported in mock transport")
-}
-
-func (w *MockTransport) NewEscalatedPowerShellCommand(command string, escalationConfig *EscalationConfig) (Cmd, error) {
+func (w *MockTransport) NewPowerShellCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
 	return nil, errors.New("PowerShell execution not supported in mock transport")
 }
 

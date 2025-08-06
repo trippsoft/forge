@@ -182,11 +182,18 @@ func (s *ServiceManagerInfo) populateDarwinServiceManagerInfo(osInfo *OSInfo) di
 	return diag.Diags{}
 }
 
-func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(transport transport.Transport) diag.Diags {
+func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transport) diag.Diags {
 
-	cmd := transport.NewCommand(linuxServiceManagerDiscoveryScript)
+	cmd, err := t.NewCommand(linuxServiceManagerDiscoveryScript, &transport.NoEscalate{})
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to create service manager discovery command",
+			Detail:   fmt.Sprintf("Error creating command: %v", err),
+		}}
+	}
 
-	stdoutBytes, err := cmd.Output(context.Background())
+	stdout, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -194,8 +201,6 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(transport transport
 			Detail:   fmt.Sprintf("Error executing service manager discovery script: %v", err),
 		}}
 	}
-
-	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)

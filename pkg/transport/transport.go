@@ -25,13 +25,9 @@ type Transport interface {
 	Close() error
 
 	// NewCommand creates a new command to be executed on the managed system.
-	NewCommand(command string) Cmd
-	// NewEscalatedCommand creates a new command to be executed with privilege escalation.
-	NewEscalatedCommand(command string, escalationConfig *EscalationConfig) (Cmd, error)
+	NewCommand(command string, escalateConfig EscalateConfig) (Cmd, error)
 	// NewPowerShellCommand creates a new PowerShell command to be executed on the managed system.
-	NewPowerShellCommand(command string) (Cmd, error)
-	// NewEscalatedPowerShellCommand creates a new PowerShell command to be executed with privilege escalation.
-	NewEscalatedPowerShellCommand(command string, escalationConfig *EscalationConfig) (Cmd, error)
+	NewPowerShellCommand(command string, escalateConfig EscalateConfig) (Cmd, error)
 
 	// Stat retrieves the file information for the given path on the managed system.
 	Stat(path string) (os.FileInfo, error)
@@ -70,9 +66,9 @@ type Transport interface {
 // Cmd interface defines methods for executing commands on the managed system.
 type Cmd interface {
 	// OutputWithError executes the command and returns its combined standard output and standard error.
-	OutputWithError(ctx context.Context) (stdout []byte, stderr []byte, err error)
+	OutputWithError(ctx context.Context) (stdout string, stderr string, err error)
 	// Output executes the command and returns its standard output.
-	Output(ctx context.Context) ([]byte, error)
+	Output(ctx context.Context) (string, error)
 	// Run executes the command on the managed system with no output.
 	Run(ctx context.Context) error
 }

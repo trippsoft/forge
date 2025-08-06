@@ -237,11 +237,11 @@ type sshCmd struct {
 }
 
 // OutputWithError implements Cmd.
-func (s *sshCmd) OutputWithError(ctx context.Context) ([]byte, []byte, error) {
+func (s *sshCmd) OutputWithError(ctx context.Context) (string, string, error) {
 
 	err := s.createSession(ctx)
 	if err != nil {
-		return nil, nil, err
+		return "", "", err
 	}
 	defer s.session.Close()
 
@@ -262,20 +262,22 @@ func (s *sshCmd) OutputWithError(ctx context.Context) ([]byte, []byte, error) {
 		s.session.Signal(ssh.SIGINT) // Send interrupt signal to the session
 		s.session = nil
 		s.completed = true
-		return nil, nil, s.ctx.Err()
+		return "", "", s.ctx.Err()
 	case err = <-errChannel:
 		s.session = nil
 		s.completed = true
-		return outBuf.Bytes(), errBuf.Bytes(), nil
+		stdout := strings.TrimSpace(outBuf.String())
+		stderr := strings.TrimSpace(errBuf.String())
+		return stdout, stderr, nil
 	}
 }
 
 // Output implements Cmd.
-func (s *sshCmd) Output(ctx context.Context) ([]byte, error) {
+func (s *sshCmd) Output(ctx context.Context) (string, error) {
 
 	err := s.createSession(ctx)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer s.session.Close()
 
@@ -295,11 +297,12 @@ func (s *sshCmd) Output(ctx context.Context) ([]byte, error) {
 		s.session.Signal(ssh.SIGINT) // Send interrupt signal to the session
 		s.session = nil
 		s.completed = true
-		return nil, s.ctx.Err()
+		return "", s.ctx.Err()
 	case err = <-errChannel:
 		s.session = nil
 		s.completed = true
-		return outBuf.Bytes(), err
+		stdout := strings.TrimSpace(outBuf.String())
+		return stdout, err
 	}
 }
 
@@ -371,8 +374,8 @@ type sshPlatformInfo interface {
 	// pathPrefixes returns the path prefixes for the platform.
 	pathPrefixes() ([]string, error)
 
-	// newEscalatedCommand creates a new command with privilege escalation.
-	newEscalatedCommand(command string, config *EscalationConfig) (Cmd, error)
+	// newCommand creates a new command with the specified escalation configuration.
+	newCommand(command string, config EscalateConfig) (Cmd, error)
 }
 
 type sshTransport struct {
@@ -460,20 +463,18 @@ func (s *sshTransport) Close() error {
 }
 
 // NewCommand implements Transport.
-func (s *sshTransport) NewCommand(command string) Cmd {
-	return &sshCmd{
-		transport: s,
-		command:   command,
-	}
-}
+func (s *sshTransport) NewCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
 
-// NewEscalatedCommand implements Transport.
-func (s *sshTransport) NewEscalatedCommand(command string, escalationConfig *EscalationConfig) (Cmd, error) {
-	return s.platform.newEscalatedCommand(command, escalationConfig)
+	err := s.Connect() // Connect to ensure that the platform detection is done
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect: %w", err)
+	}
+
+	return s.platform.newCommand(command, escalateConfig)
 }
 
 // NewPowerShellCommand implements Transport.
-func (s *sshTransport) NewPowerShellCommand(command string) (Cmd, error) {
+func (s *sshTransport) NewPowerShellCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
 
 	err := s.Connect() // Connect to ensure that the platform detection is done
 	if err != nil {
@@ -491,32 +492,7 @@ func (s *sshTransport) NewPowerShellCommand(command string) (Cmd, error) {
 
 	command = fmt.Sprintf("powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand %s", encodedCommand)
 
-	return &sshCmd{
-		transport: s,
-		command:   command,
-	}, nil
-}
-
-// NewEscalatedPowerShellCommand implements Transport.
-func (s *sshTransport) NewEscalatedPowerShellCommand(command string, escalationConfig *EscalationConfig) (Cmd, error) {
-
-	err := s.Connect() // Connect to ensure that the platform detection is done
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect: %w", err)
-	}
-
-	if !s.platform.canRunPowerShell() {
-		return nil, errors.New("PowerShell is not available on the remote system")
-	}
-
-	encodedCommand, err := encodePowerShellAsUTF16LEBase64(command)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode PowerShell command: %w", err)
-	}
-
-	command = fmt.Sprintf("powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand %s", encodedCommand)
-
-	return s.platform.newEscalatedCommand(command, escalationConfig)
+	return s.platform.newCommand(command, escalateConfig)
 }
 
 // Stat implements Transport.

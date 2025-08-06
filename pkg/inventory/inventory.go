@@ -21,7 +21,7 @@ type Host struct {
 	vars            map[string]cty.Value
 }
 
-func newHost(name string, transport transport.Transport, vars map[string]cty.Value) *Host {
+func NewHost(name string, transport transport.Transport, vars map[string]cty.Value) *Host {
 	return &Host{
 		name:            name,
 		transport:       transport,

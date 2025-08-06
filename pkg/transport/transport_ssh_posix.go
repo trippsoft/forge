@@ -24,11 +24,11 @@ type sshSudoCmd struct {
 }
 
 // OutputWithError implements Cmd.
-func (s *sshSudoCmd) OutputWithError(ctx context.Context) ([]byte, []byte, error) {
+func (s *sshSudoCmd) OutputWithError(ctx context.Context) (string, string, error) {
 
 	err := s.createSession(ctx)
 	if err != nil {
-		return nil, nil, err
+		return "", "", err
 	}
 	defer s.session.Close()
 
@@ -36,7 +36,7 @@ func (s *sshSudoCmd) OutputWithError(ctx context.Context) ([]byte, []byte, error
 
 	stderrReader, err := s.session.StderrPipe()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create stderr pipe: %w", err)
+		return "", "", fmt.Errorf("failed to create stderr pipe: %w", err)
 	}
 
 	stdinWriter, err := s.session.StdinPipe()
@@ -76,20 +76,22 @@ func (s *sshSudoCmd) OutputWithError(ctx context.Context) ([]byte, []byte, error
 		s.session.Signal(ssh.SIGINT) // Send interrupt signal to the session
 		s.session = nil
 		s.completed = true
-		return nil, nil, s.ctx.Err()
+		return "", "", s.ctx.Err()
 	case err = <-commandErrChannel:
 		s.session = nil
 		s.completed = true
-		return outBuf.Bytes(), errBuf.Bytes(), err
+		stdout := strings.TrimSpace(outBuf.String())
+		stderr := strings.TrimSpace(errBuf.String())
+		return stdout, stderr, err
 	}
 }
 
 // Output implements Cmd.
-func (s *sshSudoCmd) Output(ctx context.Context) ([]byte, error) {
+func (s *sshSudoCmd) Output(ctx context.Context) (string, error) {
 
 	err := s.createSession(ctx)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer s.session.Close()
 
@@ -97,7 +99,7 @@ func (s *sshSudoCmd) Output(ctx context.Context) ([]byte, error) {
 
 	stderrReader, err := s.session.StderrPipe()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create stderr pipe: %w", err)
+		return "", fmt.Errorf("failed to create stderr pipe: %w", err)
 	}
 
 	stdinWriter, err := s.session.StdinPipe()
@@ -135,11 +137,12 @@ func (s *sshSudoCmd) Output(ctx context.Context) ([]byte, error) {
 		s.session.Signal(ssh.SIGINT) // Send interrupt signal to the session
 		s.session = nil
 		s.completed = true
-		return nil, s.ctx.Err()
+		return "", s.ctx.Err()
 	case err = <-commandErrChannel:
 		s.session = nil
 		s.completed = true
-		return outBuf.Bytes(), err
+		stdout := strings.TrimSpace(outBuf.String())
+		return stdout, err
 	}
 }
 
@@ -255,14 +258,15 @@ func (s *sshPosixInfo) pathPrefixes() ([]string, error) {
 		return s.cachedPathPrefixes, nil // Already populated
 	}
 
-	cmd := s.transport.NewCommand("echo $PATH")
+	cmd, err := s.transport.NewCommand("echo $PATH", &NoEscalate{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create command to get PATH: %w", err)
+	}
 
-	stdoutBytes, err := cmd.Output(context.Background())
+	stdout, err := cmd.Output(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("failed to run command to get PATH: %w", err)
 	}
-
-	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	pathOutput := strings.TrimRight(stdout, string(s.pathListSeparator()))
 
@@ -277,22 +281,26 @@ func (s *sshPosixInfo) pathPrefixes() ([]string, error) {
 	return s.cachedPathPrefixes, nil
 }
 
-// newEscalatedCommand implements sshPlatformInfo.
-func (s *sshPosixInfo) newEscalatedCommand(command string, config *EscalationConfig) (Cmd, error) {
+// newCommand implements sshPlatformInfo.
+func (s *sshPosixInfo) newCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
 
-	if config == nil {
-		return nil, errors.New("escalation config cannot be nil")
+	if escalateConfig == nil || !escalateConfig.Enabled() {
+		return &sshCmd{
+			transport: s.transport,
+			command:   command,
+		}, nil
 	}
 
-	if config.User == "" || config.User == "root" {
+	username := escalateConfig.User()
+	if username == "" || username == "root" {
 		command = fmt.Sprintf("sudo -S -p '%s:' %s", sshSudoPrompt, command)
 	} else {
-		command = fmt.Sprintf("sudo -S -p '%s:' -u %s %s", sshSudoPrompt, config.User, command)
+		command = fmt.Sprintf("sudo -S -p '%s:' -u %s %s", sshSudoPrompt, username, command)
 	}
 
 	return &sshSudoCmd{
 		transport: s.transport,
 		command:   command,
-		password:  config.Password,
+		password:  escalateConfig.Pass(),
 	}, nil
 }

@@ -3,7 +3,6 @@ package info
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/trippsoft/forge/pkg/transport"
@@ -64,11 +63,11 @@ func (f *FIPSInfo) populateFipsInfo(osInfo *OSInfo, transport transport.Transpor
 	return diag.Diags{}
 }
 
-func (f *FIPSInfo) populateLinuxFipsInfo(transport transport.Transport) diag.Diags {
+func (f *FIPSInfo) populateLinuxFipsInfo(t transport.Transport) diag.Diags {
 
-	cmd := transport.NewCommand(fipsLinuxDiscoveryScript)
+	cmd, err := t.NewCommand(fipsLinuxDiscoveryScript, &transport.NoEscalate{})
 
-	stdoutBytes, err := cmd.Output(context.Background())
+	stdout, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -76,8 +75,6 @@ func (f *FIPSInfo) populateLinuxFipsInfo(transport transport.Transport) diag.Dia
 			Detail:   fmt.Sprintf("Error checking FIPS status: %v", err),
 		}}
 	}
-
-	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	if stdout == "" {
 		f.enabled = false
@@ -89,9 +86,9 @@ func (f *FIPSInfo) populateLinuxFipsInfo(transport transport.Transport) diag.Dia
 	return diag.Diags{}
 }
 
-func (f *FIPSInfo) populateWindowsFipsInfo(transport transport.Transport) diag.Diags {
+func (f *FIPSInfo) populateWindowsFipsInfo(t transport.Transport) diag.Diags {
 
-	cmd, err := transport.NewPowerShellCommand(fipsWindowsDiscoveryScript)
+	cmd, err := t.NewPowerShellCommand(fipsWindowsDiscoveryScript, &transport.NoEscalate{})
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -100,7 +97,7 @@ func (f *FIPSInfo) populateWindowsFipsInfo(transport transport.Transport) diag.D
 		}}
 	}
 
-	stdoutBytes, err := cmd.Output(context.Background())
+	stdout, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -108,8 +105,6 @@ func (f *FIPSInfo) populateWindowsFipsInfo(transport transport.Transport) diag.D
 			Detail:   fmt.Sprintf("Error checking FIPS status: %v", err),
 		}}
 	}
-
-	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	f.known = true
 	f.enabled = stdout == "1"

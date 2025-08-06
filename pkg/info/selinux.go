@@ -74,7 +74,7 @@ func (s *SELinuxInfo) SelinuxType() SELinuxType {
 	return s.selinuxType
 }
 
-func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, transport transport.Transport) diag.Diags {
+func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport) diag.Diags {
 
 	if osInfo == nil || osInfo.id == "" {
 		return diag.Diags{&diag.Diag{
@@ -95,9 +95,16 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, transport transport.Tr
 
 	s.supported = true
 
-	cmd := transport.NewCommand(selinuxDiscoveryScript)
+	cmd, err := t.NewCommand(selinuxDiscoveryScript, &transport.NoEscalate{})
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to create SELinux discovery command",
+			Detail:   fmt.Sprintf("Error creating command: %v", err),
+		}}
+	}
 
-	stdoutBytes, err := cmd.Output(context.Background())
+	stdout, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -105,8 +112,6 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, transport transport.Tr
 			Detail:   fmt.Sprintf("Error executing SELinux discovery script: %v", err),
 		}}
 	}
-
-	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)

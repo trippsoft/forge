@@ -202,7 +202,7 @@ func (p *PackageManagerInfo) Path() string {
 	return p.path
 }
 
-func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, transport transport.Transport) diag.Diags {
+func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transport.Transport) diag.Diags {
 
 	if osInfo == nil || osInfo.ID() == "" {
 		return diag.Diags{&diag.Diag{
@@ -216,9 +216,16 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, transpor
 		return diag.Diags{} // Windows does not have a traditional package manager like other OS families
 	}
 
-	cmd := transport.NewCommand(packageManagerDiscoveryScript)
+	cmd, err := t.NewCommand(packageManagerDiscoveryScript, &transport.NoEscalate{})
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to create command for package manager discovery",
+			Detail:   fmt.Sprintf("Error creating command: %v", err),
+		}}
+	}
 
-	stdoutBytes, err := cmd.Output(context.Background())
+	stdout, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -226,8 +233,6 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, transpor
 			Detail:   fmt.Sprintf("Error checking package manager status: %v", err),
 		}}
 	}
-
-	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)

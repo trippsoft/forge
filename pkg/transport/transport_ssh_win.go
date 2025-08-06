@@ -41,17 +41,17 @@ func (s *sshWindowsInfo) tempDir() (string, error) {
 		return "", fmt.Errorf("failed to connect to SSH transport: %w", err)
 	}
 
-	cmd, err := s.transport.NewPowerShellCommand("$path = [System.IO.Path]::GetTempPath(); Write-Host $path")
+	cmd, err := s.transport.NewPowerShellCommand("$path = [System.IO.Path]::GetTempPath(); Write-Host $path", &NoEscalate{})
 	if err != nil {
 		return "", fmt.Errorf("failed to create PowerShell command: %w", err)
 	}
 
-	stdoutBytes, err := cmd.Output(context.Background())
+	stdout, err := cmd.Output(context.Background())
 	if err != nil {
 		return "", fmt.Errorf("failed to get temp dir: %w", err)
 	}
 
-	stdout := strings.TrimRight(strings.TrimSpace(string(stdoutBytes)), string(s.pathSeparator()))
+	stdout = strings.TrimRight(stdout, string(s.pathSeparator()))
 
 	s.cachedTempDir = stdout
 
@@ -65,17 +65,15 @@ func (s *sshWindowsInfo) pathPrefixes() ([]string, error) {
 		return s.cachedPathPrefixes, nil // Already populated
 	}
 
-	cmd, err := s.transport.NewPowerShellCommand("Write-Host $env:PATH")
+	cmd, err := s.transport.NewPowerShellCommand("Write-Host $env:PATH", &NoEscalate{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PowerShell command: %w", err)
 	}
 
-	stdoutBytes, err := cmd.Output(context.Background())
+	stdout, err := cmd.Output(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("failed to run PowerShell command: %w", err)
 	}
-
-	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	pathOutput := strings.TrimRight(strings.TrimSpace(stdout), string(s.pathListSeparator()))
 
@@ -90,8 +88,16 @@ func (s *sshWindowsInfo) pathPrefixes() ([]string, error) {
 	return s.cachedPathPrefixes, nil
 }
 
-// newEscalatedCommand implements sshPlatformInfo.
-func (s *sshWindowsInfo) newEscalatedCommand(command string, config *EscalationConfig) (Cmd, error) {
-	return nil, errors.New("escalated commands are not supported on Windows via SSH")
-	// Windows over SSH automatically assumes elevated permissions, if the user has them, as of 08/2025
+// newCommand implements sshPlatformInfo.
+func (s *sshWindowsInfo) newCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
+
+	if escalateConfig == nil || !escalateConfig.Enabled() {
+		return &sshCmd{
+			transport: s.transport,
+			command:   command,
+		}, nil
+	}
+
+	return nil, errors.New("escalation is not supported for Windows SSH transport")
+	// Windows SSH has the highest privileges available to the user without escalation, so runas does not apply.
 }

@@ -826,7 +826,7 @@ func buildFinalInventory(intermediate *intermediateInventory, hostVars map[strin
 			t = transport.TransportNone
 		}
 
-		host := newHost(hostName, t, vars)
+		host := NewHost(hostName, t, vars)
 
 		inventory.hosts[hostName] = host
 		inventory.targets[hostName] = []*Host{host}

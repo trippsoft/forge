@@ -100,11 +100,9 @@ func (u *UserInfo) populateUserInfo(osInfo *OSInfo, transport transport.Transpor
 	}}
 }
 
-func (u *UserInfo) populatePosixUserInfo(transport transport.Transport) diag.Diags {
+func (u *UserInfo) populatePosixUserInfo(t transport.Transport) diag.Diags {
 
-	cmd := transport.NewCommand(userPosixDiscoveryScript)
-
-	stdoutBytes, err := cmd.Output(context.Background())
+	cmd, err := t.NewCommand(userPosixDiscoveryScript, &transport.NoEscalate{})
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -113,7 +111,14 @@ func (u *UserInfo) populatePosixUserInfo(transport transport.Transport) diag.Dia
 		}}
 	}
 
-	stdout := strings.TrimSpace(string(stdoutBytes))
+	stdout, err := cmd.Output(context.Background())
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to get user information",
+			Detail:   fmt.Sprintf("Error getting user information on POSIX host: %v", err),
+		}}
+	}
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
@@ -135,9 +140,9 @@ func (u *UserInfo) populatePosixUserInfo(transport transport.Transport) diag.Dia
 	return diag.Diags{}
 }
 
-func (u *UserInfo) populateWindowsUserInfo(transport transport.Transport) diag.Diags {
+func (u *UserInfo) populateWindowsUserInfo(t transport.Transport) diag.Diags {
 
-	cmd, err := transport.NewPowerShellCommand(userWindowsDiscoveryScript)
+	cmd, err := t.NewPowerShellCommand(userWindowsDiscoveryScript, &transport.NoEscalate{})
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -146,7 +151,7 @@ func (u *UserInfo) populateWindowsUserInfo(transport transport.Transport) diag.D
 		}}
 	}
 
-	stdoutBytes, err := cmd.Output(context.Background())
+	stdout, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -154,8 +159,6 @@ func (u *UserInfo) populateWindowsUserInfo(transport transport.Transport) diag.D
 			Detail:   fmt.Sprintf("Error getting user information on Windows host: %v", err),
 		}}
 	}
-
-	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)

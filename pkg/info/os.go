@@ -224,25 +224,32 @@ func (o *OSInfo) ProcArchBits() int {
 	return o.procArchBits
 }
 
-func (o *OSInfo) populateOSInfo(transport transport.Transport) diag.Diags {
+func (o *OSInfo) populateOSInfo(t transport.Transport) diag.Diags {
 
-	cmd := transport.NewCommand("uname -s")
+	cmd, err := t.NewCommand("uname -s", &transport.NoEscalate{})
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to create uname command",
+			Detail:   fmt.Sprintf("Error creating uname command: %v", err),
+		}}
+	}
 
-	stdoutBytes, unameErr := cmd.Output(context.Background())
-	o.kernel = strings.ToLower(strings.TrimSpace(string(stdoutBytes)))
+	stdout, unameErr := cmd.Output(context.Background())
+	o.kernel = strings.ToLower(stdout)
 	if unameErr == nil {
 		o.families.Add("posix")
 		o.families.Add(o.kernel)
 
 		switch o.kernel {
 		case "darwin":
-			return o.populateDarwinOSInfo(transport)
+			return o.populateDarwinOSInfo(t)
 		case "linux":
-			return o.populateLinuxOSInfo(transport)
+			return o.populateLinuxOSInfo(t)
 		}
 	}
 
-	psCmd, psErr := transport.NewPowerShellCommand("Write-Host $PSVersionTable.PSVersion")
+	psCmd, psErr := t.NewPowerShellCommand("Write-Host $PSVersionTable.PSVersion", &transport.NoEscalate{})
 	if psErr != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -255,7 +262,7 @@ func (o *OSInfo) populateOSInfo(transport transport.Transport) diag.Diags {
 	if psErr == nil {
 		o.families.Add("windows")
 		o.kernel = "windows"
-		return o.populateWindowsOSInfo(transport)
+		return o.populateWindowsOSInfo(t)
 	}
 
 	return diag.Diags{&diag.Diag{
@@ -265,14 +272,21 @@ func (o *OSInfo) populateOSInfo(transport transport.Transport) diag.Diags {
 	}}
 }
 
-func (o *OSInfo) populateDarwinOSInfo(transport transport.Transport) diag.Diags {
+func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) diag.Diags {
 
 	o.id = "macos"
 	o.families.Add(o.id)
 
-	cmd := transport.NewCommand(darwinOSDiscoveryScript)
+	cmd, err := t.NewCommand(darwinOSDiscoveryScript, &transport.NoEscalate{})
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to create darwinOSDiscovery command",
+			Detail:   fmt.Sprintf("Error creating darwinOSDiscovery command: %v", err),
+		}}
+	}
 
-	stdoutBytes, err := cmd.Output(context.Background())
+	stdout, err := cmd.Output(context.Background())
 	if err != nil {
 		o.friendlyName = "macOS"
 		return diag.Diags{&diag.Diag{
@@ -281,8 +295,6 @@ func (o *OSInfo) populateDarwinOSInfo(transport transport.Transport) diag.Diags 
 			Detail:   fmt.Sprintf("Error executing discovery command: %v", err),
 		}}
 	}
-
-	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
@@ -326,11 +338,18 @@ func (o *OSInfo) populateDarwinOSInfo(transport transport.Transport) diag.Diags 
 	return diags
 }
 
-func (o *OSInfo) populateLinuxOSInfo(transport transport.Transport) diag.Diags {
+func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) diag.Diags {
 
-	cmd := transport.NewCommand(linuxOSDiscoveryScript)
+	cmd, err := t.NewCommand(linuxOSDiscoveryScript, &transport.NoEscalate{})
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to create Linux discovery command",
+			Detail:   fmt.Sprintf("Error creating Linux discovery command: %v", err),
+		}}
+	}
 
-	stdoutBytes, err := cmd.Output(context.Background())
+	stdout, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -338,8 +357,6 @@ func (o *OSInfo) populateLinuxOSInfo(transport transport.Transport) diag.Diags {
 			Detail:   fmt.Sprintf("Error executing Linux discovery script: %v", err),
 		}}
 	}
-
-	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
@@ -412,9 +429,9 @@ func (o *OSInfo) populateLinuxOSInfo(transport transport.Transport) diag.Diags {
 	return diags
 }
 
-func (o *OSInfo) populateWindowsOSInfo(transport transport.Transport) diag.Diags {
+func (o *OSInfo) populateWindowsOSInfo(t transport.Transport) diag.Diags {
 
-	cmd, err := transport.NewPowerShellCommand(windowsOSDiscoveryScript)
+	cmd, err := t.NewPowerShellCommand(windowsOSDiscoveryScript, &transport.NoEscalate{})
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -423,7 +440,7 @@ func (o *OSInfo) populateWindowsOSInfo(transport transport.Transport) diag.Diags
 		}}
 	}
 
-	stdoutBytes, err := cmd.Output(context.Background())
+	stdout, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -431,8 +448,6 @@ func (o *OSInfo) populateWindowsOSInfo(transport transport.Transport) diag.Diags
 			Detail:   fmt.Sprintf("Error executing Windows discovery script: %v", err),
 		}}
 	}
-
-	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)

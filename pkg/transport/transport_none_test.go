@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"context"
 	"testing"
 )
 
@@ -46,15 +45,17 @@ func TestNoneTransportClose(t *testing.T) {
 	}
 }
 
-func TestNoneTransportExecuteCommand(t *testing.T) {
+func TestNoneTransport_Command(t *testing.T) {
 
 	transport := TransportNone
 
-	cmd := transport.NewCommand("echo hello")
-
-	err := cmd.Run(context.Background())
+	cmd, err := transport.NewCommand("echo hello", &NoEscalate{})
 	if err == nil {
-		t.Error("Expected error for ExecuteCommand on none transport, but got none")
+		t.Fatal("Expected error for ExecuteCommand on none transport, but got none")
+	}
+
+	if cmd != nil {
+		t.Error("Expected nil command for ExecuteCommand on none transport, but got a command")
 	}
 
 	expectedError := "no transport available for command execution"
@@ -63,13 +64,13 @@ func TestNoneTransportExecuteCommand(t *testing.T) {
 	}
 }
 
-func TestNoneTransportExecutePowerShell(t *testing.T) {
+func TestNoneTransport_PowerShell(t *testing.T) {
 
 	transport := TransportNone
 
-	cmd, err := transport.NewPowerShellCommand("Write-Host 'hello'")
+	cmd, err := transport.NewPowerShellCommand("Write-Host 'hello'", &NoEscalate{})
 	if err == nil {
-		t.Error("Expected error for NewPowerShellCommand on none transport, but got none")
+		t.Fatal("Expected error for NewPowerShellCommand on none transport, but got none")
 	}
 
 	if cmd != nil {
