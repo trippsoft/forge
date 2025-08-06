@@ -594,18 +594,6 @@ func createTransportFromConfig(intermediate *intermediateTransport, vars map[str
 	switch intermediate.name {
 	case string(transport.TransportTypeNone):
 		return transport.TransportNone, hcl.Diagnostics{}
-	case string(transport.TransportTypeLocal):
-		localTransport, err := transport.NewLocalTransport()
-		if err != nil {
-			return nil, hcl.Diagnostics{
-				&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "Failed to create local transport",
-					Detail:   fmt.Sprintf("An error occurred while creating the local transport: %s", err.Error()),
-				},
-			}
-		}
-		return localTransport, hcl.Diagnostics{}
 	case string(transport.TransportTypeSSH):
 		return createSSHTransport(intermediate.config, vars)
 	case string(transport.TransportTypeWinRM):

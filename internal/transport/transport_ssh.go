@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -23,6 +22,8 @@ const (
 	DefaultUseKnownHostsFile     bool          = true
 	DefaultAddUnknownHostsToFile bool          = true
 	DefaultSSHConnectionTimeout  time.Duration = 10 * time.Second
+
+	sshSudoPrompt = "forge_sudo_prompt"
 )
 
 func DefaultKnownHostsPath() (string, error) {
@@ -233,10 +234,73 @@ type sshCmd struct {
 	completed bool
 
 	command string
+}
 
-	stdout io.Writer
-	stderr io.Writer
-	stdin  io.Reader
+// CombinedOutput implements Cmd.
+func (s *sshCmd) CombinedOutput(ctx context.Context) ([]byte, []byte, error) {
+
+	err := s.createSession(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer s.session.Close()
+
+	var outBuf, errBuf bytes.Buffer
+
+	s.session.Stdout = &outBuf
+	s.session.Stderr = &errBuf
+
+	errChannel := make(chan error)
+
+	go func() {
+		err := s.session.Run(s.command)
+		errChannel <- err
+	}()
+
+	select {
+	case <-s.ctx.Done():
+		s.session.Signal(ssh.SIGINT) // Send interrupt signal to the session
+		s.session = nil
+		s.completed = true
+		return nil, nil, s.ctx.Err()
+	case err = <-errChannel:
+		s.session = nil
+		s.completed = true
+		return outBuf.Bytes(), errBuf.Bytes(), nil
+	}
+}
+
+// Output implements Cmd.
+func (s *sshCmd) Output(ctx context.Context) ([]byte, error) {
+
+	err := s.createSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer s.session.Close()
+
+	var outBuf bytes.Buffer
+
+	s.session.Stdout = &outBuf
+
+	errChannel := make(chan error)
+
+	go func() {
+		err := s.session.Run(s.command)
+		errChannel <- err
+	}()
+
+	select {
+	case <-s.ctx.Done():
+		s.session.Signal(ssh.SIGINT) // Send interrupt signal to the session
+		s.session = nil
+		s.completed = true
+		return nil, s.ctx.Err()
+	case err = <-errChannel:
+		s.session = nil
+		s.completed = true
+		return outBuf.Bytes(), err
+	}
 }
 
 // Run implements Cmd.
@@ -248,11 +312,11 @@ func (s *sshCmd) Run(ctx context.Context) error {
 	}
 	defer s.session.Close()
 
-	outputChannel := make(chan error)
+	errChannel := make(chan error)
 
 	go func() {
 		err := s.session.Run(s.command)
-		outputChannel <- err
+		errChannel <- err
 	}()
 
 	select {
@@ -261,157 +325,11 @@ func (s *sshCmd) Run(ctx context.Context) error {
 		s.session = nil
 		s.completed = true
 		return s.ctx.Err()
-	case err = <-outputChannel:
+	case err = <-errChannel:
 		s.session = nil
 		s.completed = true
 		return err
 	}
-}
-
-// Start implements Cmd.
-func (s *sshCmd) Start(ctx context.Context) error {
-
-	err := s.createSession(ctx)
-	if err != nil {
-		return err
-	}
-
-	err = s.session.Start(s.command)
-	if err != nil {
-		s.session.Close()
-		s.session = nil
-		s.completed = true
-		return fmt.Errorf("failed to start SSH command '%s': %w", s.command, err)
-	}
-
-	return nil
-}
-
-// Wait implements Cmd.
-func (s *sshCmd) Wait() error {
-
-	if s.completed {
-		return errors.New("command already completed")
-	}
-
-	if s.session == nil {
-		return errors.New("command not started")
-	}
-	defer s.session.Close()
-
-	outputChannel := make(chan error)
-
-	go func() {
-		err := s.session.Wait()
-		outputChannel <- err
-	}()
-
-	var err error
-	select {
-	case <-s.ctx.Done():
-		s.session.Signal(ssh.SIGINT) // Send interrupt signal to the session
-		s.session = nil
-		s.completed = true
-		return s.ctx.Err()
-	case err = <-outputChannel:
-		s.session = nil
-		s.completed = true
-		return err
-	}
-}
-
-// SetStdout implements Cmd.
-func (s *sshCmd) SetStdout(stdout io.Writer) error {
-
-	if s.completed {
-		return errors.New("command already completed")
-	}
-
-	if s.session != nil {
-		return fmt.Errorf("command already started")
-	}
-
-	if s.stdout != nil {
-		return errors.New("stdout already set")
-	}
-
-	s.stdout = stdout
-	return nil
-}
-
-// SetStderr implements Cmd.
-func (s *sshCmd) SetStderr(stderr io.Writer) error {
-
-	if s.completed {
-		return errors.New("command already completed")
-	}
-
-	if s.session != nil {
-		return fmt.Errorf("command already started")
-	}
-
-	if s.stderr != nil {
-		return errors.New("stderr already set")
-	}
-
-	s.stderr = stderr
-	return nil
-}
-
-// StdoutPipe implements Cmd.
-func (s *sshCmd) StdoutPipe() (io.ReadCloser, error) {
-
-	if s.session != nil {
-		return nil, fmt.Errorf("command already started")
-	}
-
-	if s.stdout != nil {
-		return nil, fmt.Errorf("stdout already set for command")
-	}
-
-	pipeReader, pipeWriter := io.Pipe()
-	s.stdout = pipeWriter
-	return pipeReader, nil
-}
-
-// StderrPipe implements Cmd.
-func (s *sshCmd) StderrPipe() (io.ReadCloser, error) {
-
-	if s.completed {
-		return nil, errors.New("command already completed")
-	}
-
-	if s.session != nil {
-		return nil, fmt.Errorf("command already started")
-	}
-
-	if s.stderr != nil {
-		return nil, fmt.Errorf("stderr already set for command")
-	}
-
-	pipeReader, pipeWriter := io.Pipe()
-	s.stderr = pipeWriter
-	return pipeReader, nil
-}
-
-// StdinPipe implements Cmd.
-func (s *sshCmd) StdinPipe() (io.WriteCloser, error) {
-
-	if s.completed {
-		return nil, errors.New("command already completed")
-	}
-
-	if s.session != nil {
-		return nil, fmt.Errorf("command already started")
-	}
-
-	if s.stdin != nil {
-		return nil, fmt.Errorf("stdin already set for command")
-	}
-
-	pipeReader, pipeWriter := io.Pipe()
-	s.stdin = pipeReader
-	return pipeWriter, nil
 }
 
 func (s *sshCmd) createSession(ctx context.Context) error {
@@ -436,38 +354,35 @@ func (s *sshCmd) createSession(ctx context.Context) error {
 
 	s.ctx = ctx
 
-	if s.stdout != nil {
-		s.session.Stdout = s.stdout
-	}
-
-	if s.stderr != nil {
-		s.session.Stderr = s.stderr
-	}
-
-	if s.stdin != nil {
-		s.session.Stdin = s.stdin
-	}
-
 	return nil
+}
+
+// sshPlatformInfo provides platform-specific information for SSH connections.
+type sshPlatformInfo interface {
+	// canRunPowerShell indicates if PowerShell is available on the platform.
+	canRunPowerShell() bool
+
+	// pathSeparator returns the path separator for the platform.
+	pathSeparator() rune
+	// pathListSeparator returns the path list separator for the platform.
+	pathListSeparator() rune
+	// tempDir returns the temporary directory for the platform.
+	tempDir() (string, error)
+	// pathPrefixes returns the path prefixes for the platform.
+	pathPrefixes() ([]string, error)
+
+	// newEscalatedCommand creates a new command with privilege escalation.
+	newEscalatedCommand(command string, config *EscalationConfig) (Cmd, error)
 }
 
 type sshTransport struct {
 	host string
 	port uint16
 
-	config *ssh.ClientConfig
-
-	client *ssh.Client
-
+	config     *ssh.ClientConfig
+	client     *ssh.Client
 	sftpClient *sftp.Client
-
-	canRunPowerShell bool
-
-	pathListSeparator rune
-	pathSeparator     rune
-	tempDir           string
-
-	pathPrefixes []string
+	platform   sshPlatformInfo
 }
 
 // Type implements Transport.
@@ -501,19 +416,26 @@ func (s *sshTransport) Connect() error {
 	// Check if PowerShell is available on the remote system
 	powershellCheckCmd := "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Write-Host 'PowerShell is available'\""
 
-	err = session.Run(powershellCheckCmd)
+	psErr := session.Run(powershellCheckCmd)
 	session.Close()
-	if err != nil {
-		s.canRunPowerShell = false
-		s.pathSeparator = '/'     // Use forward slash for Unix-like paths
-		s.pathListSeparator = ':' // Use colon for Unix-like path list separator
-		s.tempDir = "/tmp"        // Assume /tmp for non-Windows systems
-	} else {
-		s.canRunPowerShell = true
-		s.pathSeparator = '\\'    // Use backslash for Windows paths
-		s.pathListSeparator = ';' // Use semicolon for Windows path list separator
+	if psErr != nil {
+
+		session, unameErr := s.client.NewSession()
+		if unameErr != nil {
+			return fmt.Errorf("failed to create SSH session for uname check: %w", unameErr)
+		}
+		defer session.Close()
+
+		unameErr = session.Run("uname -s")
+		if unameErr != nil {
+			return fmt.Errorf("failed to check for PowerShell or uname command; PowerShell Error: %w; uname Error: %w", psErr, unameErr)
+		}
+
+		s.platform = &sshPosixInfo{transport: s} // For now, we will assume non-Windows is POSIX.
+		return nil
 	}
 
+	s.platform = &sshWindowsInfo{transport: s}
 	return nil
 }
 
@@ -537,7 +459,7 @@ func (s *sshTransport) Close() error {
 	return nil
 }
 
-// NewCommand creates a new command to be executed on the managed system.
+// NewCommand implements Transport.
 func (s *sshTransport) NewCommand(command string) Cmd {
 	return &sshCmd{
 		transport: s,
@@ -545,10 +467,20 @@ func (s *sshTransport) NewCommand(command string) Cmd {
 	}
 }
 
-// NewPowerShellCommand creates a new PowerShell command to be executed on the managed system.
+// NewEscalatedCommand implements Transport.
+func (s *sshTransport) NewEscalatedCommand(command string, escalationConfig *EscalationConfig) (Cmd, error) {
+	return s.platform.newEscalatedCommand(command, escalationConfig)
+}
+
+// NewPowerShellCommand implements Transport.
 func (s *sshTransport) NewPowerShellCommand(command string) (Cmd, error) {
 
-	if !s.canRunPowerShell {
+	err := s.Connect() // Connect to ensure that the platform detection is done
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect: %w", err)
+	}
+
+	if !s.platform.canRunPowerShell() {
 		return nil, errors.New("PowerShell is not available on the remote system")
 	}
 
@@ -563,6 +495,28 @@ func (s *sshTransport) NewPowerShellCommand(command string) (Cmd, error) {
 		transport: s,
 		command:   command,
 	}, nil
+}
+
+// NewEscalatedPowerShellCommand implements Transport.
+func (s *sshTransport) NewEscalatedPowerShellCommand(command string, escalationConfig *EscalationConfig) (Cmd, error) {
+
+	err := s.Connect() // Connect to ensure that the platform detection is done
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect: %w", err)
+	}
+
+	if !s.platform.canRunPowerShell() {
+		return nil, errors.New("PowerShell is not available on the remote system")
+	}
+
+	encodedCommand, err := encodePowerShellAsUTF16LEBase64(command)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode PowerShell command: %w", err)
+	}
+
+	command = fmt.Sprintf("powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand %s", encodedCommand)
+
+	return s.platform.newEscalatedCommand(command, escalationConfig)
 }
 
 // Stat implements Transport.
@@ -693,11 +647,11 @@ func (s *sshTransport) Join(elem ...string) string {
 
 	for i, e := range elem {
 		if i > 0 {
-			stringBuilder.WriteRune(s.pathSeparator)
+			stringBuilder.WriteRune(s.platform.pathSeparator())
 		}
 
-		if strings.HasSuffix(e, string(s.pathSeparator)) {
-			e = strings.TrimSuffix(e, string(s.pathSeparator))
+		if strings.HasSuffix(e, string(s.platform.pathSeparator())) {
+			e = strings.TrimSuffix(e, string(s.platform.pathSeparator()))
 		}
 
 		stringBuilder.WriteString(e)
@@ -708,34 +662,7 @@ func (s *sshTransport) Join(elem ...string) string {
 
 // TempDir implements Transport.
 func (s *sshTransport) TempDir() (string, error) {
-
-	if s.tempDir != "" {
-		return s.tempDir, nil // Return cached temp dir if available
-	}
-
-	err := s.Connect() // Ensure we are connected
-	if err != nil {
-		return "", fmt.Errorf("failed to connect to SSH transport: %w", err)
-	}
-
-	cmd, err := s.NewPowerShellCommand("$path = [System.IO.Path]::GetTempPath(); Write-Host $path")
-	if err != nil {
-		return "", fmt.Errorf("failed to create PowerShell command: %w", err)
-	}
-
-	var outBuf bytes.Buffer
-	cmd.SetStdout(&outBuf)
-
-	err = cmd.Run(context.Background())
-	if err != nil {
-		return "", fmt.Errorf("failed to get temp dir: %w", err)
-	}
-
-	stdout := strings.TrimRight(strings.TrimSpace(outBuf.String()), string(s.pathSeparator))
-
-	s.tempDir = stdout
-
-	return stdout, nil
+	return s.platform.tempDir()
 }
 
 // CreateTemp implements Transport.
@@ -768,7 +695,7 @@ func (s *sshTransport) CreateTemp(dir, pattern string) (File, error) {
 
 	stringBuilder := &strings.Builder{}
 	stringBuilder.WriteString(dir)
-	stringBuilder.WriteRune(s.pathSeparator)
+	stringBuilder.WriteRune(s.platform.pathSeparator())
 	stringBuilder.WriteString(prefix)
 
 	randomNumber := fmt.Sprintf("%d", time.Now().UnixNano()%1000000) // Simple random number based on current time
@@ -808,7 +735,7 @@ func (s *sshTransport) MkdirTemp(dir, pattern string) (string, error) {
 
 	stringBuilder := &strings.Builder{}
 	stringBuilder.WriteString(dir)
-	stringBuilder.WriteRune(s.pathSeparator)
+	stringBuilder.WriteRune(s.platform.pathSeparator())
 	stringBuilder.WriteString(prefix)
 
 	randomNumber := fmt.Sprintf("%d", time.Now().UnixNano()%1000000) // Simple random number based on current time
@@ -849,9 +776,9 @@ func (s *sshTransport) ReadLink(path string) (string, error) {
 		return "", err
 	}
 
-	if s.canRunPowerShell {
-		target = strings.ReplaceAll(target, "/", string(s.pathSeparator)) // Normalize path for Windows
-		target = strings.Trim(target, string(s.pathSeparator))
+	if s.platform.pathSeparator() != '/' {
+		target = strings.ReplaceAll(target, "/", string(s.platform.pathSeparator())) // Normalize path for Windows
+		target = strings.Trim(target, string(s.platform.pathSeparator()))
 	}
 
 	return target, nil
@@ -860,17 +787,17 @@ func (s *sshTransport) ReadLink(path string) (string, error) {
 // RealPath implements Transport.
 func (s *sshTransport) RealPath(path string) (string, error) {
 
-	err := s.populatePathPrefixes()
-	if err != nil {
-		return "", fmt.Errorf("failed to populate path prefixes: %w", err)
-	}
-
-	err = s.connectSFTP() // Ensure we are connected to SFTP
+	err := s.connectSFTP() // Ensure we are connected to SFTP
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to SFTP client: %w", err)
 	}
 
-	for _, prefix := range s.pathPrefixes {
+	prefixes, err := s.platform.pathPrefixes()
+	if err != nil {
+		return "", fmt.Errorf("failed to get path prefixes: %w", err)
+	}
+
+	for _, prefix := range prefixes {
 		newPath := prefix + path
 		fileInfo, _ := s.Stat(newPath) // Ignore error, just check if file exists
 
@@ -890,57 +817,6 @@ func (s *sshTransport) RealPath(path string) (string, error) {
 	}
 
 	return "", os.ErrNotExist // Return error if no valid path found
-}
-
-func (s *sshTransport) populatePathPrefixes() error {
-
-	if s.pathPrefixes != nil {
-		return nil // Already populated
-	}
-
-	var stdout string
-	if s.canRunPowerShell {
-
-		cmd, err := s.NewPowerShellCommand("Write-Host $env:PATH")
-		if err != nil {
-			return fmt.Errorf("failed to create PowerShell command: %w", err)
-		}
-
-		var outBuf bytes.Buffer
-		cmd.SetStdout(&outBuf)
-
-		err = cmd.Run(context.Background())
-		if err != nil {
-			return fmt.Errorf("failed to run PowerShell command: %w", err)
-		}
-
-		stdout = strings.TrimSpace(outBuf.String())
-	} else {
-
-		cmd := s.NewCommand("echo $PATH")
-
-		var outBuf bytes.Buffer
-		cmd.SetStdout(&outBuf)
-
-		err := cmd.Run(context.Background())
-		if err != nil {
-			return fmt.Errorf("failed to run command to get PATH: %w", err)
-		}
-
-		stdout = strings.TrimSpace(outBuf.String())
-	}
-
-	pathOutput := strings.TrimRight(strings.TrimSpace(stdout), string(s.pathListSeparator))
-
-	s.pathPrefixes = strings.Split(pathOutput, string(s.pathListSeparator))
-
-	for i, prefix := range s.pathPrefixes {
-		if !strings.HasSuffix(prefix, string(s.pathSeparator)) {
-			s.pathPrefixes[i] = prefix + string(s.pathSeparator) // Ensure each prefix ends with a separator
-		}
-	}
-
-	return nil
 }
 
 func (s *sshTransport) connectSFTP() error {

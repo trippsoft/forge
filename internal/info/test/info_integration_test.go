@@ -8,25 +8,6 @@ import (
 	"github.com/trippsoft/forge/internal/transport"
 )
 
-func TestHostInfo_Local(t *testing.T) {
-
-	transport, err := transport.NewLocalTransport()
-	if err != nil {
-		t.Fatalf("failed to create local transport: %v", err)
-	}
-	transport.Connect()
-	defer transport.Close()
-
-	hostInfo := info.NewHostInfo()
-	diags := hostInfo.Populate(transport)
-
-	if diags.HasErrors() {
-		t.Fatalf("failed to populate host info: %v", diags)
-	}
-
-	t.Log(hostInfo.String()) // This test is used primarily for manual review.
-}
-
 func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

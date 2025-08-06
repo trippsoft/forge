@@ -6,6 +6,13 @@ Vagrant.configure("2") do |config|
         linux.vm.box = "jtarpley/rocky9_cis"
     end
 
+    config.vm.define "linuxpw" do |linuxpw|
+        linuxpw.vm.box = "jtarpley/rocky9_cis"
+        linuxpw.vm.provision "shell", upload_path: "/home/vagrant/vagrant-shell", inline: <<-SHELL
+        sudo rm -rf /etc/sudoers.d/vagrant
+        SHELL
+    end
+
     config.vm.define "cmd" do |cmd|
         cmd.vm.box = "jtarpley/w2025_cis"
         cmd.vm.provision "shell", inline: <<-SHELL

@@ -1,7 +1,6 @@
 package info
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -218,10 +217,8 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, transpor
 	}
 
 	cmd := transport.NewCommand(packageManagerDiscoveryScript)
-	var outBuf bytes.Buffer
-	cmd.SetStdout(&outBuf)
 
-	err := cmd.Run(context.Background())
+	stdoutBytes, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -230,7 +227,7 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, transpor
 		}}
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)

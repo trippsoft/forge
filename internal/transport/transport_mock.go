@@ -100,13 +100,40 @@ type MockCmd struct {
 	Err    error
 }
 
-// Run implements Cmd.
-func (m *MockCmd) Run(ctx context.Context) error {
-	return m.Start(ctx)
+// CombinedOutput implements Cmd.
+func (m *MockCmd) CombinedOutput(ctx context.Context) (stdout []byte, stderr []byte, err error) {
+
+	if m.completed {
+		return nil, nil, fmt.Errorf("command already completed")
+	}
+
+	m.completed = true
+
+	if m.Err != nil {
+		return []byte(m.Stdout), []byte(m.Stderr), m.Err
+	}
+
+	return []byte(m.Stdout), []byte(m.Stderr), nil
 }
 
-// Start implements Cmd.
-func (m *MockCmd) Start(ctx context.Context) error {
+// Output implements Cmd.
+func (m *MockCmd) Output(ctx context.Context) ([]byte, error) {
+
+	if m.completed {
+		return nil, fmt.Errorf("command already completed")
+	}
+
+	m.completed = true
+
+	if m.Err != nil {
+		return []byte(m.Stdout), m.Err
+	}
+
+	return []byte(m.Stdout), nil
+}
+
+// Run implements Cmd.
+func (m *MockCmd) Run(ctx context.Context) error {
 
 	if m.completed {
 		return fmt.Errorf("command already completed")
@@ -119,50 +146,6 @@ func (m *MockCmd) Start(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// Wait implements Cmd.
-func (m *MockCmd) Wait() error {
-	return nil // Mock commands do not wait for execution
-}
-
-// SetStdout implements Cmd.
-func (m *MockCmd) SetStdout(stdout io.Writer) error {
-
-	if m.completed {
-		return fmt.Errorf("command already completed")
-	}
-
-	_, err := stdout.Write([]byte(m.Stdout))
-	return err
-}
-
-// SetStderr implements Cmd.
-func (m *MockCmd) SetStderr(stderr io.Writer) error {
-
-	if m.completed {
-		return fmt.Errorf("command already completed")
-	}
-
-	_, err := stderr.Write([]byte(m.Stderr))
-	return err
-}
-
-// StdoutPipe implements Cmd.
-func (m *MockCmd) StdoutPipe() (io.ReadCloser, error) {
-	return io.NopCloser(bytes.NewReader([]byte(m.Stdout))), nil
-}
-
-// StderrPipe implements Cmd.
-func (m *MockCmd) StderrPipe() (io.ReadCloser, error) {
-	return io.NopCloser(bytes.NewReader([]byte(m.Stderr))), nil
-}
-
-// StdinPipe implements Cmd.
-func (m *MockCmd) StdinPipe() (io.WriteCloser, error) { // This is not used in the mock
-	pipeReader, pipeWriter := io.Pipe()
-	m.stdin = pipeReader
-	return pipeWriter, nil
 }
 
 type MockTransport struct {
@@ -211,7 +194,25 @@ func (w *MockTransport) NewCommand(command string) Cmd {
 	}
 }
 
+func (w *MockTransport) NewEscalatedCommand(command string, escalationConfig *EscalationConfig) (Cmd, error) {
+
+	cmd, exists := w.CommandResults[command]
+	if exists {
+		cmd.completed = false // Reset completed state for reuse
+		cmd.stdin = nil
+		return cmd, nil
+	}
+
+	return &MockCmd{
+		Err: fmt.Errorf("command not found in mock transport: %s", command),
+	}, nil
+}
+
 func (w *MockTransport) NewPowerShellCommand(command string) (Cmd, error) {
+	return nil, errors.New("PowerShell execution not supported in mock transport")
+}
+
+func (w *MockTransport) NewEscalatedPowerShellCommand(command string, escalationConfig *EscalationConfig) (Cmd, error) {
 	return nil, errors.New("PowerShell execution not supported in mock transport")
 }
 

@@ -16,6 +16,12 @@ var (
 	linuxPrivateKey []byte
 	linuxPassword   string
 
+	linuxPWHost       string
+	linuxPWPort       uint16
+	linuxPWUser       string
+	linuxPWPrivateKey []byte
+	linuxPWPassword   string
+
 	cmdHost       string
 	cmdPort       uint16
 	cmdUser       string
@@ -70,6 +76,11 @@ func setupVagrantEnvironment(t testing.TB) {
 	linuxUser = vagrantSshInfo.Configs["linux"].User
 	linuxPassword = "vagrant"
 
+	linuxPWHost = vagrantSshInfo.Configs["linuxpw"].HostName
+	linuxPWPort = uint16(vagrantSshInfo.Configs["linuxpw"].Port)
+	linuxPWUser = vagrantSshInfo.Configs["linuxpw"].User
+	linuxPWPassword = "vagrant"
+
 	cmdHost = vagrantSshInfo.Configs["cmd"].HostName
 	cmdPort = uint16(vagrantSshInfo.Configs["cmd"].Port)
 	cmdUser = vagrantSshInfo.Configs["cmd"].User
@@ -81,12 +92,17 @@ func setupVagrantEnvironment(t testing.TB) {
 	windowsPassword = "vagrant"
 
 	linuxPrivateKeyPath := vagrantSshInfo.Configs["linux"].IdentityFile
+	linuxPWPrivateKeyPath := vagrantSshInfo.Configs["linuxpw"].IdentityFile
 	cmdPrivateKeyPath := vagrantSshInfo.Configs["cmd"].IdentityFile
 	windowsPrivateKeyPath := vagrantSshInfo.Configs["windows"].IdentityFile
 
 	linuxPrivateKey, err = os.ReadFile(linuxPrivateKeyPath)
 	if err != nil {
 		t.Fatalf("Failed to read Linux private key: %v", err)
+	}
+	linuxPWPrivateKey, err = os.ReadFile(linuxPWPrivateKeyPath)
+	if err != nil {
+		t.Fatalf("Failed to read Linux PW private key: %v", err)
 	}
 	cmdPrivateKey, err = os.ReadFile(cmdPrivateKeyPath)
 	if err != nil {

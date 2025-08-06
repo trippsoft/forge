@@ -1,7 +1,6 @@
 package info
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -104,10 +103,8 @@ func (u *UserInfo) populateUserInfo(osInfo *OSInfo, transport transport.Transpor
 func (u *UserInfo) populatePosixUserInfo(transport transport.Transport) diag.Diags {
 
 	cmd := transport.NewCommand(userPosixDiscoveryScript)
-	var outBuf bytes.Buffer
-	cmd.SetStdout(&outBuf)
 
-	err := cmd.Run(context.Background())
+	stdoutBytes, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -116,7 +113,7 @@ func (u *UserInfo) populatePosixUserInfo(transport transport.Transport) diag.Dia
 		}}
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
@@ -149,10 +146,7 @@ func (u *UserInfo) populateWindowsUserInfo(transport transport.Transport) diag.D
 		}}
 	}
 
-	var outBuf bytes.Buffer
-	cmd.SetStdout(&outBuf)
-
-	err = cmd.Run(context.Background())
+	stdoutBytes, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -161,7 +155,7 @@ func (u *UserInfo) populateWindowsUserInfo(transport transport.Transport) diag.D
 		}}
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)

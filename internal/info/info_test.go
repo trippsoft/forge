@@ -2,8 +2,6 @@ package info
 
 import (
 	"testing"
-
-	"github.com/trippsoft/forge/internal/transport"
 )
 
 func TestHostInfo_Populate_NilTransport(t *testing.T) {
@@ -21,44 +19,9 @@ func TestHostInfo_Populate_NilTransport(t *testing.T) {
 	}
 }
 
-func TestHostInfo_Populate_WithLocalTransport(t *testing.T) {
-	localTransport, err := transport.NewLocalTransport()
-	if err != nil {
-		t.Fatalf("failed to create local transport: %v", err)
-	}
-	defer localTransport.Close()
-
-	err = localTransport.Connect()
-	if err != nil {
-		t.Fatalf("failed to connect local transport: %v", err)
-	}
-
-	hostInfo := NewHostInfo()
-	diags := hostInfo.Populate(localTransport)
-	if diags.HasErrors() {
-		t.Fatalf("failed to populate host info: %v", diags)
-	}
-
-	t.Logf("%s", hostInfo.String()) // This test is used primarily for manual review.
-}
-
 func TestHostInfo_ToMapOfCtyValues(t *testing.T) {
-	localTransport, err := transport.NewLocalTransport()
-	if err != nil {
-		t.Fatalf("failed to create local transport: %v", err)
-	}
-	defer localTransport.Close()
-
-	err = localTransport.Connect()
-	if err != nil {
-		t.Fatalf("failed to connect local transport: %v", err)
-	}
 
 	hostInfo := NewHostInfo()
-	diags := hostInfo.Populate(localTransport)
-	if diags.HasErrors() {
-		t.Fatalf("failed to populate host info: %v", diags)
-	}
 
 	osValues := hostInfo.OSInfo().toMapOfCtyValues()
 	selinuxValues := hostInfo.SELinuxInfo().toMapOfCtyValues()

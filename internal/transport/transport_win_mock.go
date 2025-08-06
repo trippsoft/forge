@@ -60,7 +60,33 @@ func (w *MockWinTransport) NewCommand(command string) Cmd {
 	}
 }
 
+func (w *MockWinTransport) NewEscalatedCommand(command string, escalationConfig *EscalationConfig) (Cmd, error) {
+
+	if cmd, exists := w.CommandResults[command]; exists {
+		cmd.completed = false // Reset completion status for reuse
+		cmd.stdin = nil       // Reset stdin for new command execution
+		return cmd, nil
+	}
+
+	return &MockCmd{
+		Err: fmt.Errorf("command not found in mock transport: %s", command),
+	}, nil
+}
+
 func (w *MockWinTransport) NewPowerShellCommand(command string) (Cmd, error) {
+
+	if cmd, exists := w.PowerShellResults[command]; exists {
+		cmd.completed = false // Reset completion status for reuse
+		cmd.stdin = nil       // Reset stdin for new command execution
+		return cmd, nil
+	}
+
+	return &MockCmd{
+		Err: fmt.Errorf("PowerShell command not found in mock transport: %s", command),
+	}, nil
+}
+
+func (w *MockWinTransport) NewEscalatedPowerShellCommand(command string, escalationConfig *EscalationConfig) (Cmd, error) {
 
 	if cmd, exists := w.PowerShellResults[command]; exists {
 		cmd.completed = false // Reset completion status for reuse

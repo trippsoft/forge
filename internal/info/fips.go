@@ -1,7 +1,6 @@
 package info
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -69,10 +68,7 @@ func (f *FIPSInfo) populateLinuxFipsInfo(transport transport.Transport) diag.Dia
 
 	cmd := transport.NewCommand(fipsLinuxDiscoveryScript)
 
-	var outBuf bytes.Buffer
-	cmd.SetStdout(&outBuf)
-
-	err := cmd.Run(context.Background())
+	stdoutBytes, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -81,7 +77,7 @@ func (f *FIPSInfo) populateLinuxFipsInfo(transport transport.Transport) diag.Dia
 		}}
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	if stdout == "" {
 		f.enabled = false
@@ -104,10 +100,7 @@ func (f *FIPSInfo) populateWindowsFipsInfo(transport transport.Transport) diag.D
 		}}
 	}
 
-	var outBuf bytes.Buffer
-	cmd.SetStdout(&outBuf)
-
-	err = cmd.Run(context.Background())
+	stdoutBytes, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -116,7 +109,7 @@ func (f *FIPSInfo) populateWindowsFipsInfo(transport transport.Transport) diag.D
 		}}
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	f.known = true
 	f.enabled = stdout == "1"

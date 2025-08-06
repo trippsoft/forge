@@ -3,7 +3,6 @@ package transport
 import (
 	"context"
 	"errors"
-	"io"
 	"os"
 )
 
@@ -14,44 +13,19 @@ var (
 
 type noneCmd struct{}
 
+// CombinedOutput implements Cmd.
+func (n *noneCmd) CombinedOutput(ctx context.Context) (stdout []byte, stderr []byte, err error) {
+	return nil, nil, errors.New("no transport available for command execution")
+}
+
+// Output implements Cmd.
+func (n *noneCmd) Output(ctx context.Context) ([]byte, error) {
+	return nil, errors.New("no transport available for command execution")
+}
+
 // Run implements Cmd.
 func (n *noneCmd) Run(ctx context.Context) error {
 	return errors.New("no transport available for command execution")
-}
-
-// Start implements Cmd.
-func (n *noneCmd) Start(ctx context.Context) error {
-	return errors.New("no transport available for command execution")
-}
-
-// Wait implements Cmd.
-func (n *noneCmd) Wait() error {
-	return errors.New("no transport available for command execution")
-}
-
-// SetStdout implements Cmd.
-func (n *noneCmd) SetStdout(stdout io.Writer) error {
-	return errors.New("no transport available for command execution")
-}
-
-// SetStderr implements Cmd.
-func (n *noneCmd) SetStderr(stderr io.Writer) error {
-	return errors.New("no transport available for command execution")
-}
-
-// StdoutPipe implements Cmd.
-func (n *noneCmd) StdoutPipe() (io.ReadCloser, error) {
-	return nil, errors.New("no transport available for command execution")
-}
-
-// StderrPipe implements Cmd.
-func (n *noneCmd) StderrPipe() (io.ReadCloser, error) {
-	return nil, errors.New("no transport available for command execution")
-}
-
-// StdinPipe implements Cmd.
-func (n *noneCmd) StdinPipe() (io.WriteCloser, error) {
-	return nil, errors.New("no transport available for command execution")
 }
 
 type noneTransport struct{}
@@ -76,9 +50,19 @@ func (n *noneTransport) NewCommand(command string) Cmd {
 	return cmdNone
 }
 
+// NewEscalatedCommand creates a new command to be executed with privilege escalation.
+func (n *noneTransport) NewEscalatedCommand(command string, escalationConfig *EscalationConfig) (Cmd, error) {
+	return cmdNone, errors.New("no transport available for escalated command execution")
+}
+
 // NewPowerShellCommand creates a new PowerShell command to be executed on the managed system.
 func (n *noneTransport) NewPowerShellCommand(command string) (Cmd, error) {
 	return nil, errors.New("no transport available for PowerShell execution")
+}
+
+// NewEscalatedPowerShellCommand creates a new PowerShell command to be executed with privilege escalation.
+func (n *noneTransport) NewEscalatedPowerShellCommand(command string, escalationConfig *EscalationConfig) (Cmd, error) {
+	return nil, errors.New("no transport available for escalated PowerShell execution")
 }
 
 // Stat implements Transport.

@@ -1,7 +1,6 @@
 package info
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -186,10 +185,8 @@ func (s *ServiceManagerInfo) populateDarwinServiceManagerInfo(osInfo *OSInfo) di
 func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(transport transport.Transport) diag.Diags {
 
 	cmd := transport.NewCommand(linuxServiceManagerDiscoveryScript)
-	var outBuf bytes.Buffer
-	cmd.SetStdout(&outBuf)
 
-	err := cmd.Run(context.Background())
+	stdoutBytes, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -198,7 +195,7 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(transport transport
 		}}
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)

@@ -1,7 +1,6 @@
 package info
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -229,11 +228,8 @@ func (o *OSInfo) populateOSInfo(transport transport.Transport) diag.Diags {
 
 	cmd := transport.NewCommand("uname -s")
 
-	var outBuf bytes.Buffer
-	cmd.SetStdout(&outBuf)
-
-	unameErr := cmd.Run(context.Background())
-	o.kernel = strings.ToLower(strings.TrimSpace(outBuf.String()))
+	stdoutBytes, unameErr := cmd.Output(context.Background())
+	o.kernel = strings.ToLower(strings.TrimSpace(string(stdoutBytes)))
 	if unameErr == nil {
 		o.families.Add("posix")
 		o.families.Add(o.kernel)
@@ -275,10 +271,8 @@ func (o *OSInfo) populateDarwinOSInfo(transport transport.Transport) diag.Diags 
 	o.families.Add(o.id)
 
 	cmd := transport.NewCommand(darwinOSDiscoveryScript)
-	var outBuf bytes.Buffer
-	cmd.SetStdout(&outBuf)
 
-	err := cmd.Run(context.Background())
+	stdoutBytes, err := cmd.Output(context.Background())
 	if err != nil {
 		o.friendlyName = "macOS"
 		return diag.Diags{&diag.Diag{
@@ -288,7 +282,7 @@ func (o *OSInfo) populateDarwinOSInfo(transport transport.Transport) diag.Diags 
 		}}
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
@@ -335,10 +329,8 @@ func (o *OSInfo) populateDarwinOSInfo(transport transport.Transport) diag.Diags 
 func (o *OSInfo) populateLinuxOSInfo(transport transport.Transport) diag.Diags {
 
 	cmd := transport.NewCommand(linuxOSDiscoveryScript)
-	var outBuf bytes.Buffer
-	cmd.SetStdout(&outBuf)
 
-	err := cmd.Run(context.Background())
+	stdoutBytes, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -347,7 +339,7 @@ func (o *OSInfo) populateLinuxOSInfo(transport transport.Transport) diag.Diags {
 		}}
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
@@ -431,10 +423,7 @@ func (o *OSInfo) populateWindowsOSInfo(transport transport.Transport) diag.Diags
 		}}
 	}
 
-	var outBuf bytes.Buffer
-	cmd.SetStdout(&outBuf)
-
-	err = cmd.Run(context.Background())
+	stdoutBytes, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -443,7 +432,7 @@ func (o *OSInfo) populateWindowsOSInfo(transport transport.Transport) diag.Diags
 		}}
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)

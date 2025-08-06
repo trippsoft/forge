@@ -339,7 +339,7 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 	var remaining hcl.Body
 
 	switch transportType {
-	case string(transport.TransportTypeNone), string(transport.TransportTypeLocal):
+	case string(transport.TransportTypeNone):
 		body, remaining, _ = block.Body.PartialContent(transportNoneSchema)
 	case string(transport.TransportTypeSSH):
 		var moreDiags hcl.Diagnostics
@@ -356,10 +356,9 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 				Severity: hcl.DiagError,
 				Summary:  "Invalid transport type",
 				Detail: fmt.Sprintf(
-					"The transport type '%s' is not supported. Allowed types are: %s, %s, %s, %s",
+					"The transport type '%s' is not supported. Allowed types are: %s, %s, %s",
 					transportType,
 					transport.TransportTypeNone,
-					transport.TransportTypeLocal,
 					transport.TransportTypeSSH,
 					transport.TransportTypeWinRM),
 				Subject: &block.DefRange,

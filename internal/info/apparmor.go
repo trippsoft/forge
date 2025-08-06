@@ -1,7 +1,6 @@
 package info
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -58,10 +57,7 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, transport transport.
 
 	cmd := transport.NewCommand(appArmorDiscoveryScript)
 
-	var outBuf bytes.Buffer
-	cmd.SetStdout(&outBuf)
-
-	err := cmd.Run(context.Background())
+	stdoutBytes, err := cmd.Output(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -70,7 +66,7 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, transport transport.
 		}}
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 
 	if stdout == "" {
 		a.enabled = false

@@ -10,7 +10,6 @@ type TransportType string
 
 const (
 	TransportTypeNone  TransportType = "none"
-	TransportTypeLocal TransportType = "local"
 	TransportTypeSSH   TransportType = "ssh"
 	TransportTypeWinRM TransportType = "winrm"
 )
@@ -27,8 +26,12 @@ type Transport interface {
 
 	// NewCommand creates a new command to be executed on the managed system.
 	NewCommand(command string) Cmd
+	// NewEscalatedCommand creates a new command to be executed with privilege escalation.
+	NewEscalatedCommand(command string, escalationConfig *EscalationConfig) (Cmd, error)
 	// NewPowerShellCommand creates a new PowerShell command to be executed on the managed system.
 	NewPowerShellCommand(command string) (Cmd, error)
+	// NewEscalatedPowerShellCommand creates a new PowerShell command to be executed with privilege escalation.
+	NewEscalatedPowerShellCommand(command string, escalationConfig *EscalationConfig) (Cmd, error)
 
 	// Stat retrieves the file information for the given path on the managed system.
 	Stat(path string) (os.FileInfo, error)
@@ -64,25 +67,20 @@ type Transport interface {
 	RealPath(path string) (string, error)
 }
 
+// Cmd interface defines methods for executing commands on the managed system.
 type Cmd interface {
-	// Run executes the command on the managed system.
+	// CombinedOutput executes the command and returns its combined standard output and standard error.
+	CombinedOutput(ctx context.Context) (stdout []byte, stderr []byte, err error)
+	// Output executes the command and returns its standard output.
+	Output(ctx context.Context) ([]byte, error)
+	// Run executes the command on the managed system with no output.
 	Run(ctx context.Context) error
-	// Start starts the command execution on the managed system.
-	Start(ctx context.Context) error
-	// Wait waits for the command to finish execution.
-	Wait() error
+}
 
-	// SetStdout sets the standard output for the command.
-	SetStdout(stdout io.Writer) error
-	// SetStderr sets the standard error for the command.
-	SetStderr(stderr io.Writer) error
-
-	// StdoutPipe returns a writer to which the command's standard output will be written.
-	StdoutPipe() (io.ReadCloser, error)
-	// StderrPipe returns a writer to which the command's standard error will be written.
-	StderrPipe() (io.ReadCloser, error)
-	// StdinPipe returns a reader from which the command's standard input can be read.
-	StdinPipe() (io.WriteCloser, error)
+// EscalationConfig holds configuration for privilege escalation.
+type EscalationConfig struct {
+	User     string // User specifies the user as which to run the command.
+	Password string // Password specifies the password for the user.
 }
 
 // File interface defines methods for file operations.

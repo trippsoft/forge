@@ -435,7 +435,7 @@ func TestSSHTransportKnownHosts_AddUnknown_NonExistentFile(t *testing.T) {
 	cleanupTempFile(t, nonExistentPath)
 }
 
-func TestSSHTransportExecuteCommand_Linux(t *testing.T) {
+func TestSSHTransportCommand_Linux(t *testing.T) {
 
 	setupVagrantEnvironment(t)
 
@@ -465,25 +465,13 @@ func TestSSHTransportExecuteCommand_Linux(t *testing.T) {
 
 	cmd := sshTransport.NewCommand("echo 'Hello from Linux'")
 
-	var outBuf, errBuf bytes.Buffer
-
-	err = cmd.SetStdout(&outBuf)
-	if err != nil {
-		t.Fatalf("Failed to set stdout: %v", err)
-	}
-
-	err = cmd.SetStderr(&errBuf)
-	if err != nil {
-		t.Fatalf("Failed to set stderr: %v", err)
-	}
-
-	err = cmd.Run(context.Background())
-	stderr := strings.TrimSpace(errBuf.String())
+	stdoutBytes, stderrBytes, err := cmd.CombinedOutput(context.Background())
+	stderr := strings.TrimSpace(string(stderrBytes))
 	if err != nil {
 		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 	if stdout != "Hello from Linux" {
 		t.Errorf("Expected stdout to be 'Hello from Linux', got: %s", stdout)
 	}
@@ -493,7 +481,113 @@ func TestSSHTransportExecuteCommand_Linux(t *testing.T) {
 	}
 }
 
-func TestSSHTransportExecuteCommand_WinPowerShell(t *testing.T) {
+func TestSSHTransportEscalatedCommand_Linux_SudoNoPassword(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	escalationConfig := &transport.EscalationConfig{
+		Password: linuxPassword, // This should not be needed as sudo is passwordless on this machine
+	}
+
+	cmd, err := sshTransport.NewEscalatedCommand("echo 'Hello from Linux'", escalationConfig)
+	if err != nil {
+		t.Fatalf("Failed to create escalated command: %v", err)
+	}
+
+	stdoutBytes, stderrBytes, err := cmd.CombinedOutput(context.Background())
+	stderr := strings.TrimSpace(string(stderrBytes))
+	if err != nil {
+		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
+	}
+
+	stdout := strings.TrimSpace(string(stdoutBytes))
+	if stdout != "Hello from Linux" {
+		t.Errorf("Expected stdout to be 'Hello from Linux', got: %s", stdout)
+	}
+
+	if stderr != "" {
+		t.Errorf("Expected stderr to be empty, got: %s", stderr)
+	}
+}
+
+func TestSSHTransportEscalatedCommand_Linux_SudoPassword(t *testing.T) {
+
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxPWHost).
+		Port(linuxPWPort).
+		User(linuxPWUser).
+		PasswordAuth(linuxPWPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	defer sshTransport.Close()
+
+	escalationConfig := &transport.EscalationConfig{
+		Password: linuxPWPassword, // Use the same password for escalation
+	}
+
+	cmd, err := sshTransport.NewEscalatedCommand("echo 'Hello from Linux'", escalationConfig)
+	if err != nil {
+		t.Fatalf("Failed to create escalated command: %v", err)
+	}
+
+	stdoutBytes, stderrBytes, err := cmd.CombinedOutput(context.Background())
+	stderr := strings.TrimSpace(string(stderrBytes))
+	if err != nil {
+		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
+	}
+
+	stdout := strings.TrimSpace(string(stdoutBytes))
+	if stdout != "Hello from Linux" {
+		t.Errorf("Expected stdout to be 'Hello from Linux', got: %s", stdout)
+	}
+
+	if !strings.Contains(stderr, "forge_sudo_prompt:") {
+		t.Errorf("Expected stderr to contain sudo prompt, got: %s", stderr)
+	}
+}
+
+func TestSSHTransportCommand_WinPowerShell(t *testing.T) {
 
 	setupVagrantEnvironment(t)
 
@@ -523,24 +617,13 @@ func TestSSHTransportExecuteCommand_WinPowerShell(t *testing.T) {
 
 	cmd := sshTransport.NewCommand(`echo "Hello from Windows"`)
 
-	var outBuf, errBuf bytes.Buffer
-	err = cmd.SetStdout(&outBuf)
-	if err != nil {
-		t.Fatalf("Failed to set stdout: %v", err)
-	}
-
-	err = cmd.SetStderr(&errBuf)
-	if err != nil {
-		t.Fatalf("Failed to set stderr: %v", err)
-	}
-
-	err = cmd.Run(context.Background())
-	stderr := strings.TrimSpace(errBuf.String())
+	stdoutBytes, stderrBytes, err := cmd.CombinedOutput(context.Background())
+	stderr := strings.TrimSpace(string(stderrBytes))
 	if err != nil {
 		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 	if stdout != "Hello from Windows" {
 		t.Errorf("Expected stdout to be 'Hello from Windows', got: %s", stdout)
 	}
@@ -550,7 +633,7 @@ func TestSSHTransportExecuteCommand_WinPowerShell(t *testing.T) {
 	}
 }
 
-func TestSSHTransportExecuteCommand_WinCmd(t *testing.T) {
+func TestSSHTransportCommand_WinCmd(t *testing.T) {
 
 	setupVagrantEnvironment(t)
 
@@ -580,24 +663,13 @@ func TestSSHTransportExecuteCommand_WinCmd(t *testing.T) {
 
 	cmd := sshTransport.NewCommand("echo Hello from CMD")
 
-	var outBuf, errBuf bytes.Buffer
-	err = cmd.SetStdout(&outBuf)
-	if err != nil {
-		t.Fatalf("Failed to set stdout: %v", err)
-	}
-
-	err = cmd.SetStderr(&errBuf)
-	if err != nil {
-		t.Fatalf("Failed to set stderr: %v", err)
-	}
-
-	err = cmd.Run(context.Background())
-	stderr := strings.TrimSpace(errBuf.String())
+	stdoutBytes, stderrBytes, err := cmd.CombinedOutput(context.Background())
+	stderr := strings.TrimSpace(string(stderrBytes))
 	if err != nil {
 		t.Fatalf("ExecuteCommand failed: %v, stderr: %s", err, stderr)
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 	if stdout != "Hello from CMD" {
 		t.Errorf("Expected stdout to be 'Hello from CMD', got: %s", stdout)
 	}
@@ -607,7 +679,7 @@ func TestSSHTransportExecuteCommand_WinCmd(t *testing.T) {
 	}
 }
 
-func TestSSHTransportExecutePowerShell_Linux(t *testing.T) {
+func TestSSHTransportPowerShell_Linux(t *testing.T) {
 
 	setupVagrantEnvironment(t)
 
@@ -652,7 +724,7 @@ func TestSSHTransportExecutePowerShell_Linux(t *testing.T) {
 	}
 }
 
-func TestSSHTransportExecutePowerShell_WinPowerShell(t *testing.T) {
+func TestSSHTransportPowerShell_WinPowerShell(t *testing.T) {
 
 	setupVagrantEnvironment(t)
 
@@ -685,24 +757,18 @@ func TestSSHTransportExecutePowerShell_WinPowerShell(t *testing.T) {
 		t.Fatalf("NewPowerShellCommand failed: %v", err)
 	}
 
-	var outBuf bytes.Buffer
-	err = cmd.SetStdout(&outBuf)
-	if err != nil {
-		t.Fatalf("Failed to set stdout: %v", err)
-	}
-
-	err = cmd.Run(context.Background())
+	stdoutBytes, err := cmd.Output(context.Background())
 	if err != nil {
 		t.Fatalf("ExecutePowerShell failed: %v", err)
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 	if stdout != "Hello from PowerShell" {
 		t.Errorf("Expected PowerShell output to be 'Hello from PowerShell', got: %s", stdout)
 	}
 }
 
-func TestSSHTransportExecutePowerShell_WinCmd(t *testing.T) {
+func TestSSHTransportPowerShell_WinCmd(t *testing.T) {
 
 	setupVagrantEnvironment(t)
 
@@ -735,18 +801,12 @@ func TestSSHTransportExecutePowerShell_WinCmd(t *testing.T) {
 		t.Fatalf("NewPowerShellCommand failed: %v", err)
 	}
 
-	var outBuf bytes.Buffer
-	err = cmd.SetStdout(&outBuf)
-	if err != nil {
-		t.Fatalf("Failed to set stdout: %v", err)
-	}
-
-	err = cmd.Run(context.Background())
+	stdoutBytes, err := cmd.Output(context.Background())
 	if err != nil {
 		t.Fatalf("ExecutePowerShell failed: %v", err)
 	}
 
-	stdout := strings.TrimSpace(outBuf.String())
+	stdout := strings.TrimSpace(string(stdoutBytes))
 	if stdout != "Hello from PowerShell" {
 		t.Errorf("Expected PowerShell output to be 'Hello from PowerShell', got: %s", stdout)
 	}
