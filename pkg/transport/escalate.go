@@ -1,41 +1,17 @@
 package transport
 
 var (
-	_ EscalateConfig = &NoEscalate{}
 	_ EscalateConfig = &SimpleEscalate{}
 	_ EscalateConfig = &Impersonate{}
 )
 
 type EscalateConfig interface {
-	Enabled() bool // Whether escalation is enabled.
-	User() string  // The username to impersonate, if applicable.
-	Pass() string  // The password for the user, if applicable.
-}
-
-type NoEscalate struct{}
-
-// Enabled implements EscalateConfig.
-func (n *NoEscalate) Enabled() bool {
-	return false
-}
-
-// User implements EscalateConfig.
-func (n *NoEscalate) User() string {
-	return ""
-}
-
-// Pass implements EscalateConfig.
-func (n *NoEscalate) Pass() string {
-	return ""
+	User() string // The username to impersonate, if applicable.
+	Pass() string // The password for the user, if applicable.
 }
 
 type SimpleEscalate struct {
 	Password string
-}
-
-// Enabled implements EscalateConfig.
-func (s *SimpleEscalate) Enabled() bool {
-	return true
 }
 
 // User implements EscalateConfig.
@@ -51,11 +27,6 @@ func (s *SimpleEscalate) Pass() string {
 type Impersonate struct {
 	Username string
 	Password string
-}
-
-// Enabled implements EscalateConfig.
-func (i *Impersonate) Enabled() bool {
-	return true
 }
 
 // User implements EscalateConfig.

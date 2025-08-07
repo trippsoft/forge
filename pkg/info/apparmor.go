@@ -54,7 +54,7 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, t transport.Transpor
 
 	a.supported = true
 
-	cmd, err := t.NewCommand(appArmorDiscoveryScript, &transport.NoEscalate{})
+	cmd, err := t.NewCommand(appArmorDiscoveryScript, nil)
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,

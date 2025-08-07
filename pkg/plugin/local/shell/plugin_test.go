@@ -51,7 +51,7 @@ func TestPluginRun(t *testing.T) {
 	p := &Plugin{}
 
 	commonConfig := &plugin.CommonConfig{
-		EscalateConfig: &transport.NoEscalate{},
+		EscalateConfig: nil,
 		Timeout:        10,
 	}
 

@@ -31,7 +31,7 @@ func TestPluginRun_Linux(t *testing.T) {
 	p := &shell.Plugin{}
 
 	commonConfig := &plugin.CommonConfig{
-		EscalateConfig: &transport.NoEscalate{},
+		EscalateConfig: nil,
 		Timeout:        10,
 	}
 
@@ -238,7 +238,7 @@ func TestPluginRun_Windows_SSH_PowerShell(t *testing.T) {
 	p := &shell.Plugin{}
 
 	commonConfig := &plugin.CommonConfig{
-		EscalateConfig: &transport.NoEscalate{},
+		EscalateConfig: nil,
 		Timeout:        10,
 	}
 

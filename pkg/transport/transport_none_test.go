@@ -49,7 +49,7 @@ func TestNoneTransport_Command(t *testing.T) {
 
 	transport := TransportNone
 
-	cmd, err := transport.NewCommand("echo hello", &NoEscalate{})
+	cmd, err := transport.NewCommand("echo hello", nil)
 	if err == nil {
 		t.Fatal("Expected error for ExecuteCommand on none transport, but got none")
 	}
@@ -68,7 +68,7 @@ func TestNoneTransport_PowerShell(t *testing.T) {
 
 	transport := TransportNone
 
-	cmd, err := transport.NewPowerShellCommand("Write-Host 'hello'", &NoEscalate{})
+	cmd, err := transport.NewPowerShellCommand("Write-Host 'hello'", nil)
 	if err == nil {
 		t.Fatal("Expected error for NewPowerShellCommand on none transport, but got none")
 	}

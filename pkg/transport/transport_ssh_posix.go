@@ -258,7 +258,7 @@ func (s *sshPosixInfo) pathPrefixes() ([]string, error) {
 		return s.cachedPathPrefixes, nil // Already populated
 	}
 
-	cmd, err := s.transport.NewCommand("echo $PATH", &NoEscalate{})
+	cmd, err := s.transport.NewCommand("echo $PATH", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create command to get PATH: %w", err)
 	}
@@ -284,7 +284,7 @@ func (s *sshPosixInfo) pathPrefixes() ([]string, error) {
 // newCommand implements sshPlatformInfo.
 func (s *sshPosixInfo) newCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
 
-	if escalateConfig == nil || !escalateConfig.Enabled() {
+	if escalateConfig == nil {
 		return &sshCmd{
 			transport: s.transport,
 			command:   command,

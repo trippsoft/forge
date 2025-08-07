@@ -226,7 +226,7 @@ func (o *OSInfo) ProcArchBits() int {
 
 func (o *OSInfo) populateOSInfo(t transport.Transport) diag.Diags {
 
-	cmd, err := t.NewCommand("uname -s", &transport.NoEscalate{})
+	cmd, err := t.NewCommand("uname -s", nil)
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -249,7 +249,7 @@ func (o *OSInfo) populateOSInfo(t transport.Transport) diag.Diags {
 		}
 	}
 
-	psCmd, psErr := t.NewPowerShellCommand("Write-Host $PSVersionTable.PSVersion", &transport.NoEscalate{})
+	psCmd, psErr := t.NewPowerShellCommand("Write-Host $PSVersionTable.PSVersion", nil)
 	if psErr != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -277,7 +277,7 @@ func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) diag.Diags {
 	o.id = "macos"
 	o.families.Add(o.id)
 
-	cmd, err := t.NewCommand(darwinOSDiscoveryScript, &transport.NoEscalate{})
+	cmd, err := t.NewCommand(darwinOSDiscoveryScript, nil)
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -340,7 +340,7 @@ func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) diag.Diags {
 
 func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) diag.Diags {
 
-	cmd, err := t.NewCommand(linuxOSDiscoveryScript, &transport.NoEscalate{})
+	cmd, err := t.NewCommand(linuxOSDiscoveryScript, nil)
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -431,7 +431,7 @@ func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) diag.Diags {
 
 func (o *OSInfo) populateWindowsOSInfo(t transport.Transport) diag.Diags {
 
-	cmd, err := t.NewPowerShellCommand(windowsOSDiscoveryScript, &transport.NoEscalate{})
+	cmd, err := t.NewPowerShellCommand(windowsOSDiscoveryScript, nil)
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,

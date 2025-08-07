@@ -102,7 +102,7 @@ func (u *UserInfo) populateUserInfo(osInfo *OSInfo, transport transport.Transpor
 
 func (u *UserInfo) populatePosixUserInfo(t transport.Transport) diag.Diags {
 
-	cmd, err := t.NewCommand(userPosixDiscoveryScript, &transport.NoEscalate{})
+	cmd, err := t.NewCommand(userPosixDiscoveryScript, nil)
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -142,7 +142,7 @@ func (u *UserInfo) populatePosixUserInfo(t transport.Transport) diag.Diags {
 
 func (u *UserInfo) populateWindowsUserInfo(t transport.Transport) diag.Diags {
 
-	cmd, err := t.NewPowerShellCommand(userWindowsDiscoveryScript, &transport.NoEscalate{})
+	cmd, err := t.NewPowerShellCommand(userWindowsDiscoveryScript, nil)
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,

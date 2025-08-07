@@ -41,7 +41,7 @@ func (s *sshWindowsInfo) tempDir() (string, error) {
 		return "", fmt.Errorf("failed to connect to SSH transport: %w", err)
 	}
 
-	cmd, err := s.transport.NewPowerShellCommand("$path = [System.IO.Path]::GetTempPath(); Write-Host $path", &NoEscalate{})
+	cmd, err := s.transport.NewPowerShellCommand("$path = [System.IO.Path]::GetTempPath(); Write-Host $path", nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create PowerShell command: %w", err)
 	}
@@ -65,7 +65,7 @@ func (s *sshWindowsInfo) pathPrefixes() ([]string, error) {
 		return s.cachedPathPrefixes, nil // Already populated
 	}
 
-	cmd, err := s.transport.NewPowerShellCommand("Write-Host $env:PATH", &NoEscalate{})
+	cmd, err := s.transport.NewPowerShellCommand("Write-Host $env:PATH", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PowerShell command: %w", err)
 	}
@@ -91,7 +91,7 @@ func (s *sshWindowsInfo) pathPrefixes() ([]string, error) {
 // newCommand implements sshPlatformInfo.
 func (s *sshWindowsInfo) newCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
 
-	if escalateConfig == nil || !escalateConfig.Enabled() {
+	if escalateConfig == nil {
 		return &sshCmd{
 			transport: s.transport,
 			command:   command,

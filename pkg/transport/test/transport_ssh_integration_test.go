@@ -463,7 +463,7 @@ func TestSSHTransportCommand_Linux(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	cmd, err := sshTransport.NewCommand("echo 'Hello from Linux'", &transport.NoEscalate{})
+	cmd, err := sshTransport.NewCommand("echo 'Hello from Linux'", nil)
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
@@ -612,7 +612,7 @@ func TestSSHTransportCommand_WinPowerShell(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	cmd, err := sshTransport.NewCommand(`echo "Hello from Windows"`, &transport.NoEscalate{})
+	cmd, err := sshTransport.NewCommand(`echo "Hello from Windows"`, nil)
 	if err != nil {
 		t.Fatalf("Failed to create command: %v", err)
 	}
@@ -660,7 +660,7 @@ func TestSSHTransportCommand_WinCmd(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	cmd, err := sshTransport.NewCommand("echo Hello from CMD", &transport.NoEscalate{})
+	cmd, err := sshTransport.NewCommand("echo Hello from CMD", nil)
 	if err != nil {
 		t.Fatalf("Failed to create command: %v", err)
 	}
@@ -708,7 +708,7 @@ func TestSSHTransportPowerShell_Linux(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	cmd, err := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'", &transport.NoEscalate{})
+	cmd, err := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'", nil)
 	if err == nil {
 		t.Fatal("Expected error for NewPowerShellCommand on Linux, but got none")
 	}
@@ -753,7 +753,7 @@ func TestSSHTransportPowerShell_WinPowerShell(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	cmd, err := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'", &transport.NoEscalate{})
+	cmd, err := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'", nil)
 	if err != nil {
 		t.Fatalf("NewPowerShellCommand failed: %v", err)
 	}
@@ -797,7 +797,7 @@ func TestSSHTransportPowerShell_WinCmd(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	cmd, err := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'", &transport.NoEscalate{})
+	cmd, err := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'", nil)
 	if err != nil {
 		t.Fatalf("NewPowerShellCommand failed: %v", err)
 	}

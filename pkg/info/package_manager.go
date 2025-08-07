@@ -216,7 +216,7 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transp
 		return diag.Diags{} // Windows does not have a traditional package manager like other OS families
 	}
 
-	cmd, err := t.NewCommand(packageManagerDiscoveryScript, &transport.NoEscalate{})
+	cmd, err := t.NewCommand(packageManagerDiscoveryScript, nil)
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,

@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"testing"
 
@@ -24,12 +25,20 @@ type expectedGroup struct {
 	hosts []string // Host names in this group
 }
 
-func setupPrivateKey(t *testing.T) {
+func setupPrivateKey(t *testing.T) string {
 
 	t.Helper()
 
+	var dstPrivateKey string
+
+	if runtime.GOOS == "windows" {
+		os.Mkdir("c:\\temp", 0755)
+		dstPrivateKey = "c:\\temp\\test_ssh_key"
+	} else {
+		dstPrivateKey = "/tmp/test_ssh_key"
+	}
+
 	srcPrivateKey := "test_ssh_key"
-	dstPrivateKey := "/tmp/test_ssh_key"
 
 	srcFile, err := os.Open(srcPrivateKey)
 	if err != nil {
@@ -52,37 +61,28 @@ func setupPrivateKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to set permissions on temp SSH key: %v", err)
 	}
+
+	return dstPrivateKey
 }
 
-func cleanupPrivateKey(t *testing.T) {
+func setupKnownHosts(t *testing.T) string {
 
 	t.Helper()
 
-	privateKey := "/tmp/test_ssh_key"
-
-	_ = os.Remove(privateKey)
-}
-
-func setupKnownHosts(t *testing.T) {
-
-	t.Helper()
-
-	knownHostsPath := "/tmp/known_hosts"
+	var knownHostsPath string
+	if runtime.GOOS == "windows" {
+		knownHostsPath = "c:\\temp\\known_hosts"
+	} else {
+		knownHostsPath = "/tmp/known_hosts"
+	}
 
 	knownHostsFile, err := os.Create(knownHostsPath)
 	if err != nil {
 		t.Fatalf("Failed to create temp known_hosts file: %v", err)
 	}
 	defer knownHostsFile.Close()
-}
 
-func cleanupKnownHosts(t *testing.T) {
-
-	t.Helper()
-
-	knownHostsPath := "/tmp/known_hosts"
-
-	_ = os.Remove(knownHostsPath)
+	return knownHostsPath
 }
 
 func createExpectedTargets(t *testing.T, expectedHosts []expectedHost, expectedGroups []expectedGroup) []expectedGroup {
@@ -291,12 +291,6 @@ func verifyDiagnostics(t *testing.T, expected hcl.Diagnostics, actual hcl.Diagno
 
 func TestSimpleParsing(t *testing.T) {
 
-	setupPrivateKey(t)
-	defer cleanupPrivateKey(t)
-
-	setupKnownHosts(t)
-	defer cleanupKnownHosts(t)
-
 	path := filepath.Join("corpus", "simple")
 
 	files, err := inventory.DiscoverInventoryFiles(path)
@@ -382,10 +376,15 @@ func TestSimpleParsing(t *testing.T) {
 
 func TestParentHierarchyParsing(t *testing.T) {
 
-	setupKnownHosts(t)
-	defer cleanupKnownHosts(t)
+	knownHostsPath := setupKnownHosts(t)
+	defer os.Remove(knownHostsPath)
 
-	path := filepath.Join("corpus", "parent-hierarchy")
+	var path string
+	if runtime.GOOS == "windows" {
+		path = filepath.Join("corpus", "parent-hierarchy", "win")
+	} else {
+		path = filepath.Join("corpus", "parent-hierarchy", "nonwin")
+	}
 
 	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
@@ -715,10 +714,15 @@ func TestVariableInterpolationParsing(t *testing.T) {
 
 func TestTransportInheritanceParsing(t *testing.T) {
 
-	setupPrivateKey(t)
-	defer cleanupPrivateKey(t)
+	privateKeyPath := setupPrivateKey(t)
+	defer os.Remove(privateKeyPath)
 
-	path := filepath.Join("corpus", "transport-inheritance")
+	var path string
+	if runtime.GOOS == "windows" {
+		path = filepath.Join("corpus", "transport-inheritance", "win")
+	} else {
+		path = filepath.Join("corpus", "transport-inheritance", "nonwin")
+	}
 
 	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
@@ -835,10 +839,15 @@ func TestTransportInheritanceParsing(t *testing.T) {
 
 func TestMultiEnvironmentParsing(t *testing.T) {
 
-	setupKnownHosts(t)
-	defer cleanupKnownHosts(t)
+	knownHostsPath := setupKnownHosts(t)
+	defer os.Remove(knownHostsPath)
 
-	path := filepath.Join("corpus", "multi-environment")
+	var path string
+	if runtime.GOOS == "windows" {
+		path = filepath.Join("corpus", "multi-environment", "win")
+	} else {
+		path = filepath.Join("corpus", "multi-environment", "nonwin")
+	}
 
 	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
@@ -1035,8 +1044,8 @@ func TestMultiEnvironmentParsing(t *testing.T) {
 
 func TestMultiEnvironmentParsing_Partial(t *testing.T) {
 
-	setupKnownHosts(t)
-	defer cleanupKnownHosts(t)
+	knownHostsPath := setupKnownHosts(t)
+	defer os.Remove(knownHostsPath)
 
 	tests := []struct {
 		name           string
@@ -1202,7 +1211,11 @@ func TestMultiEnvironmentParsing_Partial(t *testing.T) {
 
 			fullPaths := make([]string, len(tt.paths))
 			for i, p := range tt.paths {
-				fullPaths[i] = filepath.Join("corpus", "multi-environment", p)
+				if runtime.GOOS == "windows" {
+					fullPaths[i] = filepath.Join("corpus", "multi-environment", "win", p)
+				} else {
+					fullPaths[i] = filepath.Join("corpus", "multi-environment", "nonwin", p)
+				}
 			}
 
 			files, err := inventory.DiscoverInventoryFiles(fullPaths...)
