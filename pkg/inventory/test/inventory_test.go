@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -2342,7 +2343,7 @@ func TestNameConflictsParsing(t *testing.T) {
 		&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  "Name conflict",
-			Detail:   "The group name 'server1' conflicts with a host name defined at corpus/error-cases/name-conflicts.hcl:17,1-15.",
+			Detail:   fmt.Sprintf("The group name 'server1' conflicts with a host name defined at %s:17,1-15.", path),
 		},
 	}
 
