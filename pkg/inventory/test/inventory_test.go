@@ -33,8 +33,8 @@ func setupPrivateKey(t *testing.T) string {
 	var dstPrivateKey string
 
 	if runtime.GOOS == "windows" {
-		os.Mkdir("c:\\temp", 0755)
-		dstPrivateKey = "c:\\temp\\test_ssh_key"
+		os.Mkdir("C:\\temp", 0755)
+		dstPrivateKey = "C:\\temp\\test_ssh_key"
 	} else {
 		dstPrivateKey = "/tmp/test_ssh_key"
 	}
@@ -72,7 +72,8 @@ func setupKnownHosts(t *testing.T) string {
 
 	var knownHostsPath string
 	if runtime.GOOS == "windows" {
-		knownHostsPath = "c:\\temp\\known_hosts"
+		os.Mkdir("C:\\temp", 0755)
+		knownHostsPath = "C:\\temp\\known_hosts"
 	} else {
 		knownHostsPath = "/tmp/known_hosts"
 	}
