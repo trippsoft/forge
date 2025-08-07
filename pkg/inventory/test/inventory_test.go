@@ -751,7 +751,7 @@ func TestTransportInheritanceParsing(t *testing.T) {
 			name:          "secure1",
 			transportType: "ssh",
 			vars: map[string]cty.Value{
-				"ssh_key_path":        cty.StringVal("/tmp/test_ssh_key"),
+				"ssh_key_path":        cty.StringVal(privateKeyPath),
 				"bastion_host":        cty.StringVal("bastion.example.com"),
 				"admin_user":          cty.StringVal("admin"),
 				"security_level":      cty.StringVal("high"),
@@ -764,7 +764,7 @@ func TestTransportInheritanceParsing(t *testing.T) {
 			name:          "secure2",
 			transportType: "ssh",
 			vars: map[string]cty.Value{
-				"ssh_key_path":        cty.StringVal("/tmp/test_ssh_key"),
+				"ssh_key_path":        cty.StringVal(privateKeyPath),
 				"bastion_host":        cty.StringVal("bastion.example.com"),
 				"admin_user":          cty.StringVal("admin"),
 				"security_level":      cty.StringVal("high"),
@@ -777,7 +777,7 @@ func TestTransportInheritanceParsing(t *testing.T) {
 			name:          "web1",
 			transportType: "ssh",
 			vars: map[string]cty.Value{
-				"ssh_key_path":        cty.StringVal("/tmp/test_ssh_key"),
+				"ssh_key_path":        cty.StringVal(privateKeyPath),
 				"bastion_host":        cty.StringVal("bastion.example.com"),
 				"admin_user":          cty.StringVal("admin"),
 				"security_level":      cty.StringVal("standard"),
@@ -790,7 +790,7 @@ func TestTransportInheritanceParsing(t *testing.T) {
 			name:          "web2",
 			transportType: "ssh",
 			vars: map[string]cty.Value{
-				"ssh_key_path":        cty.StringVal("/tmp/test_ssh_key"),
+				"ssh_key_path":        cty.StringVal(privateKeyPath),
 				"bastion_host":        cty.StringVal("bastion.example.com"),
 				"admin_user":          cty.StringVal("admin"),
 				"security_level":      cty.StringVal("standard"),
@@ -803,7 +803,7 @@ func TestTransportInheritanceParsing(t *testing.T) {
 			name:          "admin1",
 			transportType: "ssh",
 			vars: map[string]cty.Value{
-				"ssh_key_path": cty.StringVal("/tmp/test_ssh_key"),
+				"ssh_key_path": cty.StringVal(privateKeyPath),
 				"bastion_host": cty.StringVal("bastion.example.com"),
 				"admin_user":   cty.StringVal("admin"),
 				"admin_access": cty.BoolVal(true),
