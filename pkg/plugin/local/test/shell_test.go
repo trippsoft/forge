@@ -31,8 +31,8 @@ func TestPluginRun_Linux(t *testing.T) {
 	p := &shell.Plugin{}
 
 	commonConfig := &plugin.CommonConfig{
-		EscalateConfig: nil,
-		Timeout:        10,
+		Escalation: nil,
+		Timeout:    10,
 	}
 
 	input := map[string]cty.Value{
@@ -101,8 +101,8 @@ func TestPluginRun_Linux_SudoPassword(t *testing.T) {
 	escalateConfig := transport.NewEscalation(linuxPWPassword)
 
 	commonConfig := &plugin.CommonConfig{
-		EscalateConfig: escalateConfig,
-		Timeout:        10,
+		Escalation: escalateConfig,
+		Timeout:    10,
 	}
 
 	input := map[string]cty.Value{
@@ -165,8 +165,8 @@ func TestPluginRun_Linux_NoSudoPassword(t *testing.T) {
 	escalateConfig := transport.NewNoPasswordEscalation()
 
 	commonConfig := &plugin.CommonConfig{
-		EscalateConfig: escalateConfig,
-		Timeout:        10,
+		Escalation: escalateConfig,
+		Timeout:    10,
 	}
 
 	input := map[string]cty.Value{
@@ -234,8 +234,8 @@ func TestPluginRun_Windows_SSH_PowerShell(t *testing.T) {
 	p := &shell.Plugin{}
 
 	commonConfig := &plugin.CommonConfig{
-		EscalateConfig: nil,
-		Timeout:        10,
+		Escalation: nil,
+		Timeout:    10,
 	}
 
 	input := map[string]cty.Value{

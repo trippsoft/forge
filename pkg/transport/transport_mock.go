@@ -185,7 +185,7 @@ func (w *MockTransport) Close() error {
 	return nil
 }
 
-func (w *MockTransport) NewCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
+func (w *MockTransport) NewCommand(command string, escalateConfig Escalation) (Cmd, error) {
 
 	cmd, exists := w.CommandResults[command]
 	if exists {
@@ -199,7 +199,7 @@ func (w *MockTransport) NewCommand(command string, escalateConfig EscalateConfig
 	}, nil
 }
 
-func (w *MockTransport) NewPowerShellCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
+func (w *MockTransport) NewPowerShellCommand(command string, escalateConfig Escalation) (Cmd, error) {
 	return nil, errors.New("PowerShell execution not supported in mock transport")
 }
 

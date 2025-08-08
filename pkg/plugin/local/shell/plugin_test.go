@@ -51,8 +51,8 @@ func TestPluginRun(t *testing.T) {
 	p := &Plugin{}
 
 	commonConfig := &plugin.CommonConfig{
-		EscalateConfig: nil,
-		Timeout:        10,
+		Escalation: nil,
+		Timeout:    10,
 	}
 
 	input := map[string]cty.Value{

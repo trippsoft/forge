@@ -24,9 +24,9 @@ type Transport interface {
 	Close() error
 
 	// NewCommand creates a new command to be executed on the managed system.
-	NewCommand(command string, escalateConfig EscalateConfig) (Cmd, error)
+	NewCommand(command string, escalateConfig Escalation) (Cmd, error)
 	// NewPowerShellCommand creates a new PowerShell command to be executed on the managed system.
-	NewPowerShellCommand(command string, escalateConfig EscalateConfig) (Cmd, error)
+	NewPowerShellCommand(command string, escalateConfig Escalation) (Cmd, error)
 
 	// Stat retrieves the file information for the given path on the managed system.
 	Stat(path string) (os.FileInfo, error)

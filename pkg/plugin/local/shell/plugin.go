@@ -39,7 +39,7 @@ func (s *Plugin) Run(host *inventory.Host, common *plugin.CommonConfig, input ma
 	t := host.Transport()
 
 	command := input["command"].AsString()
-	cmd, err := t.NewCommand(command, common.EscalateConfig)
+	cmd, err := t.NewCommand(command, common.Escalation)
 	if err != nil {
 		return plugin.NewFailure(err)
 	}

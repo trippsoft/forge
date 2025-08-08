@@ -27,12 +27,12 @@ func (n *noneTransport) Close() error {
 }
 
 // NewCommand creates a new command to be executed on the managed system.
-func (n *noneTransport) NewCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
+func (n *noneTransport) NewCommand(command string, escalateConfig Escalation) (Cmd, error) {
 	return nil, errors.New("no transport available for command execution")
 }
 
 // NewPowerShellCommand creates a new PowerShell command to be executed on the managed system.
-func (n *noneTransport) NewPowerShellCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
+func (n *noneTransport) NewPowerShellCommand(command string, escalateConfig Escalation) (Cmd, error) {
 	return nil, errors.New("no transport available for PowerShell execution")
 }
 

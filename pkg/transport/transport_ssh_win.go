@@ -89,7 +89,7 @@ func (s *sshWindowsInfo) pathPrefixes() ([]string, error) {
 }
 
 // newCommand implements sshPlatformInfo.
-func (s *sshWindowsInfo) newCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
+func (s *sshWindowsInfo) newCommand(command string, escalateConfig Escalation) (Cmd, error) {
 
 	if escalateConfig == nil {
 		return &sshCmd{

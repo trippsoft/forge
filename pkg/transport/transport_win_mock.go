@@ -47,7 +47,7 @@ func (w *MockWinTransport) Close() error {
 	return nil
 }
 
-func (w *MockWinTransport) NewCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
+func (w *MockWinTransport) NewCommand(command string, escalateConfig Escalation) (Cmd, error) {
 
 	if cmd, exists := w.CommandResults[command]; exists {
 		cmd.completed = false // Reset completion status for reuse
@@ -60,7 +60,7 @@ func (w *MockWinTransport) NewCommand(command string, escalateConfig EscalateCon
 	}, nil
 }
 
-func (w *MockWinTransport) NewPowerShellCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
+func (w *MockWinTransport) NewPowerShellCommand(command string, escalateConfig Escalation) (Cmd, error) {
 
 	if cmd, exists := w.PowerShellResults[command]; exists {
 		cmd.completed = false // Reset completion status for reuse

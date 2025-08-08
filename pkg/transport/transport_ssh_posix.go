@@ -282,7 +282,7 @@ func (s *sshPosixInfo) pathPrefixes() ([]string, error) {
 }
 
 // newCommand implements sshPlatformInfo.
-func (s *sshPosixInfo) newCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
+func (s *sshPosixInfo) newCommand(command string, escalateConfig Escalation) (Cmd, error) {
 
 	if escalateConfig == nil {
 		return &sshCmd{

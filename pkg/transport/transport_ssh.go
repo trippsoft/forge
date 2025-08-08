@@ -375,7 +375,7 @@ type sshPlatformInfo interface {
 	pathPrefixes() ([]string, error)
 
 	// newCommand creates a new command with the specified escalation configuration.
-	newCommand(command string, config EscalateConfig) (Cmd, error)
+	newCommand(command string, config Escalation) (Cmd, error)
 }
 
 type sshTransport struct {
@@ -463,7 +463,7 @@ func (s *sshTransport) Close() error {
 }
 
 // NewCommand implements Transport.
-func (s *sshTransport) NewCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
+func (s *sshTransport) NewCommand(command string, escalateConfig Escalation) (Cmd, error) {
 
 	err := s.Connect() // Connect to ensure that the platform detection is done
 	if err != nil {
@@ -474,7 +474,7 @@ func (s *sshTransport) NewCommand(command string, escalateConfig EscalateConfig)
 }
 
 // NewPowerShellCommand implements Transport.
-func (s *sshTransport) NewPowerShellCommand(command string, escalateConfig EscalateConfig) (Cmd, error) {
+func (s *sshTransport) NewPowerShellCommand(command string, escalateConfig Escalation) (Cmd, error) {
 
 	err := s.Connect() // Connect to ensure that the platform detection is done
 	if err != nil {

@@ -13,8 +13,8 @@ import (
 
 // CommonConfig holds configuration options common to all plugins.
 type CommonConfig struct {
-	transport.EscalateConfig               // Configuration for privilege escalation.
-	Timeout                  time.Duration // Maximum duration to wait for a command to complete.
+	transport.Escalation               // Configuration for privilege escalation.
+	Timeout              time.Duration // Maximum duration to wait for a command to complete.
 }
 
 // Plugin defines the interface for a plugin in the system.
