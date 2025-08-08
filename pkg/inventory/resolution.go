@@ -40,13 +40,13 @@ func resolveIntermediate(intermediate *intermediateInventory) (*Inventory, hcl.D
 		return nil, diags
 	}
 
-	hostEscalates, moreDiags := resolveAllHostEscalates(intermediate, hostVars)
+	hostEscalateConfigs, moreDiags := resolveAllHostEscalateConfigs(intermediate, hostVars)
 	diags = diags.Extend(moreDiags)
 	if moreDiags.HasErrors() {
 		return nil, diags
 	}
 
-	inventory, moreDiags := buildFinalInventory(intermediate, hostVars, hostTransports, hostEscalates)
+	inventory, moreDiags := buildFinalInventory(intermediate, hostVars, hostTransports, hostEscalateConfigs)
 	diags = diags.Extend(moreDiags)
 	if moreDiags.HasErrors() {
 		return nil, diags
@@ -799,10 +799,10 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 	return sshTransport, diags
 }
 
-func resolveAllHostEscalates(intermediate *intermediateInventory, hostVars map[string]map[string]cty.Value) (map[string]string, hcl.Diagnostics) {
+func resolveAllHostEscalateConfigs(intermediate *intermediateInventory, hostVars map[string]map[string]cty.Value) (map[string]*EscalateConfig, hcl.Diagnostics) {
 
 	diags := hcl.Diagnostics{}
-	escalates := make(map[string]string)
+	escalateConfigs := make(map[string]*EscalateConfig)
 
 	for hostName, host := range intermediate.allHosts {
 
@@ -811,41 +811,41 @@ func resolveAllHostEscalates(intermediate *intermediateInventory, hostVars map[s
 			vars = make(map[string]cty.Value)
 		}
 
-		hostEscalate, moreDiags := resolveHostEscalate(hostName, host, intermediate, vars)
+		hostEscalateConfig, moreDiags := resolveHostEscalateConfig(hostName, host, intermediate, vars)
 		diags = diags.Extend(moreDiags)
 		if moreDiags.HasErrors() {
 			continue // Skip on errors
 		}
 
-		escalates[hostName] = hostEscalate
+		escalateConfigs[hostName] = hostEscalateConfig
 	}
 
-	return escalates, diags
+	return escalateConfigs, diags
 }
 
-func resolveHostEscalate(hostName string, host *intermediateHost, intermediate *intermediateInventory, vars map[string]cty.Value) (string, hcl.Diagnostics) {
+func resolveHostEscalateConfig(hostName string, host *intermediateHost, intermediate *intermediateInventory, vars map[string]cty.Value) (*EscalateConfig, hcl.Diagnostics) {
 
-	inheritanceChain, diags := buildEscalateInheritanceChain(hostName, host, intermediate)
+	inheritanceChain, diags := buildEscalateConfigInheritanceChain(hostName, host, intermediate)
 	if diags.HasErrors() {
-		return "", diags // Return on errors
+		return nil, diags // Return on errors
 	}
 
-	combinedEscalate := combineEscalatesFromChain(inheritanceChain)
+	combinedEscalate := combineEscalateConfigsFromChain(inheritanceChain)
 
 	if combinedEscalate == nil {
-		return "", diags
+		return &EscalateConfig{}, diags
 	}
 
-	escalatePassword, moreDiags := createEscalateFromConfig(combinedEscalate, vars)
+	escalateConfig, moreDiags := createEscalateConfigFromCombined(combinedEscalate, vars)
 	diags = diags.Extend(moreDiags)
 	if moreDiags.HasErrors() {
-		return "", diags // Return on errors
+		return nil, diags // Return on errors
 	}
 
-	return escalatePassword, diags
+	return escalateConfig, diags
 }
 
-func buildEscalateInheritanceChain(hostName string, host *intermediateHost, intermediate *intermediateInventory) ([]*intermediateEscalate, hcl.Diagnostics) {
+func buildEscalateConfigInheritanceChain(hostName string, host *intermediateHost, intermediate *intermediateInventory) ([]*intermediateEscalate, hcl.Diagnostics) {
 
 	diags := hcl.Diagnostics{}
 	chain := []*intermediateEscalate{}
@@ -878,7 +878,7 @@ func buildEscalateInheritanceChain(hostName string, host *intermediateHost, inte
 	return chain, diags
 }
 
-func combineEscalatesFromChain(inheritanceChain []*intermediateEscalate) *intermediateEscalate {
+func combineEscalateConfigsFromChain(inheritanceChain []*intermediateEscalate) *intermediateEscalate {
 
 	if len(inheritanceChain) == 0 {
 		return nil
@@ -896,10 +896,10 @@ func combineEscalatesFromChain(inheritanceChain []*intermediateEscalate) *interm
 	return combined
 }
 
-func createEscalateFromConfig(combinedEscalate *intermediateEscalate, vars map[string]cty.Value) (string, hcl.Diagnostics) {
+func createEscalateConfigFromCombined(combinedEscalate *intermediateEscalate, vars map[string]cty.Value) (*EscalateConfig, hcl.Diagnostics) {
 
 	if combinedEscalate.password == nil {
-		return "", hcl.Diagnostics{}
+		return nil, hcl.Diagnostics{}
 	}
 
 	evalCtx := &hcl.EvalContext{
@@ -912,11 +912,11 @@ func createEscalateFromConfig(combinedEscalate *intermediateEscalate, vars map[s
 	password := combinedEscalate.password
 	value, diags := password.Expr.Value(evalCtx)
 	if diags.HasErrors() {
-		return "", diags // Return on errors
+		return nil, diags // Return on errors
 	}
 
 	if !value.IsKnown() || value.IsNull() {
-		return "", diags // Return if value is unknown or null
+		return nil, diags // Return if value is unknown or null
 	}
 
 	if value.Type() != cty.String {
@@ -926,17 +926,19 @@ func createEscalateFromConfig(combinedEscalate *intermediateEscalate, vars map[s
 			Detail:   "The escalate password must be a string.",
 			Subject:  &password.Range,
 		})
-		return "", diags // Return on type error
+		return nil, diags // Return on type error
 	}
 
-	return value.AsString(), diags
+	escalateConfig := NewEscalateConfig(value.AsString())
+
+	return escalateConfig, diags
 }
 
 func buildFinalInventory(
 	intermediate *intermediateInventory,
 	hostVars map[string]map[string]cty.Value,
 	hostTransports map[string]transport.Transport,
-	hostEscalates map[string]string) (*Inventory, hcl.Diagnostics) {
+	hostEscalateConfigs map[string]*EscalateConfig) (*Inventory, hcl.Diagnostics) {
 
 	diags := hcl.Diagnostics{}
 
@@ -960,13 +962,14 @@ func buildFinalInventory(
 			t = transport.TransportNone
 		}
 
-		escalatePassword, exists := hostEscalates[hostName]
-
-		if exists && escalatePassword != "" {
-			log.SecretFilter.AddSecret(escalatePassword)
+		escalateConfig, exists := hostEscalateConfigs[hostName]
+		if !exists {
+			escalateConfig = NewEscalateConfig("")
 		}
 
-		escalateConfig := NewEscalateConfig(escalatePassword)
+		if exists && escalateConfig.Pass() != "" {
+			log.SecretFilter.AddSecret(escalateConfig.Pass())
+		}
 
 		host := NewHost(hostName, t, escalateConfig, vars)
 
