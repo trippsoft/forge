@@ -960,12 +960,15 @@ func buildFinalInventory(
 			t = transport.TransportNone
 		}
 
-		host := NewHost(hostName, t, vars)
+		escalatePassword, exists := hostEscalates[hostName]
 
-		if escalatePassword, exists := hostEscalates[hostName]; exists && escalatePassword != "" {
-			host.escalatePassword = escalatePassword
+		if exists && escalatePassword != "" {
 			log.SecretFilter.AddSecret(escalatePassword)
 		}
+
+		escalateConfig := NewEscalateConfig(escalatePassword)
+
+		host := NewHost(hostName, t, escalateConfig, vars)
 
 		inventory.hosts[hostName] = host
 		inventory.targets[hostName] = []*Host{host}

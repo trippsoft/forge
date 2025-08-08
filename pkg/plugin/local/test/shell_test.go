@@ -26,7 +26,9 @@ func TestPluginRun_Linux(t *testing.T) {
 		t.Fatalf("Failed to create transport: %v", err)
 	}
 
-	host := inventory.NewHost("linux", sshTransport, map[string]cty.Value{})
+	escalateConfig := inventory.NewEscalateConfig("")
+
+	host := inventory.NewHost("linux", sshTransport, escalateConfig, map[string]cty.Value{})
 
 	p := &shell.Plugin{}
 
@@ -94,14 +96,16 @@ func TestPluginRun_Linux_SudoPassword(t *testing.T) {
 		t.Fatalf("Failed to create transport: %v", err)
 	}
 
-	host := inventory.NewHost("linux", sshTransport, map[string]cty.Value{})
+	escalateConfig := inventory.NewEscalateConfig(linuxPWPassword)
+
+	host := inventory.NewHost("linux", sshTransport, escalateConfig, map[string]cty.Value{})
 
 	p := &shell.Plugin{}
 
-	escalateConfig := transport.NewEscalation(linuxPWPassword)
+	escalation := transport.NewEscalation(linuxPWPassword)
 
 	commonConfig := &plugin.CommonConfig{
-		Escalation: escalateConfig,
+		Escalation: escalation,
 		Timeout:    10,
 	}
 
@@ -158,14 +162,16 @@ func TestPluginRun_Linux_NoSudoPassword(t *testing.T) {
 		t.Fatalf("Failed to create transport: %v", err)
 	}
 
-	host := inventory.NewHost("linux", sshTransport, map[string]cty.Value{})
+	escalateConfig := inventory.NewEscalateConfig("")
+
+	host := inventory.NewHost("linux", sshTransport, escalateConfig, map[string]cty.Value{})
 
 	p := &shell.Plugin{}
 
-	escalateConfig := transport.NewNoPasswordEscalation()
+	escalation := transport.NewNoPasswordEscalation()
 
 	commonConfig := &plugin.CommonConfig{
-		Escalation: escalateConfig,
+		Escalation: escalation,
 		Timeout:    10,
 	}
 
@@ -229,7 +235,9 @@ func TestPluginRun_Windows_SSH_PowerShell(t *testing.T) {
 		t.Fatalf("Failed to create transport: %v", err)
 	}
 
-	host := inventory.NewHost("windows", sshTransport, map[string]cty.Value{})
+	escalateConfig := inventory.NewEscalateConfig("")
+
+	host := inventory.NewHost("windows", sshTransport, escalateConfig, map[string]cty.Value{})
 
 	p := &shell.Plugin{}
 

@@ -10,24 +10,41 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+// EscalateConfig defines the configuration for privilege escalation.
+type EscalateConfig struct {
+	password string
+}
+
+func NewEscalateConfig(password string) *EscalateConfig {
+	return &EscalateConfig{
+		password: password,
+	}
+}
+
+// Pass returns the password used for privilege escalation on the host, if any.
+func (e *EscalateConfig) Pass() string {
+	return e.password
+}
+
 // Host represents a single host in the inventory.
 type Host struct {
 	name string
 
-	transport transport.Transport
+	transport      transport.Transport
+	escalateConfig *EscalateConfig
 
-	taskContexts     []map[string]cty.Value
-	procedureInputs  []map[string]cty.Value
-	info             *info.HostInfo
-	vars             map[string]cty.Value
-	escalatePassword string
+	taskContexts    []map[string]cty.Value
+	procedureInputs []map[string]cty.Value
+	info            *info.HostInfo
+	vars            map[string]cty.Value
 }
 
 // NewHost creates a new Host instance with the given name, transport, and variables.
-func NewHost(name string, transport transport.Transport, vars map[string]cty.Value) *Host {
+func NewHost(name string, transport transport.Transport, escalateConfig *EscalateConfig, vars map[string]cty.Value) *Host {
 	return &Host{
 		name:            name,
 		transport:       transport,
+		escalateConfig:  escalateConfig,
 		taskContexts:    []map[string]cty.Value{make(map[string]cty.Value)},
 		procedureInputs: []map[string]cty.Value{},
 		info:            info.NewHostInfo(),
@@ -55,9 +72,9 @@ func (h *Host) Vars() map[string]cty.Value {
 	return h.vars
 }
 
-// EscalatePassword returns the password used for privilege escalation on the host, if any.
-func (h *Host) EscalatePassword() string {
-	return h.escalatePassword
+// EscalateConfig returns the configuration used for privilege escalation on the host, if any.
+func (h *Host) EscalateConfig() *EscalateConfig {
+	return h.escalateConfig
 }
 
 // StoreTask stores a task in the current task context.

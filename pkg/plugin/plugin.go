@@ -25,7 +25,7 @@ type Plugin interface {
 
 	// Validate checks if the plugin input is valid.
 	// This validation is done after ensuring the input matches the InputSpec.
-	Validate(input map[string]cty.Value) error
+	Validate(host *inventory.Host, input map[string]cty.Value) error
 }
 
 // Result holds the result of a plugin execution.

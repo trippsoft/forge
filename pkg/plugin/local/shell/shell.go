@@ -29,7 +29,7 @@ func (s *Plugin) InputSpec() hcldec.ObjectSpec {
 }
 
 // Validate implements plugin.Plugin.
-func (s *Plugin) Validate(input map[string]cty.Value) error {
+func (s *Plugin) Validate(host *inventory.Host, input map[string]cty.Value) error {
 	return nil // No specific validation needed for this plugin.
 }
 

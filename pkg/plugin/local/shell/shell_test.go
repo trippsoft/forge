@@ -29,7 +29,11 @@ func TestPluginValidate(t *testing.T) {
 		"command": cty.StringVal("echo 'Hello, World!'"),
 	}
 
-	err := plugin.Validate(input)
+	mockTransport := transport.NewMockTransport()
+	escalateConfig := inventory.NewEscalateConfig("")
+	host := inventory.NewHost("linux", mockTransport, escalateConfig, map[string]cty.Value{})
+
+	err := plugin.Validate(host, input)
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
@@ -46,7 +50,9 @@ func TestPluginRun(t *testing.T) {
 		Stdout: fmt.Sprintf("%s\n", expectedStdout),
 	}
 
-	host := inventory.NewHost("linux", mockTransport, map[string]cty.Value{})
+	escalateConfig := inventory.NewEscalateConfig("")
+
+	host := inventory.NewHost("linux", mockTransport, escalateConfig, map[string]cty.Value{})
 
 	p := &Plugin{}
 
