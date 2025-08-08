@@ -398,6 +398,269 @@ func TestConvertHCLAttributeWithExpressionError(t *testing.T) {
 	})
 }
 
+func TestGetAllCtyStrings(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    cty.Value
+		expected []string
+	}{
+		{
+			name:     "null value",
+			value:    cty.NullVal(cty.String),
+			expected: []string{},
+		},
+		{
+			name:     "unknown value",
+			value:    cty.UnknownVal(cty.String),
+			expected: []string{},
+		},
+		{
+			name:     "empty string",
+			value:    cty.StringVal(""),
+			expected: []string{},
+		},
+		{
+			name:     "non-empty string",
+			value:    cty.StringVal("hello"),
+			expected: []string{"hello"},
+		},
+		{
+			name:     "string with spaces",
+			value:    cty.StringVal("hello world"),
+			expected: []string{"hello world"},
+		},
+		{
+			name:     "string with special characters",
+			value:    cty.StringVal("hello\nworld\t!@#$"),
+			expected: []string{"hello\nworld\t!@#$"},
+		},
+		{
+			name:     "unicode string",
+			value:    cty.StringVal("héllo 世界"),
+			expected: []string{"héllo 世界"},
+		},
+		{
+			name:     "non-string primitive (number)",
+			value:    cty.NumberIntVal(123),
+			expected: []string{},
+		},
+		{
+			name:     "non-string primitive (bool)",
+			value:    cty.BoolVal(true),
+			expected: []string{},
+		},
+		{
+			name:     "empty list",
+			value:    cty.ListValEmpty(cty.String),
+			expected: []string{},
+		},
+		{
+			name:     "list with strings",
+			value:    cty.ListVal([]cty.Value{cty.StringVal("one"), cty.StringVal("two"), cty.StringVal("three")}),
+			expected: []string{"one", "two", "three"},
+		},
+		{
+			name:     "tuple with mixed types (strings and numbers)",
+			value:    cty.TupleVal([]cty.Value{cty.StringVal("hello"), cty.NumberIntVal(42), cty.StringVal("world")}),
+			expected: []string{"hello", "world"},
+		},
+		{
+			name:     "list with empty strings",
+			value:    cty.ListVal([]cty.Value{cty.StringVal("hello"), cty.StringVal(""), cty.StringVal("world")}),
+			expected: []string{"hello", "world"},
+		},
+		{
+			name: "tuple with nested list",
+			value: cty.TupleVal([]cty.Value{
+				cty.ListVal([]cty.Value{cty.StringVal("nested1"), cty.StringVal("nested2")}),
+				cty.StringVal("top"),
+			}),
+			expected: []string{"nested1", "nested2", "top"},
+		},
+		{
+			name:     "empty set",
+			value:    cty.SetValEmpty(cty.String),
+			expected: []string{},
+		},
+		{
+			name:     "set with strings",
+			value:    cty.SetVal([]cty.Value{cty.StringVal("alpha"), cty.StringVal("beta"), cty.StringVal("gamma")}),
+			expected: []string{"alpha", "beta", "gamma"},
+		},
+		{
+			name:     "empty tuple",
+			value:    cty.TupleVal([]cty.Value{}),
+			expected: []string{},
+		},
+		{
+			name:     "tuple with mixed types",
+			value:    cty.TupleVal([]cty.Value{cty.StringVal("first"), cty.NumberIntVal(2), cty.StringVal("third")}),
+			expected: []string{"first", "third"},
+		},
+		{
+			name:     "empty map",
+			value:    cty.MapValEmpty(cty.String),
+			expected: []string{},
+		},
+		{
+			name: "map with string values",
+			value: cty.MapVal(map[string]cty.Value{
+				"key1": cty.StringVal("value1"),
+				"key2": cty.StringVal("value2"),
+				"key3": cty.StringVal("value3"),
+			}),
+			expected: []string{"value1", "value2", "value3"},
+		},
+		{
+			name: "object with mixed value types",
+			value: cty.ObjectVal(map[string]cty.Value{
+				"str":  cty.StringVal("hello"),
+				"num":  cty.NumberIntVal(123),
+				"bool": cty.BoolVal(false),
+			}),
+			expected: []string{"hello"},
+		},
+		{
+			name: "map with empty string values",
+			value: cty.MapVal(map[string]cty.Value{
+				"key1": cty.StringVal("value1"),
+				"key2": cty.StringVal(""),
+				"key3": cty.StringVal("value3"),
+			}),
+			expected: []string{"value1", "value3"},
+		},
+		{
+			name: "object with nested map",
+			value: cty.ObjectVal(map[string]cty.Value{
+				"outer": cty.MapVal(map[string]cty.Value{
+					"inner1": cty.StringVal("nested1"),
+					"inner2": cty.StringVal("nested2"),
+				}),
+				"simple": cty.StringVal("top"),
+			}),
+			expected: []string{"nested1", "nested2", "top"},
+		},
+		{
+			name:     "empty object",
+			value:    cty.EmptyObjectVal,
+			expected: []string{},
+		},
+		{
+			name: "object with string attributes",
+			value: cty.ObjectVal(map[string]cty.Value{
+				"name":        cty.StringVal("test"),
+				"description": cty.StringVal("a test object"),
+				"version":     cty.StringVal("1.0.0"),
+			}),
+			expected: []string{"test", "a test object", "1.0.0"},
+		},
+		{
+			name: "object with mixed attribute types",
+			value: cty.ObjectVal(map[string]cty.Value{
+				"name":    cty.StringVal("test"),
+				"count":   cty.NumberIntVal(5),
+				"enabled": cty.BoolVal(true),
+			}),
+			expected: []string{"test"},
+		},
+		{
+			name: "object with empty string attributes",
+			value: cty.ObjectVal(map[string]cty.Value{
+				"name":        cty.StringVal("test"),
+				"description": cty.StringVal(""),
+				"version":     cty.StringVal("1.0.0"),
+			}),
+			expected: []string{"test", "1.0.0"},
+		},
+		{
+			name: "nested object",
+			value: cty.ObjectVal(map[string]cty.Value{
+				"metadata": cty.ObjectVal(map[string]cty.Value{
+					"name":    cty.StringVal("inner"),
+					"version": cty.StringVal("2.0.0"),
+				}),
+				"title": cty.StringVal("outer"),
+			}),
+			expected: []string{"inner", "2.0.0", "outer"},
+		},
+		{
+			name: "complex nested structure",
+			value: cty.ObjectVal(map[string]cty.Value{
+				"config": cty.ObjectVal(map[string]cty.Value{
+					"servers": cty.ListVal([]cty.Value{
+						cty.ObjectVal(map[string]cty.Value{
+							"name": cty.StringVal("server1"),
+							"port": cty.NumberIntVal(8080),
+						}),
+						cty.ObjectVal(map[string]cty.Value{
+							"name": cty.StringVal("server2"),
+							"port": cty.NumberIntVal(8081),
+						}),
+					}),
+					"database": cty.ObjectVal(map[string]cty.Value{
+						"host":     cty.StringVal("localhost"),
+						"port":     cty.NumberIntVal(5432),
+						"database": cty.StringVal("mydb"),
+					}),
+				}),
+				"environment": cty.StringVal("production"),
+			}),
+			expected: []string{"server1", "server2", "localhost", "mydb", "production"},
+		},
+		{
+			name: "tuple containing objects and maps",
+			value: cty.TupleVal([]cty.Value{
+				cty.ObjectVal(map[string]cty.Value{
+					"type": cty.StringVal("object"),
+					"id":   cty.NumberIntVal(1),
+				}),
+				cty.MapVal(map[string]cty.Value{
+					"type":  cty.StringVal("map"),
+					"count": cty.StringVal("2"), // Changed to string to make map homogeneous
+				}),
+				cty.StringVal("simple"),
+			}),
+			expected: []string{"object", "map", "2", "simple"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GetAllCtyStrings(tt.value)
+
+			// Check length first
+			if len(result) != len(tt.expected) {
+				t.Errorf("expected %d strings, got %d: expected %v, got %v", len(tt.expected), len(result), tt.expected, result)
+				return
+			}
+
+			// Convert to maps for easier comparison since order might vary for maps/objects
+			expectedMap := make(map[string]int)
+			for _, s := range tt.expected {
+				expectedMap[s]++
+			}
+
+			resultMap := make(map[string]int)
+			for _, s := range result {
+				resultMap[s]++
+			}
+
+			// Compare the maps
+			for expected, count := range expectedMap {
+				if resultMap[expected] != count {
+					t.Errorf("expected string %q to appear %d times, but it appeared %d times", expected, count, resultMap[expected])
+				}
+			}
+
+			for result, count := range resultMap {
+				if expectedMap[result] != count {
+					t.Errorf("unexpected string %q appeared %d times", result, count)
+				}
+			}
+		})
+	}
+}
+
 // mockExpr is a simple mock implementation of hcl.Expression for testing
 type mockExpr struct {
 	value cty.Value

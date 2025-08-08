@@ -8,9 +8,11 @@ import (
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/gocty"
 )
 
+// ConvertHCLAttributeToString converts an HCL attribute to a string value.
 func ConvertHCLAttributeToString(attribute *hcl.Attribute, evalCtx *hcl.EvalContext) (string, hcl.Diagnostics) {
 
 	diags := hcl.Diagnostics{}
@@ -33,6 +35,7 @@ func ConvertHCLAttributeToString(attribute *hcl.Attribute, evalCtx *hcl.EvalCont
 	return str, nil
 }
 
+// ConvertHCLAttributeToUint16 converts an HCL attribute to a uint16 value.
 func ConvertHCLAttributeToUint16(attribute *hcl.Attribute, evalCtx *hcl.EvalContext) (uint16, hcl.Diagnostics) {
 
 	diags := hcl.Diagnostics{}
@@ -55,6 +58,7 @@ func ConvertHCLAttributeToUint16(attribute *hcl.Attribute, evalCtx *hcl.EvalCont
 	return num, nil
 }
 
+// ConvertHCLAttributeToBool converts an HCL attribute to a bool value.
 func ConvertHCLAttributeToBool(attribute *hcl.Attribute, evalCtx *hcl.EvalContext) (bool, hcl.Diagnostics) {
 
 	diags := hcl.Diagnostics{}
@@ -77,6 +81,7 @@ func ConvertHCLAttributeToBool(attribute *hcl.Attribute, evalCtx *hcl.EvalContex
 	return b, nil
 }
 
+// ConvertHCLAttributeToDuration converts an HCL attribute to a duration value.
 func ConvertHCLAttributeToDuration(attribute *hcl.Attribute, evalCtx *hcl.EvalContext) (time.Duration, hcl.Diagnostics) {
 
 	diags := hcl.Diagnostics{}
@@ -107,4 +112,38 @@ func ConvertHCLAttributeToDuration(attribute *hcl.Attribute, evalCtx *hcl.EvalCo
 	}
 
 	return duration, nil
+}
+
+// GetAllCtyStrings returns all string values found within a cty.Value.4
+func GetAllCtyStrings(value cty.Value) []string {
+
+	results := []string{}
+
+	switch {
+	case value.IsNull() || !value.IsWhollyKnown():
+		return results
+	case value.Type().IsPrimitiveType() && value.Type() == cty.String:
+		valueStr := value.AsString()
+		if valueStr != "" {
+			results = append(results, valueStr)
+		}
+	case value.Type().IsListType() || value.Type().IsSetType() || value.Type().IsTupleType():
+
+		it := value.ElementIterator()
+		for it.Next() {
+			_, elementValue := it.Element()
+			results = append(results, GetAllCtyStrings(elementValue)...)
+		}
+	case value.Type().IsMapType():
+		for _, elementValue := range value.AsValueMap() {
+			results = append(results, GetAllCtyStrings(elementValue)...)
+		}
+	case value.Type().IsObjectType():
+		for name := range value.Type().AttributeTypes() {
+			elementValue := value.GetAttr(name)
+			results = append(results, GetAllCtyStrings(elementValue)...)
+		}
+	}
+
+	return results
 }
