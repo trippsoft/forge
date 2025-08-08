@@ -75,12 +75,6 @@ type Cmd interface {
 	Run(ctx context.Context) error
 }
 
-// EscalationConfig holds configuration for privilege escalation.
-type EscalationConfig struct {
-	User     string // User specifies the user as which to run the command.
-	Password string // Password specifies the password for the user.
-}
-
 // File interface defines methods for file operations.
 type File interface {
 	io.ReadWriteCloser

@@ -40,6 +40,8 @@ type Host struct {
 	procedureInputs []map[string]cty.Value
 	info            *info.HostInfo
 	vars            map[string]cty.Value
+
+	cachedValues map[*hcl.Attribute]cty.Value
 }
 
 // NewHost creates a new Host instance with the given name, transport, and variables.
@@ -52,6 +54,7 @@ func NewHost(name string, transport transport.Transport, escalateConfig *Escalat
 		procedureInputs: []map[string]cty.Value{},
 		info:            info.NewHostInfo(),
 		vars:            vars,
+		cachedValues:    make(map[*hcl.Attribute]cty.Value),
 	}
 }
 
@@ -113,6 +116,27 @@ func (h *Host) EndProcedure() error {
 	return nil
 }
 
+// EvaluateAndCache evaluates an HCL attribute expression in the context of the host.
+func (h *Host) EvaluateAndCache(attr *hcl.Attribute, evalContext *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+
+	if value, exists := h.getCachedValue(attr); exists {
+		return value, nil
+	}
+
+	value, diags := attr.Expr.Value(evalContext)
+	if diags.HasErrors() {
+		return cty.NilVal, diags
+	}
+
+	h.storeCachedValue(attr, value)
+	return value, diags
+}
+
+// ClearCachedValues clears all cached values for the host.
+func (h *Host) ClearCachedValues() {
+	h.cachedValues = make(map[*hcl.Attribute]cty.Value)
+}
+
 func (h *Host) getCurrentContextTasks() (map[string]cty.Value, error) {
 
 	if len(h.taskContexts) == 0 {
@@ -128,6 +152,15 @@ func (h *Host) getCurrentProcedureInputs() map[string]cty.Value {
 	}
 
 	return h.procedureInputs[len(h.procedureInputs)-1]
+}
+
+func (h *Host) getCachedValue(attr *hcl.Attribute) (cty.Value, bool) {
+	value, exists := h.cachedValues[attr]
+	return value, exists
+}
+
+func (h *Host) storeCachedValue(attr *hcl.Attribute, value cty.Value) {
+	h.cachedValues[attr] = value
 }
 
 // Inventory represents a collection of hosts, groups, and targets.
