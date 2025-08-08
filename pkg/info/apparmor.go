@@ -9,12 +9,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-const (
-	appArmorDiscoveryScript = `if [ -d /sys/kernel/security/apparmor ]; then apparmor_enabled=1; ` +
-		`else apparmor_enabled=0; ` +
-		`fi; ` +
-		`echo "$apparmor_enabled"`
-)
+//go:generate go run ../../cmd/scriptimport/main.go info apparmor_discovery.sh
 
 type AppArmorInfo struct {
 	supported bool
@@ -54,7 +49,7 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, t transport.Transpor
 
 	a.supported = true
 
-	cmd, err := t.NewCommand(appArmorDiscoveryScript, nil)
+	cmd, err := t.NewCommand(apparmorDiscoveryScript, nil)
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -63,12 +58,16 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, t transport.Transpor
 		}}
 	}
 
-	stdout, err := cmd.Output(context.Background())
+	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
 			Summary:  "Failed to execute AppArmor discovery script",
 			Detail:   fmt.Sprintf("Error executing command: %v", err),
+		}, &diag.Diag{
+			Severity: diag.DiagDebug,
+			Summary:  "Discovery command stderr",
+			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
 	}
 

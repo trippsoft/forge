@@ -48,8 +48,20 @@ var (
 		},
 		Blocks: []hcl.BlockHeaderSchema{},
 	}
-	transportWinRMSchema = &hcl.BodySchema{}
-	groupBlockSchema     = &hcl.BodySchema{
+	escalateBlockSchema = &hcl.BodySchema{
+		Blocks: []hcl.BlockHeaderSchema{
+			{
+				Type:       "escalate",
+				LabelNames: []string{},
+			},
+		},
+	}
+	escalateAttributesSchema = &hcl.BodySchema{
+		Attributes: []hcl.AttributeSchema{
+			{Name: "password", Required: false},
+		},
+	}
+	groupBlockSchema = &hcl.BodySchema{
 		Blocks: []hcl.BlockHeaderSchema{
 			{
 				Type:       "group",

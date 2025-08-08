@@ -463,7 +463,7 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux(t *testing.T) {
 			osInfo.id = "ubuntu"
 
 			mockTransport := transport.NewMockTransport()
-			mockTransport.CommandResults[linuxServiceManagerDiscoveryScript] = &transport.MockCmd{
+			mockTransport.CommandResults[serviceManagerLinuxDiscoveryScript] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -492,7 +492,7 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_Error(t *testing.T)
 	osInfo.id = "ubuntu"
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[linuxServiceManagerDiscoveryScript] = &transport.MockCmd{
+	mockTransport.CommandResults[serviceManagerLinuxDiscoveryScript] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 
@@ -534,7 +534,7 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_NoOutput(t *testing
 	osInfo.id = "ubuntu"
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[linuxServiceManagerDiscoveryScript] = &transport.MockCmd{
+	mockTransport.CommandResults[serviceManagerLinuxDiscoveryScript] = &transport.MockCmd{
 		Stdout: "",
 	}
 
@@ -576,7 +576,7 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_NoServiceManager(t 
 	osInfo.id = "ubuntu"
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[linuxServiceManagerDiscoveryScript] = &transport.MockCmd{
+	mockTransport.CommandResults[serviceManagerLinuxDiscoveryScript] = &transport.MockCmd{
 		Stdout: `{
 			"systemctl_exists": "0",
 			"run_systemd_system_exists": "0",

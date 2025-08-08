@@ -9,11 +9,16 @@ type intermediateTransport struct {
 	hclRange *hcl.Range
 }
 
+type intermediateEscalate struct {
+	password *hcl.Attribute
+}
+
 type intermediateHost struct {
 	name string
 
 	vars      map[string]*hcl.Attribute
 	transport *intermediateTransport
+	escalate  *intermediateEscalate
 
 	parentGroup string
 
@@ -31,6 +36,7 @@ type intermediateGroup struct {
 
 	vars      map[string]*hcl.Attribute
 	transport *intermediateTransport
+	escalate  *intermediateEscalate
 
 	hclRange *hcl.Range
 }
@@ -38,6 +44,7 @@ type intermediateGroup struct {
 type intermediateInventory struct {
 	vars      map[string]*hcl.Attribute
 	transport *intermediateTransport
+	escalate  *intermediateEscalate
 
 	groups map[string]*intermediateGroup
 	hosts  map[string]*intermediateHost

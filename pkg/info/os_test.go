@@ -185,7 +185,7 @@ func TestOSInfo_PopulateOSInfo_Darwin(t *testing.T) {
 			mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 				Stdout: "Darwin",
 			}
-			mockTransport.CommandResults[darwinOSDiscoveryScript] = &transport.MockCmd{
+			mockTransport.CommandResults[osDarwinDiscoveryScript] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -275,7 +275,7 @@ func TestOSInfo_PopulateOSInfo_Darwin_Error(t *testing.T) {
 	mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 		Stdout: "Darwin",
 	}
-	mockTransport.CommandResults[darwinOSDiscoveryScript] = &transport.MockCmd{
+	mockTransport.CommandResults[osDarwinDiscoveryScript] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 
@@ -379,7 +379,7 @@ func TestOSInfo_PopulateOSInfo_Darwin_NotJSON(t *testing.T) {
 	mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 		Stdout: "Darwin",
 	}
-	mockTransport.CommandResults[darwinOSDiscoveryScript] = &transport.MockCmd{
+	mockTransport.CommandResults[osDarwinDiscoveryScript] = &transport.MockCmd{
 		Stdout: "Not a JSON output",
 	}
 
@@ -483,7 +483,7 @@ func TestOSInfo_PopulateOSInfo_Darwin_UnknownArchitecture(t *testing.T) {
 	mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 		Stdout: "Darwin",
 	}
-	mockTransport.CommandResults[darwinOSDiscoveryScript] = &transport.MockCmd{
+	mockTransport.CommandResults[osDarwinDiscoveryScript] = &transport.MockCmd{
 		Stdout: `{
 			"os_arch": "newarch",
 			"os_version": "26.0.0"
@@ -559,7 +559,7 @@ func TestOSInfo_PopulateOSInfo_Darwin_UnknownVersion(t *testing.T) {
 	mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 		Stdout: "Darwin",
 	}
-	mockTransport.CommandResults[darwinOSDiscoveryScript] = &transport.MockCmd{
+	mockTransport.CommandResults[osDarwinDiscoveryScript] = &transport.MockCmd{
 		Stdout: `{
 			"os_arch": "amd64",
 			"os_version": "99.0.0"
@@ -1796,7 +1796,7 @@ func TestOSInfo_PopulateOSInfo_Linux(t *testing.T) {
 			mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 				Stdout: "Linux",
 			}
-			mockTransport.CommandResults[linuxOSDiscoveryScript] = &transport.MockCmd{
+			mockTransport.CommandResults[osLinuxDiscoveryScript] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -1874,7 +1874,7 @@ func TestOSInfo_PopulateOSInfo_Linux_Error(t *testing.T) {
 	mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 		Stdout: "Linux",
 	}
-	mockTransport.CommandResults[linuxOSDiscoveryScript] = &transport.MockCmd{
+	mockTransport.CommandResults[osLinuxDiscoveryScript] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 
@@ -1967,7 +1967,7 @@ func TestOSInfo_PopulateOSInfo_Linux_NotJSON(t *testing.T) {
 	mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 		Stdout: "Linux",
 	}
-	mockTransport.CommandResults[linuxOSDiscoveryScript] = &transport.MockCmd{
+	mockTransport.CommandResults[osLinuxDiscoveryScript] = &transport.MockCmd{
 		Stdout: "Not JSON",
 	}
 
@@ -2156,7 +2156,7 @@ func TestOSInfo_PopulateOSInfo_Windows_Architecture(t *testing.T) {
 			mockTransport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &transport.MockCmd{
 				Stdout: "5.1.19041.1237",
 			}
-			mockTransport.PowerShellResults[windowsOSDiscoveryScript] = &transport.MockCmd{
+			mockTransport.PowerShellResults[osWindowsDiscoveryScript] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -2218,7 +2218,7 @@ func TestOSInfo_PopulateOSInfo_Windows_Architecture_Unknown(t *testing.T) {
 	mockTransport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &transport.MockCmd{
 		Stdout: "5.1.19041.1237",
 	}
-	mockTransport.PowerShellResults[windowsOSDiscoveryScript] = &transport.MockCmd{
+	mockTransport.PowerShellResults[osWindowsDiscoveryScript] = &transport.MockCmd{
 		Stdout: `{
 			"os_friendly_name": "Microsoft Windows 10 Pro",
 			"os_version": "10.0.19041.0",
@@ -2931,7 +2931,7 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 			mockTransport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &transport.MockCmd{
 				Stdout: "5.1.19041.1237",
 			}
-			mockTransport.PowerShellResults[windowsOSDiscoveryScript] = &transport.MockCmd{
+			mockTransport.PowerShellResults[osWindowsDiscoveryScript] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -2997,7 +2997,7 @@ func TestOSInfo_PopulateOSInfo_Windows_Error(t *testing.T) {
 	mockTransport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &transport.MockCmd{
 		Stdout: "5.1.19041.1237",
 	}
-	mockTransport.PowerShellResults[windowsOSDiscoveryScript] = &transport.MockCmd{
+	mockTransport.PowerShellResults[osWindowsDiscoveryScript] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 
@@ -3068,7 +3068,7 @@ func TestOSInfo_PopulateOSInfo_Windows_NotJSON(t *testing.T) {
 	mockTransport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &transport.MockCmd{
 		Stdout: "5.1.19041.1237",
 	}
-	mockTransport.PowerShellResults[windowsOSDiscoveryScript] = &transport.MockCmd{
+	mockTransport.PowerShellResults[osWindowsDiscoveryScript] = &transport.MockCmd{
 		Stdout: "This is not JSON output",
 	}
 

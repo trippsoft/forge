@@ -9,9 +9,8 @@ import (
 type TransportType string
 
 const (
-	TransportTypeNone  TransportType = "none"
-	TransportTypeSSH   TransportType = "ssh"
-	TransportTypeWinRM TransportType = "winrm"
+	TransportTypeNone TransportType = "none"
+	TransportTypeSSH  TransportType = "ssh"
 )
 
 // Transport interface defines the methods for interacting with a managed system.

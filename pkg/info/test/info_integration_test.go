@@ -151,17 +151,17 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 		}
 	}
 
-	// packageManagerInfo := hostInfo.PackageManagerInfo()
-	// if packageManagerInfo == nil {
-	// 	t.Error("expected Package Manager info to be populated")
-	// } else {
-	// 	if packageManagerInfo.Name() != "dnf" {
-	// 		t.Errorf("expected Package Manager name to be 'dnf', got '%s'", packageManagerInfo.Name())
-	// 	}
-	// 	if packageManagerInfo.Path() != "/usr/bin/dnf-3" {
-	// 		t.Errorf("expected Package Manager path to be '/usr/bin/dnf-3', got '%s'", packageManagerInfo.Path())
-	// 	}
-	// }
+	packageManagerInfo := hostInfo.PackageManagerInfo()
+	if packageManagerInfo == nil {
+		t.Error("expected Package Manager info to be populated")
+	} else {
+		if packageManagerInfo.Name() != "dnf" {
+			t.Errorf("expected Package Manager name to be 'dnf', got '%s'", packageManagerInfo.Name())
+		}
+		if packageManagerInfo.Path() != "/usr/bin/dnf-3" {
+			t.Errorf("expected Package Manager path to be '/usr/bin/dnf-3', got '%s'", packageManagerInfo.Path())
+		}
+	}
 
 	serviceManagerInfo := hostInfo.ServiceManagerInfo()
 	if serviceManagerInfo == nil {
@@ -322,12 +322,17 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 		}
 	}
 
-	// packageManagerInfo := hostInfo.PackageManagerInfo()
-	// if packageManagerInfo == nil {
-	// 	t.Error("expected Package Manager info to be populated")
-	// } else {
-	// 	// Blank for now, Windows is not supported yet
-	// }
+	packageManagerInfo := hostInfo.PackageManagerInfo()
+	if packageManagerInfo == nil {
+		t.Error("expected Package Manager info to be populated")
+	} else {
+		if packageManagerInfo.Name() != "" {
+			t.Errorf("expected Package Manager name to be empty on Windows, got '%s'", packageManagerInfo.Name())
+		}
+		if packageManagerInfo.Path() != "" {
+			t.Errorf("expected Package Manager path to be empty on Windows, got '%s'", packageManagerInfo.Path())
+		}
+	}
 
 	serviceManagerInfo := hostInfo.ServiceManagerInfo()
 	if serviceManagerInfo == nil {

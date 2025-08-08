@@ -40,7 +40,13 @@ func resolveIntermediate(intermediate *intermediateInventory) (*Inventory, hcl.D
 		return nil, diags
 	}
 
-	inventory, moreDiags := buildFinalInventory(intermediate, hostVars, hostTransports)
+	hostEscalates, moreDiags := resolveAllHostEscalates(intermediate, hostVars)
+	diags = diags.Extend(moreDiags)
+	if moreDiags.HasErrors() {
+		return nil, diags
+	}
+
+	inventory, moreDiags := buildFinalInventory(intermediate, hostVars, hostTransports, hostEscalates)
 	diags = diags.Extend(moreDiags)
 	if moreDiags.HasErrors() {
 		return nil, diags
@@ -596,15 +602,6 @@ func createTransportFromConfig(intermediate *intermediateTransport, vars map[str
 		return transport.TransportNone, hcl.Diagnostics{}
 	case string(transport.TransportTypeSSH):
 		return createSSHTransport(intermediate.config, vars)
-	case string(transport.TransportTypeWinRM):
-		// TODO - Implement WinRM transport creation
-		return nil, hcl.Diagnostics{
-			&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "WinRM transport not implemented",
-				Detail:   "The WinRM transport is not yet implemented.",
-			},
-		}
 	default:
 		return nil, hcl.Diagnostics{
 			&hcl.Diagnostic{
@@ -802,7 +799,144 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 	return sshTransport, diags
 }
 
-func buildFinalInventory(intermediate *intermediateInventory, hostVars map[string]map[string]cty.Value, hostTransports map[string]transport.Transport) (*Inventory, hcl.Diagnostics) {
+func resolveAllHostEscalates(intermediate *intermediateInventory, hostVars map[string]map[string]cty.Value) (map[string]string, hcl.Diagnostics) {
+
+	diags := hcl.Diagnostics{}
+	escalates := make(map[string]string)
+
+	for hostName, host := range intermediate.allHosts {
+
+		vars, exists := hostVars[hostName]
+		if !exists {
+			vars = make(map[string]cty.Value)
+		}
+
+		hostEscalate, moreDiags := resolveHostEscalate(hostName, host, intermediate, vars)
+		diags = diags.Extend(moreDiags)
+		if moreDiags.HasErrors() {
+			continue // Skip on errors
+		}
+
+		escalates[hostName] = hostEscalate
+	}
+
+	return escalates, diags
+}
+
+func resolveHostEscalate(hostName string, host *intermediateHost, intermediate *intermediateInventory, vars map[string]cty.Value) (string, hcl.Diagnostics) {
+
+	inheritanceChain, diags := buildEscalateInheritanceChain(hostName, host, intermediate)
+	if diags.HasErrors() {
+		return "", diags // Return on errors
+	}
+
+	combinedEscalate := combineEscalatesFromChain(inheritanceChain)
+
+	if combinedEscalate == nil {
+		return "", diags
+	}
+
+	escalatePassword, moreDiags := createEscalateFromConfig(combinedEscalate, vars)
+	diags = diags.Extend(moreDiags)
+	if moreDiags.HasErrors() {
+		return "", diags // Return on errors
+	}
+
+	return escalatePassword, diags
+}
+
+func buildEscalateInheritanceChain(hostName string, host *intermediateHost, intermediate *intermediateInventory) ([]*intermediateEscalate, hcl.Diagnostics) {
+
+	diags := hcl.Diagnostics{}
+	chain := []*intermediateEscalate{}
+
+	if host.escalate != nil {
+		chain = append(chain, host.escalate)
+	}
+
+	for _, groupName := range host.allGroups {
+		group, exists := intermediate.groups[groupName]
+		if !exists {
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "Invalid group reference",
+				Detail:   fmt.Sprintf("The group '%s' referenced by host '%s' does not exist.", groupName, hostName),
+				Subject:  host.hclRange,
+			})
+			continue
+		}
+
+		if group.escalate != nil {
+			chain = append(chain, group.escalate)
+		}
+	}
+
+	if intermediate.escalate != nil {
+		chain = append(chain, intermediate.escalate)
+	}
+
+	return chain, diags
+}
+
+func combineEscalatesFromChain(inheritanceChain []*intermediateEscalate) *intermediateEscalate {
+
+	if len(inheritanceChain) == 0 {
+		return nil
+	}
+
+	combined := &intermediateEscalate{}
+
+	for _, escalate := range inheritanceChain {
+		if combined.password == nil {
+			combined.password = escalate.password
+			break
+		}
+	}
+
+	return combined
+}
+
+func createEscalateFromConfig(combinedEscalate *intermediateEscalate, vars map[string]cty.Value) (string, hcl.Diagnostics) {
+
+	if combinedEscalate.password == nil {
+		return "", hcl.Diagnostics{}
+	}
+
+	evalCtx := &hcl.EvalContext{
+		Variables: map[string]cty.Value{
+			"var": cty.ObjectVal(vars),
+		},
+		Functions: hclfunction.HCLFunctions(),
+	}
+
+	password := combinedEscalate.password
+	value, diags := password.Expr.Value(evalCtx)
+	if diags.HasErrors() {
+		return "", diags // Return on errors
+	}
+
+	if !value.IsKnown() || value.IsNull() {
+		return "", diags // Return if value is unknown or null
+	}
+
+	if value.Type() != cty.String {
+		diags = append(diags, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "Invalid escalate password type",
+			Detail:   "The escalate password must be a string.",
+			Subject:  &password.Range,
+		})
+		return "", diags // Return on type error
+	}
+
+	return value.AsString(), diags
+}
+
+func buildFinalInventory(
+	intermediate *intermediateInventory,
+	hostVars map[string]map[string]cty.Value,
+	hostTransports map[string]transport.Transport,
+	hostEscalates map[string]string) (*Inventory, hcl.Diagnostics) {
 
 	diags := hcl.Diagnostics{}
 
@@ -827,6 +961,11 @@ func buildFinalInventory(intermediate *intermediateInventory, hostVars map[strin
 		}
 
 		host := NewHost(hostName, t, vars)
+
+		if escalatePassword, exists := hostEscalates[hostName]; exists && escalatePassword != "" {
+			host.escalatePassword = escalatePassword
+			log.SecretFilter.AddSecret(escalatePassword)
+		}
 
 		inventory.hosts[hostName] = host
 		inventory.targets[hostName] = []*Host{host}

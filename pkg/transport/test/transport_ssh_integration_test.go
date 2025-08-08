@@ -508,9 +508,7 @@ func TestSSHTransportEscalatedCommand_Linux_SudoNoPassword(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	escalateConfig := &transport.SimpleEscalate{
-		Password: linuxPassword, // This should not be needed as sudo is passwordless on this machine
-	}
+	escalateConfig := transport.NewNoPasswordEscalation()
 
 	cmd, err := sshTransport.NewCommand("echo 'Hello from Linux'", escalateConfig)
 	if err != nil {
@@ -560,9 +558,7 @@ func TestSSHTransportEscalatedCommand_Linux_SudoPassword(t *testing.T) {
 	}
 	defer sshTransport.Close()
 
-	escalateConfig := &transport.SimpleEscalate{
-		Password: linuxPWPassword, // Use the same password for escalation
-	}
+	escalateConfig := transport.NewEscalation(linuxPWPassword)
 
 	cmd, err := sshTransport.NewCommand("echo 'Hello from Linux'", escalateConfig)
 	if err != nil {

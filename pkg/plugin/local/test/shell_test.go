@@ -98,9 +98,7 @@ func TestPluginRun_Linux_SudoPassword(t *testing.T) {
 
 	p := &shell.Plugin{}
 
-	escalateConfig := &transport.SimpleEscalate{
-		Password: "vagrant",
-	}
+	escalateConfig := transport.NewEscalation(linuxPWPassword)
 
 	commonConfig := &plugin.CommonConfig{
 		EscalateConfig: escalateConfig,
@@ -164,9 +162,7 @@ func TestPluginRun_Linux_NoSudoPassword(t *testing.T) {
 
 	p := &shell.Plugin{}
 
-	escalateConfig := &transport.SimpleEscalate{
-		Password: "vagrant",
-	}
+	escalateConfig := transport.NewNoPasswordEscalation()
 
 	commonConfig := &plugin.CommonConfig{
 		EscalateConfig: escalateConfig,

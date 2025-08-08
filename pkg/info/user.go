@@ -11,32 +11,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-const (
-	userPosixDiscoveryScript = `user_name=$(id -nu); ` +
-		`user_id=$(id -u); ` +
-		`user_gid=$(id -g); ` +
-		`user_home_dir="$HOME"; ` +
-		`user_shell="$SHELL"; ` +
-		`user_gecos=$(getent passwd $user_name | cut -d ':' -f 5); ` +
-		`output=$(jq -n ` +
-		`--arg user_name "$user_name" ` +
-		`--arg user_id "$user_id" ` +
-		`--arg user_gid "$user_gid" ` +
-		`--arg user_home_dir "$user_home_dir" ` +
-		`--arg user_shell "$user_shell" ` +
-		`--arg user_gecos "$user_gecos" ` +
-		`'{user_name: $user_name, user_id: $user_id, user_gid: $user_gid, user_home_dir: $user_home_dir, user_shell: $user_shell, user_gecos: $user_gecos}'); ` +
-		`echo "$output"`
-	userWindowsDiscoveryScript = `$userName = $env:USERNAME; ` +
-		`$userId = $userId = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value; ` +
-		`$userHomeDir = $env:USERPROFILE; ` +
-		`$output = @{user_name = $userName; user_id = $userId; user_home_dir = $userHomeDir}; ` +
-		`$json = $output | ConvertTo-Json -Depth 3; ` +
-		`Write-Host $json`
-	UserHomeDirPowerShell = `Write-Host $env:USERPROFILE`
-	UserNamePowerShell    = `Write-Host $env:USERNAME`
-	UserIdPowerShell      = `$obj = [Security.Principal.WindowsIdentity]::GetCurrent(); Write-Host $obj.User.Value`
-)
+//go:generate go run ../../cmd/scriptimport/main.go info user_posix_discovery.sh
+//go:generate go run ../../cmd/scriptimport/main.go info user_windows_discovery.ps1
 
 type UserInfo struct {
 	name    string
@@ -111,12 +87,16 @@ func (u *UserInfo) populatePosixUserInfo(t transport.Transport) diag.Diags {
 		}}
 	}
 
-	stdout, err := cmd.Output(context.Background())
+	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
 			Summary:  "Failed to get user information",
 			Detail:   fmt.Sprintf("Error getting user information on POSIX host: %v", err),
+		}, &diag.Diag{
+			Severity: diag.DiagDebug,
+			Summary:  "Discovery command stderr",
+			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
 	}
 
@@ -151,12 +131,16 @@ func (u *UserInfo) populateWindowsUserInfo(t transport.Transport) diag.Diags {
 		}}
 	}
 
-	stdout, err := cmd.Output(context.Background())
+	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
 			Summary:  "Failed to get user information",
 			Detail:   fmt.Sprintf("Error getting user information on Windows host: %v", err),
+		}, &diag.Diag{
+			Severity: diag.DiagDebug,
+			Summary:  "Discovery command stderr",
+			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
 	}
 

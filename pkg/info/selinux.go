@@ -11,19 +11,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-const (
-	selinuxDiscoveryScript = `if [ ! -f /etc/selinux/config ]; then	selinux_installed=0; ` +
-		`else selinux_installed=1; ` +
-		`selinux_status=$(grep -E '^SELINUX=' /etc/selinux/config | cut -d '=' -f 2); ` +
-		`selinux_type=$(grep -E '^SELINUXTYPE=' /etc/selinux/config | cut -d '=' -f 2); ` +
-		`fi; ` +
-		`output=$(jq -n ` +
-		`--arg selinux_installed "$selinux_installed" ` +
-		`--arg selinux_status "$selinux_status" ` +
-		`--arg selinux_type "$selinux_type" ` +
-		`'{selinux_installed: $selinux_installed, selinux_status: $selinux_status, selinux_type: $selinux_type}'); ` +
-		`echo "$output"`
-)
+//go:generate go run ../../cmd/scriptimport/main.go info selinux_discovery.sh
 
 type SELinuxStatus string
 type SELinuxType string
@@ -104,12 +92,16 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport)
 		}}
 	}
 
-	stdout, err := cmd.Output(context.Background())
+	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
 			Summary:  "Failed to execute SELinux discovery script",
 			Detail:   fmt.Sprintf("Error executing SELinux discovery script: %v", err),
+		}, &diag.Diag{
+			Severity: diag.DiagDebug,
+			Summary:  "Discovery command stderr",
+			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
 	}
 

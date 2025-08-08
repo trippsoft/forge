@@ -10,17 +10,20 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+// Host represents a single host in the inventory.
 type Host struct {
 	name string
 
 	transport transport.Transport
 
-	taskContexts    []map[string]cty.Value
-	procedureInputs []map[string]cty.Value
-	info            *info.HostInfo
-	vars            map[string]cty.Value
+	taskContexts     []map[string]cty.Value
+	procedureInputs  []map[string]cty.Value
+	info             *info.HostInfo
+	vars             map[string]cty.Value
+	escalatePassword string
 }
 
+// NewHost creates a new Host instance with the given name, transport, and variables.
 func NewHost(name string, transport transport.Transport, vars map[string]cty.Value) *Host {
 	return &Host{
 		name:            name,
@@ -32,22 +35,34 @@ func NewHost(name string, transport transport.Transport, vars map[string]cty.Val
 	}
 }
 
+// Name returns the name of the host.
 func (h *Host) Name() string {
 	return h.name
 }
 
+// Transport returns the transport mechanism used by the host.
 func (h *Host) Transport() transport.Transport {
 	return h.transport
 }
 
+// Info returns the host's information as a HostInfo instance.
 func (h *Host) Info() *info.HostInfo {
 	return h.info
 }
 
+// Vars returns the host's variables as a map of cty.Values.
 func (h *Host) Vars() map[string]cty.Value {
 	return h.vars
 }
 
+// EscalatePassword returns the password used for privilege escalation on the host, if any.
+func (h *Host) EscalatePassword() string {
+	return h.escalatePassword
+}
+
+// StoreTask stores a task in the current task context.
+// If the key already exists, it will overwrite the existing value.
+// This is by design to allow for task updates.
 func (h *Host) StoreTask(key string, value cty.Value) error {
 
 	taskContext, err := h.getCurrentContextTasks()
@@ -59,11 +74,13 @@ func (h *Host) StoreTask(key string, value cty.Value) error {
 	return nil
 }
 
+// StartProcedure initializes a new procedure context for the host.
 func (h *Host) StartProcedure(inputs map[string]cty.Value) {
 	h.taskContexts = append(h.taskContexts, make(map[string]cty.Value))
 	h.procedureInputs = append(h.procedureInputs, inputs)
 }
 
+// EndProcedure ends the current procedure context for the host.
 func (h *Host) EndProcedure() error {
 	if len(h.taskContexts) < 2 {
 		return errors.New("no task context to end")
@@ -93,6 +110,7 @@ func (h *Host) getCurrentProcedureInputs() map[string]cty.Value {
 	return h.procedureInputs[len(h.procedureInputs)-1]
 }
 
+// Inventory represents a collection of hosts, groups, and targets.
 type Inventory struct {
 	hosts map[string]*Host
 
@@ -141,6 +159,7 @@ func (i *Inventory) Targets() map[string][]*Host {
 	return i.targets
 }
 
+// GetHostEvalContext retrieves the evaluation context for a specific host by name.
 func (i *Inventory) GetHostEvalContext(hostName string) (*hcl.EvalContext, error) {
 	variables := make(map[string]cty.Value)
 	hostVars := make(map[string]cty.Value)

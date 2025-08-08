@@ -9,14 +9,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-const (
-	fipsLinuxDiscoveryScript = `if [ -f /proc/sys/crypto/fips_enabled ]; ` +
-		`then fips_enabled=$(cat /proc/sys/crypto/fips_enabled); ` +
-		`else fips_enabled=0; ` +
-		`fi; ` +
-		`echo "$fips_enabled"`
-	fipsWindowsDiscoveryScript = `$value = Get-ItemPropertyValue -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa\FipsAlgorithm' -Name 'Enabled' -ErrorAction SilentlyContinue; Write-Host $value`
-)
+//go:generate go run ../../cmd/scriptimport/main.go info fips_linux_discovery.sh
+//go:generate go run ../../cmd/scriptimport/main.go info fips_windows_discovery.ps1
 
 type FIPSInfo struct {
 	known   bool
@@ -66,13 +60,24 @@ func (f *FIPSInfo) populateFipsInfo(osInfo *OSInfo, transport transport.Transpor
 func (f *FIPSInfo) populateLinuxFipsInfo(t transport.Transport) diag.Diags {
 
 	cmd, err := t.NewCommand(fipsLinuxDiscoveryScript, nil)
+	if err != nil {
+		return diag.Diags{&diag.Diag{
+			Severity: diag.DiagError,
+			Summary:  "Failed to create FIPS discovery command",
+			Detail:   fmt.Sprintf("Error creating command: %v", err),
+		}}
+	}
 
-	stdout, err := cmd.Output(context.Background())
+	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
 			Summary:  "Failed to check FIPS status",
 			Detail:   fmt.Sprintf("Error checking FIPS status: %v", err),
+		}, &diag.Diag{
+			Severity: diag.DiagDebug,
+			Summary:  "Discovery command stderr",
+			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
 	}
 

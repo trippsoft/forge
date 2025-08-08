@@ -137,6 +137,18 @@ func parseHCLBodyToIntermediate(body hcl.Body) (*intermediateInventory, hcl.Diag
 		return nil, diags
 	}
 
+	escalateBlocks, body, moreDiags := body.PartialContent(escalateBlockSchema)
+	diags = diags.Extend(moreDiags)
+	if moreDiags.HasErrors() {
+		return nil, diags
+	}
+
+	intermediate.escalate, moreDiags = parseEscalateBlocksToIntermediate(escalateBlocks)
+	diags = diags.Extend(moreDiags)
+	if moreDiags.HasErrors() {
+		return nil, diags
+	}
+
 	groupBlocks, body, moreDiags := body.PartialContent(groupBlockSchema)
 	diags = diags.Extend(moreDiags)
 	if moreDiags.HasErrors() {
@@ -348,19 +360,16 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 		if moreDiags.HasErrors() {
 			return nil, diags
 		}
-	case string(transport.TransportTypeWinRM):
-		body, remaining, _ = block.Body.PartialContent(transportWinRMSchema) // TODO - implement WinRM schema
 	default:
 		return nil, hcl.Diagnostics{
 			&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  "Invalid transport type",
 				Detail: fmt.Sprintf(
-					"The transport type '%s' is not supported. Allowed types are: %s, %s, %s",
+					"The transport type '%s' is not supported. Allowed types are: %s, %s",
 					transportType,
 					transport.TransportTypeNone,
-					transport.TransportTypeSSH,
-					transport.TransportTypeWinRM),
+					transport.TransportTypeSSH),
 				Subject: &block.DefRange,
 			},
 		}
@@ -401,6 +410,91 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 	}
 
 	return transport, diags
+}
+
+func parseEscalateBlocksToIntermediate(escalateBlocks *hcl.BodyContent) (*intermediateEscalate, hcl.Diagnostics) {
+
+	if len(escalateBlocks.Blocks) == 0 {
+		return nil, hcl.Diagnostics{}
+	}
+
+	if len(escalateBlocks.Blocks) > 1 {
+		diags := hcl.Diagnostics{
+			&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "Multiple escalate blocks",
+				Detail:   "Only one 'escalate' block is allowed. Multiple 'escalate' blocks were found.",
+				Subject:  &escalateBlocks.Blocks[1].DefRange,
+			},
+		}
+
+		return nil, diags
+	}
+
+	return parseEscalateBlockToIntermediate(escalateBlocks.Blocks[0])
+}
+
+func parseEscalateBlockToIntermediate(block *hcl.Block) (*intermediateEscalate, hcl.Diagnostics) {
+
+	if block.Type != "escalate" {
+		return nil, hcl.Diagnostics{
+			&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "Invalid block type",
+				Detail:   fmt.Sprintf("Expected 'escalate' block, but found '%s'.", block.Type),
+				Subject:  &block.DefRange,
+			},
+		}
+	}
+
+	if len(block.Labels) != 0 {
+		return nil, hcl.Diagnostics{
+			&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "Invalid escalate block",
+				Detail:   "The 'escalate' block must not have any labels.",
+				Subject:  &block.DefRange,
+			},
+		}
+	}
+
+	diags := hcl.Diagnostics{}
+	var body *hcl.BodyContent
+	var remaining hcl.Body
+
+	body, remaining, _ = block.Body.PartialContent(escalateAttributesSchema)
+
+	escalate := &intermediateEscalate{}
+
+	for _, attr := range body.Attributes {
+		switch attr.Name {
+		case "password":
+			escalate.password = attr
+		default:
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "Invalid escalate attribute",
+				Detail:   fmt.Sprintf("The attribute '%s' is not allowed in the 'escalate' block.", attr.Name),
+				Subject:  &attr.Range,
+			})
+		}
+	}
+
+	if !remaining.MissingItemRange().Empty() {
+		missingItemRange := remaining.MissingItemRange()
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagWarning,
+			Summary:  "Unexpected content in transport block",
+			Detail:   "The 'transport' block contains unexpected content that was not parsed. This may indicate a syntax error or unsupported features.",
+			Subject:  &missingItemRange,
+		})
+	}
+
+	if diags.HasErrors() {
+		return nil, diags
+	}
+
+	return escalate, diags
 }
 
 func parseGroupBlocksToIntermediate(groupBlocks *hcl.BodyContent) (map[string]*intermediateGroup, hcl.Diagnostics) {
@@ -511,6 +605,18 @@ func parseGroupBlockToIntermediate(block *hcl.Block) (*intermediateGroup, hcl.Di
 	}
 
 	group.transport, moreDiags = parseTransportBlocksToIntermediate(transportBlocks)
+	diags = diags.Extend(moreDiags)
+	if moreDiags.HasErrors() {
+		return nil, diags
+	}
+
+	escalateBlocks, body, moreDiags := body.PartialContent(escalateBlockSchema)
+	diags = diags.Extend(moreDiags)
+	if moreDiags.HasErrors() {
+		return nil, diags
+	}
+
+	group.escalate, moreDiags = parseEscalateBlocksToIntermediate(escalateBlocks)
 	diags = diags.Extend(moreDiags)
 	if moreDiags.HasErrors() {
 		return nil, diags
@@ -738,6 +844,18 @@ func parseHostBlockToIntermediate(block *hcl.Block) (*intermediateHost, hcl.Diag
 	}
 
 	host.transport, moreDiags = parseTransportBlocksToIntermediate(transportBlocks)
+	diags = diags.Extend(moreDiags)
+	if moreDiags.HasErrors() {
+		return nil, diags
+	}
+
+	escalateBlocks, body, moreDiags := body.PartialContent(escalateBlockSchema)
+	diags = diags.Extend(moreDiags)
+	if moreDiags.HasErrors() {
+		return nil, diags
+	}
+
+	host.escalate, moreDiags = parseEscalateBlocksToIntermediate(escalateBlocks)
 	diags = diags.Extend(moreDiags)
 	if moreDiags.HasErrors() {
 		return nil, diags

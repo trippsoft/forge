@@ -12,58 +12,9 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-const (
-	darwinOSDiscoveryScript = `os_arch="$(uname -m || echo \"\")"; ` +
-		`os_version="$(sw_vers -productVersion || echo \"\")"; ` +
-		`echo "{\"os_arch\": \"$os_arch\", \"os_version\": \"$os_version\"}"`
-
-	linuxOSDiscoveryScript = `os_arch="$(uname -m || echo \"\")"; ` +
-		`if [ -e /etc/os-release ]; then source /etc/os-release; ` +
-		`elif [ -L /etc/os-release ]; then source "$(readlink -f /etc/os-release || echo \"\")"; ` +
-		`elif [ -e /usr/lib/os-release ]; then source /usr/lib/os-release; ` +
-		`elif [ -L /usr/lib/os-release ]; then source "$(readlink -f /usr/lib/os-release || echo \"\")"; ` +
-		`fi; ` +
-		`if [ -n "$ID" ]; then os_id="$ID"; ` +
-		`else os_id="$(lsb_release -si || echo \"\")"; ` +
-		`fi; ` +
-		`if [ -n "$PRETTY_NAME" ]; then os_friendly_name="$PRETTY_NAME"; ` +
-		`else os_friendly_name="$(lsb_release -sd || echo \"\")"; ` +
-		`fi; ` +
-		`if [ -n "$VERSION_ID" ]; then  os_version="$VERSION_ID"; ` +
-		`else os_version="$(lsb_release -sr || echo \"\")"; ` +
-		`fi; ` +
-		`if [ -n "$VERSION_CODENAME" ]; then os_release="$VERSION_CODENAME"; ` +
-		`else os_release="$(lsb_release -sc || echo \"\")"; ` +
-		`fi; ` +
-		`if [ -n "$VARIANT" ]; then os_edition="$VARIANT"; ` +
-		`fi; ` +
-		`if [ -n "$VARIANT_ID" ]; then os_edition_id="$VARIANT_ID"; ` +
-		`fi; ` +
-		`output=$(jq -n ` +
-		`--arg os_arch "$os_arch" ` +
-		`--arg os_id "$os_id" ` +
-		`--arg os_friendly_name "$os_friendly_name" ` +
-		`--arg os_release "$os_release" ` +
-		`--arg os_version "$os_version" ` +
-		`--arg os_edition "$os_edition" ` +
-		`--arg os_edition_id "$os_edition_id" ` +
-		`'{os_arch: $os_arch, os_id: $os_id, os_friendly_name: $os_friendly_name, os_release: $os_release, os_version: $os_version, os_edition: $os_edition, os_edition_id: $os_edition_id}'); ` +
-		`echo "$output"`
-
-	windowsOSDiscoveryScript = `Import-Module -Name Dism; ` +
-		`$friendlyName = (Get-CimInstance -ClassName Win32_OperatingSystem).Caption; ` +
-		`$version = [System.Environment]::OSVersion.Version.ToString(); ` +
-		`$osArch = (Get-CimInstance -ClassName Win32_OperatingSystem).OSArchitecture; ` +
-		`$procArch = $env:PROCESSOR_ARCHITECTURE; ` +
-		`$output = @{` +
-		`os_friendly_name = $friendlyName; ` +
-		`os_version = $version; ` +
-		`os_bits = $osArch; ` +
-		`processor_arch = $procArch; ` +
-		`}; ` +
-		`$json = $output | ConvertTo-Json -Depth 3; ` +
-		`Write-Host $json`
-)
+//go:generate go run ../../cmd/scriptimport/main.go info os_darwin_discovery.sh
+//go:generate go run ../../cmd/scriptimport/main.go info os_linux_discovery.sh
+//go:generate go run ../../cmd/scriptimport/main.go info os_windows_discovery.ps1
 
 var (
 	architectureMap = map[string]string{
@@ -277,22 +228,26 @@ func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) diag.Diags {
 	o.id = "macos"
 	o.families.Add(o.id)
 
-	cmd, err := t.NewCommand(darwinOSDiscoveryScript, nil)
+	cmd, err := t.NewCommand(osDarwinDiscoveryScript, nil)
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
-			Summary:  "Failed to create darwinOSDiscovery command",
-			Detail:   fmt.Sprintf("Error creating darwinOSDiscovery command: %v", err),
+			Summary:  "Failed to create darwinOsDiscovery command",
+			Detail:   fmt.Sprintf("Error creating darwinOsDiscovery command: %v", err),
 		}}
 	}
 
-	stdout, err := cmd.Output(context.Background())
+	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
 		o.friendlyName = "macOS"
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
 			Summary:  "Failed to get macOS version",
 			Detail:   fmt.Sprintf("Error executing discovery command: %v", err),
+		}, &diag.Diag{
+			Severity: diag.DiagDebug,
+			Summary:  "Discovery command stderr",
+			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
 	}
 
@@ -340,7 +295,7 @@ func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) diag.Diags {
 
 func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) diag.Diags {
 
-	cmd, err := t.NewCommand(linuxOSDiscoveryScript, nil)
+	cmd, err := t.NewCommand(osLinuxDiscoveryScript, nil)
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -349,12 +304,16 @@ func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) diag.Diags {
 		}}
 	}
 
-	stdout, err := cmd.Output(context.Background())
+	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
 			Summary:  "Failed to get Linux OS information",
 			Detail:   fmt.Sprintf("Error executing Linux discovery script: %v", err),
+		}, &diag.Diag{
+			Severity: diag.DiagDebug,
+			Summary:  "Discovery command stderr",
+			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
 	}
 
@@ -431,7 +390,7 @@ func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) diag.Diags {
 
 func (o *OSInfo) populateWindowsOSInfo(t transport.Transport) diag.Diags {
 
-	cmd, err := t.NewPowerShellCommand(windowsOSDiscoveryScript, nil)
+	cmd, err := t.NewPowerShellCommand(osWindowsDiscoveryScript, nil)
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
@@ -440,12 +399,16 @@ func (o *OSInfo) populateWindowsOSInfo(t transport.Transport) diag.Diags {
 		}}
 	}
 
-	stdout, err := cmd.Output(context.Background())
+	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
 		return diag.Diags{&diag.Diag{
 			Severity: diag.DiagError,
 			Summary:  "Failed to get Windows OS information",
 			Detail:   fmt.Sprintf("Error executing Windows discovery script: %v", err),
+		}, &diag.Diag{
+			Severity: diag.DiagDebug,
+			Summary:  "Discovery command stderr",
+			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
 	}
 
