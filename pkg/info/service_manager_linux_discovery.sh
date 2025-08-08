@@ -1,4 +1,7 @@
 #!/bin/sh
+# Copyright (c) Forge
+# SPDX-License-Identifier: MPL-2.0
+#
 # This script is used to discover init system information on Linux systems.
 # It returns whether systemd, initctl, OpenRC, and other init systems exist,
 # along with the target of the /sbin/init symlink and the command running as PID 1.

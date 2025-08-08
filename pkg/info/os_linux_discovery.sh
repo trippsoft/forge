@@ -1,4 +1,7 @@
 #!/bin/sh
+# Copyright (c) Forge
+# SPDX-License-Identifier: MPL-2.0
+#
 # This script is used to discover the OS and architecture on Linux systems.
 # It sets the variables 'os_arch', 'os_id', 'os_friendly_name',
 # 'os_release', 'os_version', 'os_edition', and 'os_edition_id'

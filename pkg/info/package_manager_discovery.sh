@@ -1,4 +1,7 @@
 #!/bin/sh
+# Copyright (c) Forge
+# SPDX-License-Identifier: MPL-2.0
+#
 # This script is used to discover package manager information on various POSIX systems.
 # It returns whether specific package managers are installed and available.
 

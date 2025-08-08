@@ -1,4 +1,7 @@
 #!/usr/bin/env pwsh
+# Copyright (c) Forge
+# SPDX-License-Identifier: MPL-2.0
+#
 # This script is used to discover user information on Windows systems.
 # It returns a JSON object with the user's name, ID, and home directory.
 

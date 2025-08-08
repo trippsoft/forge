@@ -1,3 +1,6 @@
+// Copyright (c) Forge
+// SPDX-License-Identifier: MPL-2.0
+
 package transport
 
 // Escalation defines the interface for privilege escalation configuration for a command.

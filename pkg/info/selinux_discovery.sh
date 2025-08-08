@@ -1,4 +1,7 @@
 #!/bin/sh
+# Copyright (c) Forge
+# SPDX-License-Identifier: MPL-2.0
+#
 # This script is used to discover SELinux status on Linux systems.
 # It returns whether SELinux is installed, its status, and type.
 

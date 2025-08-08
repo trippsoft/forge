@@ -40,7 +40,7 @@ func DiscoverInventoryFiles(paths ...string) ([]*inventoryFile, error) {
 
 			content, err := os.ReadFile(path)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to read inventory file %q: %w", path, err)
 			}
 
 			inventoryFiles = append(inventoryFiles, &inventoryFile{
@@ -520,7 +520,7 @@ func parseGroupBlocksToIntermediate(groupBlocks *hcl.BodyContent) (map[string]*i
 		}
 
 		if _, exists := groups[group.name]; exists {
-			// TODO - merge groups if they have the same name
+			// TODO - merge groups if they have the same name/context?
 			diags = diags.Append(&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  "Duplicate group name",
@@ -760,7 +760,7 @@ func parseHostBlocksToIntermediate(hostBlocks *hcl.BodyContent) (map[string]*int
 		}
 
 		if _, exists := hosts[host.name]; exists {
-			// TODO - merge hosts if they have the same name
+			// TODO - merge hosts if they have the same name/context?
 			diags = diags.Append(&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  "Duplicate host name",

@@ -1,4 +1,7 @@
 #!/bin/sh
+# Copyright (c) Forge
+# SPDX-License-Identifier: MPL-2.0
+#
 # This script is used to discover the POSIX user information on POSIX systems.
 # It returns the username, user ID, user GID, home directory, shell, and
 # GECOS info of the current user.

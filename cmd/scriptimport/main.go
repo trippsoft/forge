@@ -1,3 +1,6 @@
+// Copyright (c) Forge
+// SPDX-License-Identifier: MPL-2.0
+
 package main
 
 import (
@@ -91,8 +94,11 @@ func main() {
 	}
 
 	for i, comment := range preScriptComments {
-		stringBuilder.WriteString("// ")
-		stringBuilder.WriteString(comment)
+
+		if comment != "" {
+			stringBuilder.WriteString("// ")
+			stringBuilder.WriteString(comment)
+		}
 
 		if i < len(preScriptComments)-1 {
 			stringBuilder.WriteString("\n")
