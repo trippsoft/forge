@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strings"
 )
 
@@ -17,8 +16,19 @@ const (
 )
 
 var (
-	supportedExtensions = []string{".sh", ".py", ".ps1"}
-	backtickRegex       = regexp.MustCompile("(`+)")
+	extensionConfigs = map[string]*parserConfig{
+		".ps1": {
+			commentPrefix:         "#",
+			nonLineBreakingTokens: []string{"{"},
+			lineEndingToken:       ";",
+		},
+		".sh": {
+			commentPrefix:         "#",
+			nonLineBreakingTokens: []string{"then", "else", "{", "do"},
+			lineEndingToken:       ";",
+		},
+	}
+	backtickRegex = regexp.MustCompile("(`+)")
 )
 
 func main() {
@@ -49,7 +59,9 @@ func main() {
 
 	stringBuilder.WriteString(fileHeader)
 
-	if !slices.Contains(supportedExtensions, scriptExtension) {
+	parserConfig, exists := extensionConfigs[scriptExtension]
+
+	if !exists {
 		stringBuilder.WriteString("\n\n// Unsupported script extension: ")
 		stringBuilder.WriteString(scriptExtension)
 		stringBuilder.WriteString("\n")
@@ -76,18 +88,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	var preScriptComments []string
-	var parsedLines []parsedLine
-	var nonCommentFound bool
-	var errors []error
-	switch scriptExtension {
-	case ".sh":
-		preScriptComments, parsedLines, nonCommentFound, errors = parseShellScriptIntoLines(scriptContent)
-	case ".py":
-		preScriptComments, parsedLines, nonCommentFound, errors = parsePythonScriptIntoLines(scriptContent)
-	case ".ps1":
-		preScriptComments, parsedLines, nonCommentFound, errors = parsePowerShellScriptIntoLines(scriptContent)
-	}
+	preScriptComments, parsedLines, nonCommentFound, errors := parseScriptIntoLines(scriptContent, parserConfig)
 
 	if len(preScriptComments) > 0 {
 		stringBuilder.WriteString("\n\n")
@@ -144,6 +145,12 @@ func main() {
 	os.Exit(0)
 }
 
+type parserConfig struct {
+	commentPrefix         string   // Line prefix for comments ('#' in PS/POSIX shell)
+	nonLineBreakingTokens []string // Tokens that should not break lines ("if/then" in POSIX shell or "{" in most shells)
+	lineEndingToken       string   // Token used for signifying the end of a line without a line break (";" in PS/POSIX shell)
+}
+
 type parsedLine struct {
 	line                 string
 	isComment            bool
@@ -151,7 +158,7 @@ type parsedLine struct {
 }
 
 func snakeCaseToCamelCase(input string) string {
-	stringbuilder := &strings.Builder{}
+	stringBuilder := &strings.Builder{}
 
 	capitalizeNext := false
 	for i, r := range input {
@@ -161,23 +168,23 @@ func snakeCaseToCamelCase(input string) string {
 		}
 
 		if capitalizeNext {
-			stringbuilder.WriteString(strings.ToUpper(string(r)))
+			stringBuilder.WriteString(strings.ToUpper(string(r)))
 			capitalizeNext = false
 			continue
 		}
 
 		if i == 0 {
-			stringbuilder.WriteString(strings.ToLower(string(r)))
+			stringBuilder.WriteString(strings.ToLower(string(r)))
 			continue
 		}
 
-		stringbuilder.WriteString(string(r))
+		stringBuilder.WriteString(string(r))
 	}
 
-	return stringbuilder.String()
+	return stringBuilder.String()
 }
 
-func parseShellScriptIntoLines(content []byte) ([]string, []parsedLine, bool, []error) {
+func parseScriptIntoLines(content []byte, config *parserConfig) ([]string, []parsedLine, bool, []error) {
 
 	errors := []error{}
 	lines := strings.Split(string(content), "\n")
@@ -185,15 +192,17 @@ func parseShellScriptIntoLines(content []byte) ([]string, []parsedLine, bool, []
 	parsedLines := make([]parsedLine, 0, len(lines))
 
 	for _, line := range lines {
-
 		line = strings.TrimSpace(line)
 
-		if line == "" || strings.HasPrefix(line, "#!") {
-			continue // Skip empty lines or shebang lines
+		if line == "" {
+			continue // Skip empty lines
 		}
 
-		if after, ok := strings.CutPrefix(line, "#"); ok {
+		if strings.HasPrefix(line, "#!") {
+			continue // Skip shebang lines
+		}
 
+		if after, ok := strings.CutPrefix(line, config.commentPrefix); ok {
 			if len(parsedLines) == 0 {
 				preScriptComments = append(preScriptComments, strings.TrimSpace(after))
 				continue
@@ -206,167 +215,101 @@ func parseShellScriptIntoLines(content []byte) ([]string, []parsedLine, bool, []
 			continue
 		}
 
-		if strings.Contains(line, "`") {
-			errors = append(errors, fmt.Errorf("line contains backtick; will attempt to fix it, but it may break Go raw string literal: %s", line))
-
-			line = backtickRegex.ReplaceAllString(line, "` + \"${1}\" + `")
-			if strings.HasPrefix(line, "` + \"`") {
-				line = strings.TrimPrefix(line, "` + ")
-			} else {
-				line = fmt.Sprintf("`%s", line)
-			}
-
-			if strings.HasSuffix(line, "`\" + `") {
-				line = strings.TrimSuffix(line, " + `")
-				line = fmt.Sprintf("%s + `; `", line)
-			} else if strings.HasSuffix(line, "\\") {
-				line = strings.TrimSuffix(line, "\\")
-				line = strings.TrimSpace(line)
-				line = fmt.Sprintf("%s `", line)
-			} else if strings.HasSuffix(line, "{") || strings.HasSuffix(line, "then") || strings.HasSuffix(line, "else") {
-				line = fmt.Sprintf("%s `", line)
-			} else {
-				line = fmt.Sprintf("%s; `", line)
-			}
-
-			parsedLines = append(parsedLines, parsedLine{line: line})
-			continue
-		}
-
-		if strings.HasSuffix(line, "\\") {
-			line = strings.TrimSuffix(line, "\\")
-			line = strings.TrimSpace(line)
-			line = fmt.Sprintf("%s `", line)
-		} else if strings.HasSuffix(line, "{") || strings.HasSuffix(line, "then") || strings.HasSuffix(line, "else") {
-			line = fmt.Sprintf("%s `", line)
-		} else {
-			line = fmt.Sprintf("%s; `", line)
-		}
-
-		line = fmt.Sprintf("`%s", line)
-
-		parsedLines = append(parsedLines, parsedLine{line: line})
+		processedLine := processScriptLine(line, config, &errors)
+		parsedLines = append(parsedLines, parsedLine{line: processedLine})
 	}
 
-	nonCommentFound := false
-	for i := len(parsedLines) - 1; i >= 0; i-- {
-		if !parsedLines[i].isComment {
-			nonCommentFound = true
-
-			parsedLines[i].isLastNonCommentLine = true
-
-			if strings.HasSuffix(parsedLines[i].line, "`\" + ` ;`") {
-				parsedLines[i].line = strings.TrimSuffix(parsedLines[i].line, " + ` ;`")
-			} else if strings.HasSuffix(parsedLines[i].line, "; `") {
-				parsedLines[i].line = strings.TrimSuffix(parsedLines[i].line, "; `")
-				parsedLines[i].line = fmt.Sprintf("%s`", parsedLines[i].line)
-			} else if strings.HasSuffix(parsedLines[i].line, " `") {
-				parsedLines[i].line = strings.TrimSuffix(parsedLines[i].line, " `")
-				parsedLines[i].line = fmt.Sprintf("%s`", parsedLines[i].line)
-			}
-			break
-		}
-	}
+	nonCommentFound := markLastNonCommentLine(parsedLines)
 
 	return preScriptComments, parsedLines, nonCommentFound, errors
 }
 
-func parsePythonScriptIntoLines(content []byte) ([]string, []parsedLine, bool, []error) {
-	panic("unimplemented")
+func processScriptLine(line string, config *parserConfig, errors *[]error) string {
+
+	if strings.Contains(line, "`") {
+		*errors = append(*errors, fmt.Errorf("line contains backtick; will attempt to fix it, but it may break Go raw string literal: %s", line))
+		line = handleBackticks(line, config)
+		return line
+	}
+
+	// Handle line continuations and endings
+	return handleLineEnding(line, config)
 }
 
-func parsePowerShellScriptIntoLines(content []byte) ([]string, []parsedLine, bool, []error) {
+func handleBackticks(line string, config *parserConfig) string {
 
-	errors := []error{}
-	lines := strings.Split(string(content), "\n")
-	preScriptComments := []string{}
-	parsedLines := make([]parsedLine, 0, len(lines))
+	line = backtickRegex.ReplaceAllString(line, "` + \"${1}\" + `")
 
-	for _, line := range lines {
+	if strings.HasPrefix(line, "` + \"`") {
+		line = strings.TrimPrefix(line, "` + ")
+	} else {
+		line = fmt.Sprintf("`%s", line)
+	}
 
+	if strings.HasSuffix(line, "`\" + `") {
+		line = strings.TrimSuffix(line, " + `")
+		line = fmt.Sprintf("%s + `%s `", line, config.lineEndingToken)
+	} else {
+		line = handleLineEnding(line, config)
+	}
+
+	return line
+}
+
+func markLastNonCommentLine(parsedLines []parsedLine) bool {
+	nonCommentFound := false
+
+	for i := len(parsedLines) - 1; i >= 0; i-- {
+		if !parsedLines[i].isComment {
+			nonCommentFound = true
+			parsedLines[i].isLastNonCommentLine = true
+			parsedLines[i].line = cleanLastLine(parsedLines[i].line)
+			break
+		}
+	}
+
+	return nonCommentFound
+}
+
+func cleanLastLine(line string) string {
+
+	// Handle complex backtick endings
+	if strings.HasSuffix(line, "`\" + ` ;`") {
+		return strings.TrimSuffix(line, " + ` ;`")
+	}
+
+	// Handle semicolon endings
+	if strings.HasSuffix(line, "; `") {
+		line = strings.TrimSuffix(line, "; `")
+		return fmt.Sprintf("%s`", line)
+	}
+
+	// Handle space endings
+	if strings.HasSuffix(line, " `") {
+		line = strings.TrimSuffix(line, " `")
+		return fmt.Sprintf("%s`", line)
+	}
+
+	return line
+}
+
+func handleLineEnding(line string, config *parserConfig) string {
+	// Handle line continuation with backslash
+	if strings.HasSuffix(line, "\\") {
+		line = strings.TrimSuffix(line, "\\")
 		line = strings.TrimSpace(line)
-
-		if line == "" || strings.HasPrefix(line, "#!") {
-			continue // Skip empty lines or shebang lines
-		}
-
-		if after, ok := strings.CutPrefix(line, "#"); ok {
-
-			if len(parsedLines) == 0 {
-				preScriptComments = append(preScriptComments, strings.TrimSpace(after))
-				continue
-			}
-
-			parsedLines = append(parsedLines, parsedLine{
-				line:      fmt.Sprintf("//%s", after),
-				isComment: true,
-			})
-			continue
-		}
-
-		if strings.Contains(line, "`") {
-			errors = append(errors, fmt.Errorf("line contains backtick; will attempt to fix it, but it may break Go raw string literal: %s", line))
-
-			line = backtickRegex.ReplaceAllString(line, "` + \"${1}\" + `")
-			if strings.HasPrefix(line, "` + \"`") {
-				line = strings.TrimPrefix(line, "` + ")
-			} else {
-				line = fmt.Sprintf("`%s", line)
-			}
-
-			if strings.HasSuffix(line, "`\" + `") {
-				line = strings.TrimSuffix(line, " + `")
-				line = fmt.Sprintf("%s + `; `", line)
-			} else if strings.HasSuffix(line, "\\") {
-				line = strings.TrimSuffix(line, "\\")
-				line = strings.TrimSpace(line)
-				line = fmt.Sprintf("%s `", line)
-			} else if strings.HasSuffix(line, "{") {
-				line = fmt.Sprintf("%s `", line)
-			} else {
-				line = fmt.Sprintf("%s; `", line)
-			}
-
-			parsedLines = append(parsedLines, parsedLine{line: line})
-			continue
-		}
-
-		if strings.HasSuffix(line, "\\") {
-			line = strings.TrimSuffix(line, "\\")
-			line = strings.TrimSpace(line)
-			line = fmt.Sprintf("%s `", line)
-		} else if strings.HasSuffix(line, "{") {
-			line = fmt.Sprintf("%s `", line)
-		} else {
-			line = fmt.Sprintf("%s; `", line)
-		}
-
-		line = fmt.Sprintf("`%s", line)
-
-		parsedLines = append(parsedLines, parsedLine{line: line})
+		return fmt.Sprintf("`%s `", line)
 	}
 
-	nonCommentFound := false
-	for i := len(parsedLines) - 1; i >= 0; i-- {
-		if !parsedLines[i].isComment {
-			nonCommentFound = true
-
-			parsedLines[i].isLastNonCommentLine = true
-
-			if strings.HasSuffix(parsedLines[i].line, "`\" + ` ;`") {
-				parsedLines[i].line = strings.TrimSuffix(parsedLines[i].line, " + ` ;`")
-			} else if strings.HasSuffix(parsedLines[i].line, "; `") {
-				parsedLines[i].line = strings.TrimSuffix(parsedLines[i].line, "; `")
-				parsedLines[i].line = fmt.Sprintf("%s`", parsedLines[i].line)
-			} else if strings.HasSuffix(parsedLines[i].line, " `") {
-				parsedLines[i].line = strings.TrimSuffix(parsedLines[i].line, " `")
-				parsedLines[i].line = fmt.Sprintf("%s`", parsedLines[i].line)
-			}
-			break
+	// Check if line ends with a non-line-breaking token
+	for _, token := range config.nonLineBreakingTokens {
+		if strings.HasSuffix(line, token) {
+			return fmt.Sprintf("`%s `", line)
 		}
 	}
 
-	return preScriptComments, parsedLines, nonCommentFound, errors
+	// Default case: add semicolon
+	return fmt.Sprintf("`%s%s `", line, config.lineEndingToken)
 }
 
 func parseScript(stringBuilder *strings.Builder, parsedLines []parsedLine) {
