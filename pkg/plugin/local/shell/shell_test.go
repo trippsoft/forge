@@ -18,9 +18,16 @@ func TestPluginInputSpec(t *testing.T) {
 	plugin := &Plugin{}
 
 	spec := plugin.InputSpec()
-
 	if spec == nil {
 		t.Fatal("Expected non-nil input spec")
+	}
+
+	errs := spec.ValidateSpec()
+	if len(errs) > 0 {
+		t.Errorf("expected no errors from ValidateSpec(), got %d errors", len(errs))
+		for _, err := range errs {
+			t.Errorf("expected no errors from ValidateSpec(), got: %v", err)
+		}
 	}
 }
 

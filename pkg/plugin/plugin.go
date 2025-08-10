@@ -8,7 +8,7 @@ import (
 	"maps"
 	"time"
 
-	"github.com/hashicorp/hcl/v2/hcldec"
+	"github.com/trippsoft/forge/pkg/hclspec"
 	"github.com/trippsoft/forge/pkg/inventory"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
@@ -24,7 +24,7 @@ type CommonConfig struct {
 // This is being implemented behind an interface to allow for remote plugins eventually.
 type Plugin interface {
 	// InputSpec returns the specification for the plugin's input.
-	InputSpec() hcldec.ObjectSpec
+	InputSpec() *hclspec.Spec
 
 	// Validate checks if the plugin input is valid.
 	// This validation is done after ensuring the input matches the InputSpec.

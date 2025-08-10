@@ -7,19 +7,16 @@ import (
 	"context"
 	"time"
 
-	"github.com/hashicorp/hcl/v2/hcldec"
+	"github.com/trippsoft/forge/pkg/hclspec"
 	"github.com/trippsoft/forge/pkg/inventory"
 	"github.com/trippsoft/forge/pkg/plugin"
 	"github.com/zclconf/go-cty/cty"
 )
 
 var (
-	inputSpec = hcldec.ObjectSpec{
-		"command": &hcldec.AttrSpec{
-			Type:     cty.String,
-			Required: true,
-		},
-	}
+	inputSpec = hclspec.NewSpec(hclspec.Object(map[string]*hclspec.ObjectField{
+		"command": {Type: hclspec.String, Required: true, DefaultValue: cty.NullVal(cty.String)},
+	}))
 
 	_ plugin.LocalPlugin = &Plugin{} // Ensure Plugin implements the plugin.LocalPlugin interface.
 )
@@ -27,7 +24,7 @@ var (
 type Plugin struct{}
 
 // InputSpec implements plugin.Plugin.
-func (s *Plugin) InputSpec() hcldec.ObjectSpec {
+func (s *Plugin) InputSpec() *hclspec.Spec {
 	return inputSpec
 }
 
