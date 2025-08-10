@@ -53,34 +53,35 @@ func TestObjectField(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			field := &ObjectField{
-				Type:         tt.t,
-				Required:     tt.required,
-				DefaultValue: tt.defaultValue,
-				Aliases:      tt.aliases,
+				t:            tt.t,
+				required:     tt.required,
+				defaultValue: tt.defaultValue,
+				aliases:      tt.aliases,
 			}
 
-			if field.Required != tt.expectedRequired {
-				t.Errorf("expected required to be \"%v\", got \"%v\"", tt.expectedRequired, field.Required)
+			if field.required != tt.expectedRequired {
+				t.Errorf("expected required to be \"%v\", got \"%v\"", tt.expectedRequired, field.required)
 			}
 
-			if field.Type != tt.expectedType {
-				t.Errorf("expected type to be %q, got %q", tt.expectedType, field.Type)
+			if field.t != tt.expectedType {
+				t.Errorf("expected type to be %q, got %q", tt.expectedType, field.t)
 			}
 
-			if !field.DefaultValue.Equals(tt.defaultValue).True() {
+			if !field.defaultValue.Equals(tt.defaultValue).True() {
 				t.Errorf(
 					"expected default value to be %q, got %q",
 					tt.defaultValue.GoString(),
-					field.DefaultValue.GoString())
+					field.defaultValue.GoString())
 			}
 
-			if len(field.Aliases) != len(tt.aliases) {
-				t.Errorf("expected %d aliases, got %d", len(tt.aliases), len(field.Aliases))
+			if len(field.aliases) != len(tt.aliases) {
+				t.Errorf("expected %d aliases, got %d", len(tt.aliases), len(field.aliases))
 			}
 
 			for _, alias := range tt.aliases {
-				if !slices.Contains(field.Aliases, alias) {
+				if !slices.Contains(field.aliases, alias) {
 					t.Errorf("expected alias %q to be present, but it was not", alias)
 				}
 			}
@@ -91,8 +92,8 @@ func TestObjectField(t *testing.T) {
 func TestObject(t *testing.T) {
 
 	fields := map[string]*ObjectField{
-		"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String)},
-		"age":  {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(0)},
+		"name": RequiredField(String),
+		"age":  OptionalField(Number, cty.NumberIntVal(0)),
 	}
 
 	constraint := MutuallyExclusive("name", "age")
@@ -124,21 +125,13 @@ func TestObjectFieldValidateSpec_Pass(t *testing.T) {
 		fieldName string
 	}{
 		{
-			name: "valid required field",
-			field: &ObjectField{
-				Type:         String,
-				Required:     true,
-				DefaultValue: cty.NullVal(cty.String),
-			},
+			name:      "valid required field",
+			field:     RequiredField(String),
 			fieldName: "test",
 		},
 		{
-			name: "valid optional field with default",
-			field: &ObjectField{
-				Type:         Number,
-				Required:     false,
-				DefaultValue: cty.NumberIntVal(42),
-			},
+			name:      "valid optional field with default",
+			field:     OptionalField(Number, cty.NumberIntVal(42)),
 			fieldName: "test",
 		},
 	}
@@ -161,11 +154,7 @@ func TestObjectFieldValidateSpec_Pass(t *testing.T) {
 
 func TestObjectFieldValidateSpec_UnknownDefaultValue(t *testing.T) {
 
-	field := &ObjectField{
-		Type:         String,
-		Required:     false,
-		DefaultValue: cty.UnknownVal(cty.String),
-	}
+	field := OptionalField(String, cty.UnknownVal(cty.String))
 
 	errs := field.validateSpec("test")
 	if len(errs) != 1 {
@@ -181,9 +170,9 @@ func TestObjectFieldValidateSpec_UnknownDefaultValue(t *testing.T) {
 func TestObjectFieldValidateSpec_RequiredWithDefault(t *testing.T) {
 
 	field := &ObjectField{
-		Type:         String,
-		Required:     true,
-		DefaultValue: cty.StringVal("default"),
+		t:            String,
+		required:     true,
+		defaultValue: cty.StringVal("default"),
 	}
 
 	errs := field.validateSpec("test")
@@ -199,11 +188,7 @@ func TestObjectFieldValidateSpec_RequiredWithDefault(t *testing.T) {
 
 func TestObjectFieldValidateSpec_InvalidDefaultValue(t *testing.T) {
 
-	field := &ObjectField{
-		Type:         Number,
-		Required:     false,
-		DefaultValue: cty.StringVal("not-a-number"),
-	}
+	field := OptionalField(Number, cty.StringVal("not-a-number"))
 
 	errs := field.validateSpec("test")
 	if len(errs) != 1 {
@@ -218,9 +203,9 @@ func TestObjectFieldValidateSpec_InvalidDefaultValue(t *testing.T) {
 
 func TestObjectTypeCtyType(t *testing.T) {
 	obj := Object(map[string]*ObjectField{
-		"name":   {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String)},
-		"age":    {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(0)},
-		"active": {Type: Bool, Required: false, DefaultValue: cty.BoolVal(false)},
+		"name":   RequiredField(String),
+		"age":    OptionalField(Number, cty.NumberIntVal(0)),
+		"active": OptionalField(Bool, cty.BoolVal(false)),
 	})
 
 	ctyType := obj.CtyType()
@@ -279,8 +264,8 @@ func TestObjectType(t *testing.T) {
 		{
 			name: "valid object",
 			object: Object(map[string]*ObjectField{
-				"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String), Aliases: []string{"fullname", "title"}},
-				"age":  {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(25)},
+				"name": RequiredField(String),
+				"age":  OptionalField(Number, cty.NumberIntVal(25)),
 			}),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"name": cty.StringVal("John"),
@@ -294,8 +279,8 @@ func TestObjectType(t *testing.T) {
 		{
 			name: "valid map",
 			object: Object(map[string]*ObjectField{
-				"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String), Aliases: []string{"fullname", "title"}},
-				"age":  {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(25)},
+				"name": RequiredField(String),
+				"age":  OptionalField(Number, cty.NumberIntVal(25)),
 			}),
 			input: cty.MapVal(map[string]cty.Value{
 				"name": cty.StringVal("Jane"),
@@ -308,8 +293,8 @@ func TestObjectType(t *testing.T) {
 		{
 			name: "object with missing optional field uses default",
 			object: Object(map[string]*ObjectField{
-				"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String), Aliases: []string{"fullname", "title"}},
-				"age":  {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(25)},
+				"name": RequiredField(String),
+				"age":  OptionalField(Number, cty.NumberIntVal(25)),
 			}),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"name": cty.StringVal("Bob"),
@@ -322,8 +307,8 @@ func TestObjectType(t *testing.T) {
 		{
 			name: "object with type conversion",
 			object: Object(map[string]*ObjectField{
-				"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String), Aliases: []string{"fullname", "title"}},
-				"age":  {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(25)},
+				"name": RequiredField(String),
+				"age":  OptionalField(Number, cty.NumberIntVal(25)),
 			}),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"name": cty.StringVal("Alice"),
@@ -337,8 +322,8 @@ func TestObjectType(t *testing.T) {
 		{
 			name: "using primary name",
 			object: Object(map[string]*ObjectField{
-				"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String), Aliases: []string{"fullname", "title"}},
-				"age":  {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(25)},
+				"name": RequiredField(String),
+				"age":  OptionalField(Number, cty.NumberIntVal(25)),
 			}),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"name": cty.StringVal("John"),
@@ -351,8 +336,8 @@ func TestObjectType(t *testing.T) {
 		{
 			name: "using first alias",
 			object: Object(map[string]*ObjectField{
-				"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String), Aliases: []string{"fullname", "title"}},
-				"age":  {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(25)},
+				"name": RequiredField(String, "fullname", "title"),
+				"age":  OptionalField(Number, cty.NumberIntVal(25)),
 			}),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"fullname": cty.StringVal("John Doe"),
@@ -365,8 +350,8 @@ func TestObjectType(t *testing.T) {
 		{
 			name: "using second alias",
 			object: Object(map[string]*ObjectField{
-				"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String), Aliases: []string{"fullname", "title"}},
-				"age":  {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(25)},
+				"name": RequiredField(String, "fullname", "title"),
+				"age":  OptionalField(Number, cty.NumberIntVal(25)),
 			}),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"title": cty.StringVal("Mr. John"),
@@ -379,8 +364,8 @@ func TestObjectType(t *testing.T) {
 		{
 			name: "constraint passes - only field1",
 			object: Object(map[string]*ObjectField{
-				"field1": {Type: String, Required: false, DefaultValue: cty.NullVal(cty.String)},
-				"field2": {Type: String, Required: false, DefaultValue: cty.NullVal(cty.String)},
+				"field1": OptionalField(String, cty.NullVal(cty.String)),
+				"field2": OptionalField(String, cty.NullVal(cty.String)),
 			}, MutuallyExclusive("field1", "field2")),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"field1": cty.StringVal("value1"),
@@ -393,8 +378,8 @@ func TestObjectType(t *testing.T) {
 		{
 			name: "constraint passes - only field2",
 			object: Object(map[string]*ObjectField{
-				"field1": {Type: String, Required: false, DefaultValue: cty.NullVal(cty.String)},
-				"field2": {Type: String, Required: false, DefaultValue: cty.NullVal(cty.String)},
+				"field1": OptionalField(String, cty.NullVal(cty.String)),
+				"field2": OptionalField(String, cty.NullVal(cty.String)),
 			}, MutuallyExclusive("field1", "field2")),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"field2": cty.StringVal("value2"),
@@ -407,8 +392,8 @@ func TestObjectType(t *testing.T) {
 		{
 			name: "constraint passes - neither field",
 			object: Object(map[string]*ObjectField{
-				"field1": {Type: String, Required: false, DefaultValue: cty.NullVal(cty.String)},
-				"field2": {Type: String, Required: false, DefaultValue: cty.NullVal(cty.String)},
+				"field1": OptionalField(String, cty.NullVal(cty.String)),
+				"field2": OptionalField(String, cty.NullVal(cty.String)),
 			}, MutuallyExclusive("field1", "field2")),
 			input: cty.ObjectVal(map[string]cty.Value{}),
 			expected: cty.ObjectVal(map[string]cty.Value{
@@ -419,8 +404,8 @@ func TestObjectType(t *testing.T) {
 		{
 			name: "valid map with string values (age will be converted)",
 			object: Object(map[string]*ObjectField{
-				"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String)},
-				"age":  {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(25)},
+				"name": RequiredField(String),
+				"age":  OptionalField(Number, cty.NumberIntVal(25)),
 			}),
 			input: cty.MapVal(map[string]cty.Value{
 				"name": cty.StringVal("John"),
@@ -434,8 +419,8 @@ func TestObjectType(t *testing.T) {
 		{
 			name: "map with missing optional field",
 			object: Object(map[string]*ObjectField{
-				"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String)},
-				"age":  {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(25)},
+				"name": RequiredField(String),
+				"age":  OptionalField(Number, cty.NumberIntVal(25)),
 			}),
 			input: cty.MapVal(map[string]cty.Value{
 				"name": cty.StringVal("Jane"),
@@ -448,8 +433,8 @@ func TestObjectType(t *testing.T) {
 		{
 			name: "empty map uses defaults",
 			object: Object(map[string]*ObjectField{
-				"name": {Type: String, Required: false, DefaultValue: cty.NullVal(cty.String)},
-				"age":  {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(25)},
+				"name": OptionalField(String, cty.NullVal(cty.String)),
+				"age":  OptionalField(Number, cty.NumberIntVal(25)),
 			}),
 			input: cty.MapValEmpty(cty.String),
 			expected: cty.ObjectVal(map[string]cty.Value{
@@ -460,8 +445,8 @@ func TestObjectType(t *testing.T) {
 		{
 			name: "null object",
 			object: Object(map[string]*ObjectField{
-				"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String), Aliases: []string{"fullname", "title"}},
-				"age":  {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(25)},
+				"name": RequiredField(String, "fullname", "title"),
+				"age":  OptionalField(Number, cty.NumberIntVal(25)),
 			}),
 			input: cty.NullVal(cty.Object(map[string]cty.Type{
 				"name": cty.String,
@@ -484,7 +469,7 @@ func TestObjectType(t *testing.T) {
 func TestObjectType_UnknownValue(t *testing.T) {
 
 	obj := Object(map[string]*ObjectField{
-		"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String)},
+		"name": RequiredField(String),
 	})
 	expectedError := "cannot convert unknown value"
 	verifyFailedConversion(t, obj, cty.UnknownVal(obj.CtyType()), expectedError)
@@ -492,7 +477,7 @@ func TestObjectType_UnknownValue(t *testing.T) {
 
 func TestObjectType_InvalidType(t *testing.T) {
 	obj := Object(map[string]*ObjectField{
-		"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String)},
+		"name": RequiredField(String),
 	})
 
 	tests := []struct {
@@ -526,7 +511,7 @@ func TestObjectType_InvalidType(t *testing.T) {
 
 func TestObjectType_InvalidAttributes(t *testing.T) {
 	obj := Object(map[string]*ObjectField{
-		"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String)},
+		"name": RequiredField(String),
 	})
 
 	input := cty.ObjectVal(map[string]cty.Value{
@@ -544,7 +529,7 @@ func TestObjectType_InvalidAttributes(t *testing.T) {
 
 func TestObjectType_FieldConversionError(t *testing.T) {
 	obj := Object(map[string]*ObjectField{
-		"age": {Type: Number, Required: true, DefaultValue: cty.NullVal(cty.Number)},
+		"age": RequiredField(Number),
 	})
 
 	input := cty.ObjectVal(map[string]cty.Value{
@@ -563,7 +548,7 @@ func TestObjectType_FieldConversionError(t *testing.T) {
 func TestObjectType_MultipleAliasesDefined(t *testing.T) {
 
 	obj := Object(map[string]*ObjectField{
-		"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String), Aliases: []string{"fullname"}},
+		"name": RequiredField(String, "fullname"),
 	})
 
 	input := cty.ObjectVal(map[string]cty.Value{
@@ -578,8 +563,8 @@ func TestObjectType_MultipleAliasesDefined(t *testing.T) {
 func TestObjectType_MissingRequiredField(t *testing.T) {
 
 	obj := Object(map[string]*ObjectField{
-		"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String)},
-		"age":  {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(0)},
+		"name": RequiredField(String),
+		"age":  OptionalField(Number, cty.NumberIntVal(0)),
 	})
 
 	input := cty.ObjectVal(map[string]cty.Value{
@@ -593,7 +578,7 @@ func TestObjectType_MissingRequiredField(t *testing.T) {
 func TestObjectType_FieldValidationFailure(t *testing.T) {
 
 	obj := Object(map[string]*ObjectField{
-		"duration": {Type: Duration, Required: true, DefaultValue: cty.NullVal(cty.String)},
+		"duration": RequiredField(Duration),
 	})
 
 	input := cty.ObjectVal(map[string]cty.Value{
@@ -611,7 +596,7 @@ func TestObjectType_FieldValidationFailure(t *testing.T) {
 func TestObjectType_ConversionError(t *testing.T) {
 
 	obj := Object(map[string]*ObjectField{
-		"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String)},
+		"name": RequiredField(String),
 	})
 
 	input := cty.StringVal("not-an-object")
@@ -627,8 +612,8 @@ func TestObjectType_ConversionError(t *testing.T) {
 func TestObjectType_ConstraintFailure(t *testing.T) {
 
 	obj := Object(map[string]*ObjectField{
-		"field1": {Type: String, Required: false, DefaultValue: cty.NullVal(cty.String)},
-		"field2": {Type: String, Required: false, DefaultValue: cty.NullVal(cty.String)},
+		"field1": OptionalField(String, cty.NullVal(cty.String)),
+		"field2": OptionalField(String, cty.NullVal(cty.String)),
 	}, MutuallyExclusive("field1", "field2"))
 
 	input := cty.ObjectVal(map[string]cty.Value{
@@ -645,7 +630,7 @@ func TestObjectType_ConstraintFailure(t *testing.T) {
 func TestObjectType_InvalidIndexesInMap(t *testing.T) {
 
 	obj := Object(map[string]*ObjectField{
-		"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String)},
+		"name": {t: String, required: true, defaultValue: cty.NullVal(cty.String)},
 	})
 
 	input := cty.MapVal(map[string]cty.Value{
@@ -666,16 +651,16 @@ func TestObjectTypeValidateSpec_Pass(t *testing.T) {
 		{
 			name: "valid spec",
 			fields: map[string]*ObjectField{
-				"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String)},
-				"age":  {Type: Number, Required: false, DefaultValue: cty.NumberIntVal(0)},
+				"name": RequiredField(String),
+				"age":  OptionalField(Number, cty.NumberIntVal(0)),
 			},
 			constraints: nil,
 		},
 		{
 			name: "valid spec with constraints",
 			fields: map[string]*ObjectField{
-				"field1": {Type: String, Required: false, DefaultValue: cty.NullVal(cty.String)},
-				"field2": {Type: String, Required: false, DefaultValue: cty.NullVal(cty.String)},
+				"field1": OptionalField(String, cty.NullVal(cty.String)),
+				"field2": OptionalField(String, cty.NullVal(cty.String)),
 			},
 			constraints: []objectConstraint{MutuallyExclusive("field1", "field2")},
 		},
@@ -699,9 +684,9 @@ func TestObjectTypeValidateSpec_FieldErrors(t *testing.T) {
 
 	obj := Object(map[string]*ObjectField{
 		"invalid": {
-			Type:         String,
-			Required:     true,
-			DefaultValue: cty.StringVal("default"), // Required field with default
+			t:            String,
+			required:     true,
+			defaultValue: cty.StringVal("default"), // Required field with default
 		},
 	})
 
@@ -719,7 +704,7 @@ func TestObjectTypeValidateSpec_FieldErrors(t *testing.T) {
 func TestObjectTypeValidateSpec_DuplicateFieldNames(t *testing.T) {
 
 	obj := Object(map[string]*ObjectField{
-		"name": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String), Aliases: []string{"name"}},
+		"name": RequiredField(String, "name"),
 	})
 
 	errs := obj.ValidateSpec()
@@ -740,7 +725,7 @@ func TestObjectTypeValidateSpec_DuplicateFieldNames(t *testing.T) {
 func TestObjectTypeValidateSpec_InvalidConstraint(t *testing.T) {
 
 	obj := Object(map[string]*ObjectField{
-		"field1": {Type: String, Required: false, DefaultValue: cty.NullVal(cty.String)},
+		"field1": OptionalField(String, cty.NullVal(cty.String)),
 	}, MutuallyExclusive("field1", "nonexistent"))
 
 	errs := obj.ValidateSpec()

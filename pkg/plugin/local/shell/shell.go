@@ -15,7 +15,7 @@ import (
 
 var (
 	inputSpec = hclspec.NewSpec(hclspec.Object(map[string]*hclspec.ObjectField{
-		"command": {Type: hclspec.String, Required: true, DefaultValue: cty.NullVal(cty.String)},
+		"command": hclspec.RequiredField(hclspec.String),
 	}))
 
 	_ plugin.LocalPlugin = &Plugin{} // Ensure Plugin implements the plugin.LocalPlugin interface.

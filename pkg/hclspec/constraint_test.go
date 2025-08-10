@@ -13,10 +13,10 @@ import (
 // Helper function to create a mock objectType for testing
 func createMockObjectType() *objectType {
 	return Object(map[string]*ObjectField{
-		"field1": {Type: String, Required: true, DefaultValue: cty.NullVal(cty.String)},
-		"field2": {Type: String, Required: false, DefaultValue: cty.NullVal(cty.String)},
-		"field3": {Type: Number, Required: false, DefaultValue: cty.NullVal(cty.Number)},
-		"field4": {Type: Bool, Required: false, DefaultValue: cty.NullVal(cty.Bool)},
+		"field1": RequiredField(String),
+		"field2": OptionalField(String, cty.NullVal(cty.String)),
+		"field3": OptionalField(Number, cty.NullVal(cty.Number)),
+		"field4": OptionalField(Bool, cty.NullVal(cty.Bool)),
 	})
 }
 

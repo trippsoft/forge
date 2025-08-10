@@ -12,10 +12,28 @@ import (
 )
 
 type ObjectField struct {
-	Type         Type
-	Aliases      []string
-	Required     bool
-	DefaultValue cty.Value
+	t            Type
+	aliases      []string
+	required     bool
+	defaultValue cty.Value
+}
+
+func RequiredField(t Type, aliases ...string) *ObjectField {
+	return &ObjectField{
+		t:            t,
+		aliases:      aliases,
+		required:     true,
+		defaultValue: cty.NullVal(t.CtyType()),
+	}
+}
+
+func OptionalField(t Type, defaultValue cty.Value, aliases ...string) *ObjectField {
+	return &ObjectField{
+		t:            t,
+		aliases:      aliases,
+		required:     false,
+		defaultValue: defaultValue,
+	}
 }
 
 type objectType struct {
@@ -33,29 +51,29 @@ func Object(fields map[string]*ObjectField, constraints ...objectConstraint) *ob
 func (o *ObjectField) validateSpec(name string) []error {
 
 	e := []error{}
-	if o.Type == nil {
+	if o.t == nil {
 		e = append(e, fmt.Errorf("field %q has no type defined", name))
 	}
 
-	if len(o.Aliases) > 0 {
-		if slices.Contains(o.Aliases, "") {
+	if len(o.aliases) > 0 {
+		if slices.Contains(o.aliases, "") {
 			e = append(e, fmt.Errorf("field %q has an empty alias", name))
 		}
 	}
 
-	fieldErrs := o.Type.ValidateSpec()
+	fieldErrs := o.t.ValidateSpec()
 	e = append(e, fieldErrs...)
 
-	if !o.DefaultValue.IsWhollyKnown() {
+	if !o.defaultValue.IsWhollyKnown() {
 		e = append(e, fmt.Errorf("field %q has an unknown default value", name))
 		return e
 	}
 
-	if o.Required && !o.DefaultValue.IsNull() {
+	if o.required && !o.defaultValue.IsNull() {
 		e = append(e, fmt.Errorf("field %q is required and has a default value", name))
 	}
 
-	err := o.Type.Validate(o.DefaultValue)
+	err := o.t.Validate(o.defaultValue)
 	if err != nil {
 		e = append(e, fmt.Errorf("field %q default value validation failed: %w", name, err))
 	}
@@ -68,7 +86,7 @@ func (o *objectType) CtyType() cty.Type {
 
 	fieldTypes := make(map[string]cty.Type, len(o.fields))
 	for name, field := range o.fields {
-		fieldTypes[name] = field.Type.CtyType()
+		fieldTypes[name] = field.t.CtyType()
 	}
 
 	return cty.Object(fieldTypes)
@@ -114,12 +132,12 @@ func (o *objectType) convert(values map[string]cty.Value) (map[string]cty.Value,
 	validKeys := []string{}
 
 	for name, field := range o.fields {
-		fieldValue := field.DefaultValue
+		fieldValue := field.defaultValue
 		foundAs := []string{}
 		validKeys = append(validKeys, name)
 
 		if value, ok := values[name]; ok {
-			value, err := field.Type.Convert(value)
+			value, err := field.t.Convert(value)
 			if err != nil {
 				return nil, fmt.Errorf("cannot convert field %q: %w", name, err)
 			}
@@ -127,10 +145,10 @@ func (o *objectType) convert(values map[string]cty.Value) (map[string]cty.Value,
 			fieldValue = value
 		}
 
-		for _, alias := range field.Aliases {
+		for _, alias := range field.aliases {
 			validKeys = append(validKeys, alias)
 			if value, ok := values[alias]; ok {
-				value, err := field.Type.Convert(value)
+				value, err := field.t.Convert(value)
 				if err != nil {
 					return nil, fmt.Errorf("cannot convert field %q (alias %q): %w", name, alias, err)
 				}
@@ -197,11 +215,11 @@ func (o *objectType) validate(values map[string]cty.Value) error {
 			return fmt.Errorf("missing field %q", name)
 		}
 
-		if field.Required && value.IsNull() {
+		if field.required && value.IsNull() {
 			return fmt.Errorf("missing required field %q", name)
 		}
 
-		if err := field.Type.Validate(value); err != nil {
+		if err := field.t.Validate(value); err != nil {
 			return fmt.Errorf("field %q validation failed: %w", name, err)
 		}
 	}
@@ -247,7 +265,7 @@ func (o *objectType) ValidateSpec() []error {
 
 		definedNames[name] = append(definedNames[name], name)
 
-		for _, alias := range field.Aliases {
+		for _, alias := range field.aliases {
 			definedNames[alias] = append(definedNames[alias], name)
 		}
 	}
