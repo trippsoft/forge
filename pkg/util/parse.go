@@ -32,7 +32,7 @@ func ConvertHCLAttributeToString(attribute *hcl.Attribute, evalCtx *hcl.EvalCont
 			Detail:   fmt.Sprintf("The value for '%s' could not be converted to a string: %v", attribute.Name, err),
 		})
 	}
-	return str, nil
+	return str, diags
 }
 
 // ConvertHCLAttributeToUint16 converts an HCL attribute to a uint16 value.
@@ -55,7 +55,7 @@ func ConvertHCLAttributeToUint16(attribute *hcl.Attribute, evalCtx *hcl.EvalCont
 			Detail:   fmt.Sprintf("The value for '%s' could not be converted to a uint16: %v", attribute.Name, err),
 		})
 	}
-	return num, nil
+	return num, diags
 }
 
 // ConvertHCLAttributeToBool converts an HCL attribute to a bool value.
@@ -78,7 +78,7 @@ func ConvertHCLAttributeToBool(attribute *hcl.Attribute, evalCtx *hcl.EvalContex
 			Detail:   fmt.Sprintf("The value for '%s' could not be converted to a bool: %v", attribute.Name, err),
 		})
 	}
-	return b, nil
+	return b, diags
 }
 
 // ConvertHCLAttributeToDuration converts an HCL attribute to a duration value.
@@ -111,10 +111,10 @@ func ConvertHCLAttributeToDuration(attribute *hcl.Attribute, evalCtx *hcl.EvalCo
 		})
 	}
 
-	return duration, nil
+	return duration, diags
 }
 
-// GetAllCtyStrings returns all string values found within a cty.Value.4
+// GetAllCtyStrings returns all string values found within a cty.Value.
 func GetAllCtyStrings(value cty.Value) []string {
 
 	results := []string{}
