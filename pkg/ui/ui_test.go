@@ -466,12 +466,12 @@ func TestPrintLine(t *testing.T) {
 		{
 			name:      "hyphen",
 			character: '-',
-			expected:  strings.Repeat("-", 80),
+			expected:  fmt.Sprintf("%s\n", strings.Repeat("-", 78)),
 		},
 		{
 			name:      "equal sign",
 			character: '=',
-			expected:  strings.Repeat("=", 80),
+			expected:  fmt.Sprintf("%s\n", strings.Repeat("=", 78)),
 		},
 	}
 
@@ -507,7 +507,7 @@ func TestPrintLineWithFormat(t *testing.T) {
 			color:        false,
 			leftPadding:  0,
 			rightPadding: 0,
-			expected:     strings.Repeat("-", 80),
+			expected:     fmt.Sprintf("%s\n", strings.Repeat("-", 78)),
 		},
 		{
 			name:         "equal sign",
@@ -515,7 +515,7 @@ func TestPrintLineWithFormat(t *testing.T) {
 			color:        false,
 			leftPadding:  0,
 			rightPadding: 0,
-			expected:     strings.Repeat("=", 80),
+			expected:     fmt.Sprintf("%s\n", strings.Repeat("=", 78)),
 		},
 		{
 			name:         "hyphen with padding",
@@ -523,7 +523,7 @@ func TestPrintLineWithFormat(t *testing.T) {
 			color:        false,
 			leftPadding:  2,
 			rightPadding: 2,
-			expected:     "  " + strings.Repeat("-", 76) + "  ",
+			expected:     fmt.Sprintf("  %s  \n", strings.Repeat("-", 74)),
 		},
 		{
 			name:         "colored asterisk",
@@ -532,7 +532,7 @@ func TestPrintLineWithFormat(t *testing.T) {
 			args:         []TextArgument{1, 31}, // Bold + Red
 			leftPadding:  0,
 			rightPadding: 0,
-			expected:     fmt.Sprintf("\033[1;31m%s\033[0m", strings.Repeat("*", 80)),
+			expected:     fmt.Sprintf("\033[1;31m%s\033[0m\n", strings.Repeat("*", 78)),
 		},
 		{
 			name:         "colored equal sign with padding",
@@ -541,7 +541,7 @@ func TestPrintLineWithFormat(t *testing.T) {
 			args:         []TextArgument{32}, // Green
 			leftPadding:  2,
 			rightPadding: 0,
-			expected:     fmt.Sprintf("\033[32m  %s\033[0m", strings.Repeat("=", 78)),
+			expected:     fmt.Sprintf("\033[32m  %s\033[0m\n", strings.Repeat("=", 76)),
 		},
 	}
 
@@ -556,6 +556,200 @@ func TestPrintLineWithFormat(t *testing.T) {
 				LeftPadding:  tt.leftPadding,
 				RightPadding: tt.rightPadding,
 			})
+
+			if outBuf.String() != tt.expected {
+				t.Errorf("Expected output: %q, got: %q", tt.expected, outBuf.String())
+			}
+		})
+	}
+}
+
+func TestPrintColumns(t *testing.T) {
+
+	tests := []struct {
+		name            string
+		leftMessage     string
+		leftFormatting  TextFormatting
+		rightMessage    string
+		rightFormatting TextFormatting
+		color           bool
+		secrets         []string
+		expected        string
+	}{
+		{
+			name:            "simple two columns",
+			leftMessage:     "Left",
+			leftFormatting:  TextFormatting{},
+			rightMessage:    "Right",
+			rightFormatting: TextFormatting{},
+			color:           false,
+			secrets:         []string{},
+			expected:        fmt.Sprintf("Left%sRight\n", strings.Repeat(" ", 69)),
+		},
+		{
+			name:            "columns with left padding",
+			leftMessage:     "Left",
+			leftFormatting:  TextFormatting{LeftPadding: 2},
+			rightMessage:    "Right",
+			rightFormatting: TextFormatting{},
+			color:           false,
+			secrets:         []string{},
+			expected:        fmt.Sprintf("  Left%sRight\n", strings.Repeat(" ", 67)),
+		},
+		{
+			name:            "columns with right padding",
+			leftMessage:     "Left",
+			leftFormatting:  TextFormatting{},
+			rightMessage:    "Right",
+			rightFormatting: TextFormatting{RightPadding: 3},
+			color:           false,
+			secrets:         []string{},
+			expected:        fmt.Sprintf("Left%sRight   \n", strings.Repeat(" ", 66)),
+		},
+		{
+			name:            "columns with both left and right padding",
+			leftMessage:     "Left",
+			leftFormatting:  TextFormatting{LeftPadding: 2, RightPadding: 1},
+			rightMessage:    "Right",
+			rightFormatting: TextFormatting{LeftPadding: 1, RightPadding: 2},
+			color:           false,
+			secrets:         []string{},
+			expected:        fmt.Sprintf("  Left %s Right  \n", strings.Repeat(" ", 63)),
+		},
+		{
+			name:            "colored left column",
+			leftMessage:     "Left",
+			leftFormatting:  TextFormatting{Args: []TextArgument{ForegroundColorRed}},
+			rightMessage:    "Right",
+			rightFormatting: TextFormatting{},
+			color:           true,
+			secrets:         []string{},
+			expected:        fmt.Sprintf("\033[31mLeft\033[0m%sRight\n", strings.Repeat(" ", 69)),
+		},
+		{
+			name:            "colored right column",
+			leftMessage:     "Left",
+			leftFormatting:  TextFormatting{},
+			rightMessage:    "Right",
+			rightFormatting: TextFormatting{Args: []TextArgument{ForegroundColorGreen}},
+			color:           true,
+			secrets:         []string{},
+			expected:        fmt.Sprintf("Left%s\033[32mRight\033[0m\n", strings.Repeat(" ", 69)),
+		},
+		{
+			name:            "both columns colored",
+			leftMessage:     "Left",
+			leftFormatting:  TextFormatting{Args: []TextArgument{Bold, ForegroundColorRed}},
+			rightMessage:    "Right",
+			rightFormatting: TextFormatting{Args: []TextArgument{Bold, ForegroundColorGreen}},
+			color:           true,
+			secrets:         []string{},
+			expected:        fmt.Sprintf("\033[1;31mLeft\033[0m%s\033[1;32mRight\033[0m\n", strings.Repeat(" ", 69)),
+		},
+		{
+			name:            "colored columns with padding",
+			leftMessage:     "Left",
+			leftFormatting:  TextFormatting{Args: []TextArgument{31}, LeftPadding: 1},
+			rightMessage:    "Right",
+			rightFormatting: TextFormatting{Args: []TextArgument{32}, RightPadding: 1},
+			color:           true,
+			secrets:         []string{},
+			expected:        fmt.Sprintf("\033[31m Left\033[0m%s\033[32mRight \033[0m\n", strings.Repeat(" ", 67)),
+		},
+		{
+			name:            "color disabled with args provided",
+			leftMessage:     "Left",
+			leftFormatting:  TextFormatting{Args: []TextArgument{31}},
+			rightMessage:    "Right",
+			rightFormatting: TextFormatting{Args: []TextArgument{32}},
+			color:           false,
+			secrets:         []string{},
+			expected:        fmt.Sprintf("Left%sRight\n", strings.Repeat(" ", 69)),
+		},
+		{
+			name:            "columns with secret filtering",
+			leftMessage:     "User: admin",
+			leftFormatting:  TextFormatting{},
+			rightMessage:    "Pass: secret123",
+			rightFormatting: TextFormatting{},
+			color:           false,
+			secrets:         []string{"admin", "secret123"},
+			expected:        fmt.Sprintf("User: <redacted>%sPass: <redacted>\n", strings.Repeat(" ", 46)),
+		},
+		{
+			name:            "colored columns with secret filtering",
+			leftMessage:     "API Key",
+			leftFormatting:  TextFormatting{Args: []TextArgument{ForegroundColorYellow}},
+			rightMessage:    "apikey123",
+			rightFormatting: TextFormatting{Args: []TextArgument{ForegroundColorRed}},
+			color:           true,
+			secrets:         []string{"apikey123"},
+			expected:        fmt.Sprintf("\033[33mAPI Key\033[0m%s\033[31m<redacted>\033[0m\n", strings.Repeat(" ", 61)),
+		},
+		{
+			name:            "empty left column",
+			leftMessage:     "",
+			leftFormatting:  TextFormatting{},
+			rightMessage:    "Right",
+			rightFormatting: TextFormatting{},
+			color:           false,
+			secrets:         []string{},
+			expected:        fmt.Sprintf("%sRight\n", strings.Repeat(" ", 73)),
+		},
+		{
+			name:            "empty right column",
+			leftMessage:     "Left",
+			leftFormatting:  TextFormatting{},
+			rightMessage:    "",
+			rightFormatting: TextFormatting{},
+			color:           false,
+			secrets:         []string{},
+			expected:        fmt.Sprintf("Left%s\n", strings.Repeat(" ", 74)),
+		},
+		{
+			name:            "both columns empty",
+			leftMessage:     "",
+			leftFormatting:  TextFormatting{},
+			rightMessage:    "",
+			rightFormatting: TextFormatting{},
+			color:           false,
+			secrets:         []string{},
+			expected:        fmt.Sprintf("%s\n", strings.Repeat(" ", 78)),
+		},
+		{
+			name:            "long messages that fill width",
+			leftMessage:     strings.Repeat("A", 39),
+			leftFormatting:  TextFormatting{},
+			rightMessage:    strings.Repeat("B", 39),
+			rightFormatting: TextFormatting{},
+			color:           false,
+			secrets:         []string{},
+			expected:        fmt.Sprintf("%s%s\n", strings.Repeat("A", 39), strings.Repeat("B", 39)),
+		},
+		{
+			name:            "messages that exceed width",
+			leftMessage:     strings.Repeat("A", 40),
+			leftFormatting:  TextFormatting{},
+			rightMessage:    strings.Repeat("B", 40),
+			rightFormatting: TextFormatting{},
+			color:           false,
+			secrets:         []string{},
+			expected:        fmt.Sprintf("%s%s\n", strings.Repeat("A", 40), strings.Repeat("B", 40)), // No spaces when exceeding width
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			var outBuf, errBuf bytes.Buffer
+			ui := MockUI(&outBuf, &errBuf, tt.color)
+
+			log.SecretFilter.Clear()
+			for _, secret := range tt.secrets {
+				log.SecretFilter.AddSecret(secret)
+			}
+
+			ui.PrintColumns(tt.leftMessage, tt.leftFormatting, tt.rightMessage, tt.rightFormatting)
 
 			if outBuf.String() != tt.expected {
 				t.Errorf("Expected output: %q, got: %q", tt.expected, outBuf.String())

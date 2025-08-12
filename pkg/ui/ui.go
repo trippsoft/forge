@@ -100,11 +100,17 @@ func (u *ui) PrintLine(character rune) {
 func (u *ui) PrintLineWithFormat(character rune, formatting TextFormatting) {
 	length := u.consoleWidth() - formatting.LeftPadding - formatting.RightPadding
 	line := strings.Repeat(string(character), length)
-	u.writeText(u.out, line, formatting)
+	line = u.formatText(line, formatting)
+	line = fmt.Sprintf("%s\n", line)
+	u.writeText(u.out, line, TextFormatting{})
 }
 
 // PrintColumns implements UI.
 func (u *ui) PrintColumns(leftMessage string, leftFormatting TextFormatting, rightMessage string, rightFormatting TextFormatting) {
+
+	leftMessage = log.SecretFilter.Filter(leftMessage)
+	rightMessage = log.SecretFilter.Filter(rightMessage)
+
 	leftRuneCount := utf8.RuneCountInString(leftMessage)
 	rightRuneCount := utf8.RuneCountInString(rightMessage)
 
