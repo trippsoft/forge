@@ -10,6 +10,7 @@ require (
 	github.com/zclconf/go-cty v1.16.3
 	github.com/zclconf/go-cty-yaml v1.1.0
 	golang.org/x/crypto v0.41.0
+	golang.org/x/term v0.34.0
 	golang.org/x/text v0.28.0
 )
 
