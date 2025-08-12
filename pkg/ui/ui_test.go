@@ -2,7 +2,6 @@ package ui
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -10,34 +9,38 @@ import (
 )
 
 func TestPrint(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		message  string
+		color    bool
 		secrets  []string
 		expected string
 	}{
 		{
-			name:     "simple message without color",
+			name:     "simple message",
 			message:  "Hello World",
+			color:    false,
 			secrets:  []string{},
 			expected: "Hello World",
 		},
 		{
-			name:     "message with secret filtering",
+			name:     "message with secrets",
 			message:  "Password is secret123",
+			color:    false,
 			secrets:  []string{"secret123"},
 			expected: "Password is <redacted>",
 		},
 		{
 			name:     "message with multiple secrets",
 			message:  "User admin password secret123",
+			color:    false,
 			secrets:  []string{"admin", "secret123"},
 			expected: "User <redacted> password <redacted>",
 		},
 		{
 			name:     "empty message",
 			message:  "",
+			color:    false,
 			secrets:  []string{},
 			expected: "",
 		},
@@ -45,10 +48,10 @@ func TestPrint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			var outBuf, errBuf bytes.Buffer
-			ui := MockUI(&outBuf, &errBuf, true)
+			ui := MockUI(&outBuf, &errBuf, tt.color)
 
+			// Setup secret filter
 			log.SecretFilter.Clear()
 			for _, secret := range tt.secrets {
 				log.SecretFilter.AddSecret(secret)
@@ -63,214 +66,36 @@ func TestPrint(t *testing.T) {
 	}
 }
 
-func TestPrintWithFormat(t *testing.T) {
-
-	tests := []struct {
-		name         string
-		message      string
-		color        bool
-		args         []TextArgument
-		leftPadding  int
-		rightPadding int
-		secrets      []string
-		expected     string
-	}{
-		{
-			name:         "simple message without color",
-			message:      "Hello World",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "Hello World",
-		},
-		{
-			name:         "message with left padding",
-			message:      "Padded",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  4,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "    Padded",
-		},
-		{
-			name:         "message with right padding",
-			message:      "Right",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  0,
-			rightPadding: 6,
-			secrets:      []string{},
-			expected:     "Right      ",
-		},
-		{
-			name:         "message with both paddings",
-			message:      "Both",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  2,
-			rightPadding: 3,
-			secrets:      []string{},
-			expected:     "  Both   ",
-		},
-		{
-			name:         "colored message with single argument",
-			message:      "Colored Text",
-			color:        true,
-			args:         []TextArgument{31}, // Red
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "\033[31mColored Text\033[0m",
-		},
-		{
-			name:         "colored message with multiple arguments",
-			message:      "Bold Red",
-			color:        true,
-			args:         []TextArgument{1, 31}, // Bold + Red
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "\033[1;31mBold Red\033[0m",
-		},
-		{
-			name:         "colored message with padding",
-			message:      "Padded Color",
-			color:        true,
-			args:         []TextArgument{32}, // Green
-			leftPadding:  2,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "\033[32m  Padded Color\033[0m",
-		},
-		{
-			name:         "message with color disabled but args provided",
-			message:      "No Color",
-			color:        false,
-			args:         []TextArgument{31}, // Should be ignored
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "No Color",
-		},
-		{
-			name:         "message with secret filtering",
-			message:      "Password is secret123",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{"secret123"},
-			expected:     "Password is <redacted>",
-		},
-		{
-			name:         "message with multiple secrets",
-			message:      "User admin password secret123",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{"admin", "secret123"},
-			expected:     "User <redacted> password <redacted>",
-		},
-		{
-			name:         "colored message with secret filtering",
-			message:      "API key: apikey123",
-			color:        true,
-			args:         []TextArgument{33}, // Yellow
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{"apikey123"},
-			expected:     "\033[33mAPI key: <redacted>\033[0m",
-		},
-		{
-			name:         "empty message",
-			message:      "",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "",
-		},
-		{
-			name:         "empty message with padding",
-			message:      "",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  3,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "   ",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			var outBuf, errBuf bytes.Buffer
-			ui := MockUI(&outBuf, &errBuf, tt.color)
-
-			log.SecretFilter.Clear()
-			for _, secret := range tt.secrets {
-				log.SecretFilter.AddSecret(secret)
-			}
-
-			ui.PrintWithFormat(tt.message, TextFormatting{
-				Args:         tt.args,
-				LeftPadding:  tt.leftPadding,
-				RightPadding: tt.rightPadding,
-			})
-
-			if outBuf.String() != tt.expected {
-				t.Errorf("Expected output: %q, got: %q", tt.expected, outBuf.String())
-			}
-		})
-	}
-}
-
 func TestError(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		message  string
+		color    bool
 		secrets  []string
 		expected string
 	}{
 		{
-			name:     "simple message without color",
-			message:  "Hello World",
+			name:     "simple error message",
+			message:  "Error occurred",
+			color:    false,
 			secrets:  []string{},
-			expected: "Hello World",
+			expected: "Error occurred",
 		},
 		{
-			name:     "message with secret filtering",
-			message:  "Password is secret123",
-			secrets:  []string{"secret123"},
-			expected: "Password is <redacted>",
-		},
-		{
-			name:     "message with multiple secrets",
-			message:  "User admin password secret123",
-			secrets:  []string{"admin", "secret123"},
-			expected: "User <redacted> password <redacted>",
-		},
-		{
-			name:     "empty message",
-			message:  "",
-			secrets:  []string{},
-			expected: "",
+			name:     "error message with secrets",
+			message:  "Failed to connect with apikey123",
+			color:    false,
+			secrets:  []string{"apikey123"},
+			expected: "Failed to connect with <redacted>",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			var outBuf, errBuf bytes.Buffer
-			ui := MockUI(&outBuf, &errBuf, true)
+			ui := MockUI(&outBuf, &errBuf, tt.color)
 
+			// Setup secret filter
 			log.SecretFilter.Clear()
 			for _, secret := range tt.secrets {
 				log.SecretFilter.AddSecret(secret)
@@ -279,481 +104,468 @@ func TestError(t *testing.T) {
 			ui.Error(tt.message)
 
 			if errBuf.String() != tt.expected {
-				t.Errorf("Expected output: %q, got: %q", tt.expected, errBuf.String())
+				t.Errorf("Expected error output: %q, got: %q", tt.expected, errBuf.String())
 			}
 		})
 	}
 }
 
-func TestErrorWithFormat(t *testing.T) {
-
+func TestFormat(t *testing.T) {
 	tests := []struct {
-		name         string
-		message      string
-		color        bool
-		args         []TextArgument
-		leftPadding  int
-		rightPadding int
-		secrets      []string
-		expected     string
+		name     string
+		text     *uiText
+		color    bool
+		expected string
 	}{
 		{
-			name:         "simple message without color",
-			message:      "Hello World",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "Hello World",
+			name:     "simple text without color",
+			text:     Text("Hello"),
+			color:    false,
+			expected: "Hello",
 		},
 		{
-			name:         "message with left padding",
-			message:      "Padded",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  4,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "    Padded",
+			name:     "text with left padding",
+			text:     Text("Padded").WithLeftPadding(4),
+			color:    false,
+			expected: "    Padded",
 		},
 		{
-			name:         "message with right padding",
-			message:      "Right",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  0,
-			rightPadding: 6,
-			secrets:      []string{},
-			expected:     "Right      ",
+			name:     "text with right padding",
+			text:     Text("Right").WithRightPadding(6),
+			color:    false,
+			expected: "Right      ",
 		},
 		{
-			name:         "message with both paddings",
-			message:      "Both",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  2,
-			rightPadding: 3,
-			secrets:      []string{},
-			expected:     "  Both   ",
+			name:     "text with both paddings",
+			text:     Text("Both").WithLeftPadding(2).WithRightPadding(3),
+			color:    false,
+			expected: "  Both   ",
 		},
 		{
-			name:         "colored message with single argument",
-			message:      "Colored Text",
-			color:        true,
-			args:         []TextArgument{31}, // Red
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "\033[31mColored Text\033[0m",
+			name:     "text with left margin",
+			text:     Text("Margin").WithLeftMargin(3),
+			color:    false,
+			expected: "   Margin",
 		},
 		{
-			name:         "colored message with multiple arguments",
-			message:      "Bold Red",
-			color:        true,
-			args:         []TextArgument{1, 31}, // Bold + Red
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "\033[1;31mBold Red\033[0m",
+			name:     "text with right margin",
+			text:     Text("Margin").WithRightMargin(2),
+			color:    false,
+			expected: "Margin  ",
 		},
 		{
-			name:         "colored message with padding",
-			message:      "Padded Color",
-			color:        true,
-			args:         []TextArgument{32}, // Green
-			leftPadding:  2,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "\033[32m  Padded Color\033[0m",
+			name:     "text with all spacing",
+			text:     Text("Spaced").WithLeftMargin(1).WithLeftPadding(2).WithRightPadding(1).WithRightMargin(2),
+			color:    false,
+			expected: "   Spaced   ",
 		},
 		{
-			name:         "message with color disabled but args provided",
-			message:      "No Color",
-			color:        false,
-			args:         []TextArgument{31}, // Should be ignored
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "No Color",
+			name:     "colored text with foreground",
+			text:     Text("Red Text").WithForegroundColor(ForegroundRed),
+			color:    true,
+			expected: "\033[31mRed Text\033[0m",
 		},
 		{
-			name:         "message with secret filtering",
-			message:      "Password is secret123",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{"secret123"},
-			expected:     "Password is <redacted>",
+			name:     "colored text with background",
+			text:     Text("Blue BG").WithBackgroundColor(BackgroundBlue),
+			color:    true,
+			expected: "\033[44mBlue BG\033[0m",
 		},
 		{
-			name:         "message with multiple secrets",
-			message:      "User admin password secret123",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{"admin", "secret123"},
-			expected:     "User <redacted> password <redacted>",
+			name:     "colored text with foreground and background",
+			text:     Text("Both Colors").WithForegroundColor(ForegroundWhite).WithBackgroundColor(BackgroundRed),
+			color:    true,
+			expected: "\033[41;37mBoth Colors\033[0m",
 		},
 		{
-			name:         "colored message with secret filtering",
-			message:      "API key: apikey123",
-			color:        true,
-			args:         []TextArgument{33}, // Yellow
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{"apikey123"},
-			expected:     "\033[33mAPI key: <redacted>\033[0m",
+			name:     "text with single style",
+			text:     Text("Bold").WithStyle(StyleBold),
+			color:    true,
+			expected: "\033[1mBold\033[0m",
 		},
 		{
-			name:         "empty message",
-			message:      "",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  0,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "",
+			name:     "text with multiple styles",
+			text:     Text("Bold Italic").WithStyle(StyleBold).WithStyle(StyleItalic),
+			color:    true,
+			expected: "\033[1;3mBold Italic\033[0m",
 		},
 		{
-			name:         "empty message with padding",
-			message:      "",
-			color:        false,
-			args:         []TextArgument{},
-			leftPadding:  3,
-			rightPadding: 0,
-			secrets:      []string{},
-			expected:     "   ",
+			name:     "text with all formatting",
+			text:     Text("Complex").WithForegroundColor(ForegroundYellow).WithBackgroundColor(BackgroundBlue).WithStyle(StyleBold).WithStyle(StyleUnderline),
+			color:    true,
+			expected: "\033[44;33;1;4mComplex\033[0m",
+		},
+		{
+			name:     "colored text with padding",
+			text:     Text("Padded Color").WithForegroundColor(ForegroundGreen).WithLeftPadding(2),
+			color:    true,
+			expected: "\033[32m  Padded Color\033[0m",
+		},
+		{
+			name:     "colored text with margin",
+			text:     Text("Margin Color").WithForegroundColor(ForegroundCyan).WithLeftMargin(3),
+			color:    true,
+			expected: "   \033[36mMargin Color\033[0m",
+		},
+		{
+			name:     "color disabled but formatting provided",
+			text:     Text("No Color").WithForegroundColor(ForegroundRed).WithStyle(StyleBold),
+			color:    false,
+			expected: "No Color",
+		},
+		{
+			name:     "empty text",
+			text:     Text(""),
+			color:    false,
+			expected: "",
+		},
+		{
+			name:     "empty text with padding",
+			text:     Text("").WithLeftPadding(3).WithRightPadding(2),
+			color:    false,
+			expected: "     ",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			var outBuf, errBuf bytes.Buffer
 			ui := MockUI(&outBuf, &errBuf, tt.color)
 
-			log.SecretFilter.Clear()
-			for _, secret := range tt.secrets {
-				log.SecretFilter.AddSecret(secret)
-			}
+			result := ui.Format(tt.text)
 
-			ui.ErrorWithFormat(tt.message, TextFormatting{
-				Args:         tt.args,
-				LeftPadding:  tt.leftPadding,
-				RightPadding: tt.rightPadding,
-			})
-
-			if errBuf.String() != tt.expected {
-				t.Errorf("Expected output: %q, got: %q", tt.expected, errBuf.String())
+			if result != tt.expected {
+				t.Errorf("Expected: %q, got: %q", tt.expected, result)
 			}
 		})
 	}
 }
 
-func TestPrintLine(t *testing.T) {
-
+func TestFormatColumns(t *testing.T) {
 	tests := []struct {
-		name         string
-		character    rune
-		color        bool
-		leftPadding  int
-		rightPadding int
-		expected     string
+		name     string
+		texts    []*uiText
+		color    bool
+		expected string
 	}{
 		{
-			name:      "hyphen",
+			name:     "no texts",
+			texts:    []*uiText{},
+			color:    false,
+			expected: "\n",
+		},
+		{
+			name:     "single text",
+			texts:    []*uiText{Text("Single")},
+			color:    false,
+			expected: "Single\n",
+		},
+		{
+			name:     "two simple columns",
+			texts:    []*uiText{Text("Left"), Text("Right")},
+			color:    false,
+			expected: "Left" + strings.Repeat(" ", 69) + "Right\n",
+		},
+		{
+			name:     "two columns with padding",
+			texts:    []*uiText{Text("Left").WithLeftPadding(2), Text("Right").WithRightPadding(3)},
+			color:    false,
+			expected: "  Left" + strings.Repeat(" ", 64) + "Right   \n",
+		},
+		{
+			name:     "two columns with margins",
+			texts:    []*uiText{Text("Left").WithLeftMargin(1), Text("Right").WithRightMargin(2)},
+			color:    false,
+			expected: " Left" + strings.Repeat(" ", 66) + "Right  \n",
+		},
+		{
+			name:     "colored columns",
+			texts:    []*uiText{Text("Red").WithForegroundColor(ForegroundRed), Text("Green").WithForegroundColor(ForegroundGreen)},
+			color:    true,
+			expected: "\033[31mRed\033[0m" + strings.Repeat(" ", 70) + "\033[32mGreen\033[0m\n",
+		},
+		{
+			name:     "three columns",
+			texts:    []*uiText{Text("One"), Text("Two"), Text("Three")},
+			color:    false,
+			expected: "One" + strings.Repeat(" ", 34) + "Two" + strings.Repeat(" ", 33) + "Three\n",
+		},
+		{
+			name:     "columns exceeding width",
+			texts:    []*uiText{Text(strings.Repeat("A", 40)), Text(strings.Repeat("B", 40))},
+			color:    false,
+			expected: strings.Repeat("A", 40) + strings.Repeat("B", 40) + "\n",
+		},
+		{
+			name:     "empty columns",
+			texts:    []*uiText{Text(""), Text("")},
+			color:    false,
+			expected: strings.Repeat(" ", 78) + "\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var outBuf, errBuf bytes.Buffer
+			ui := MockUI(&outBuf, &errBuf, tt.color)
+
+			result := ui.FormatColumns(tt.texts...)
+
+			if result != tt.expected {
+				t.Errorf("Expected: %q, got: %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestFormatLine(t *testing.T) {
+	tests := []struct {
+		name      string
+		character rune
+		format    *textFormat
+		color     bool
+		expected  string
+	}{
+		{
+			name:      "simple line with dash",
 			character: '-',
-			expected:  fmt.Sprintf("%s\n", strings.Repeat("-", 78)),
+			format:    nil,
+			color:     false,
+			expected:  strings.Repeat("-", 78) + "\n",
 		},
 		{
-			name:      "equal sign",
+			name:      "line with equals",
 			character: '=',
-			expected:  fmt.Sprintf("%s\n", strings.Repeat("=", 78)),
+			format:    TextFormat(),
+			color:     false,
+			expected:  strings.Repeat("=", 78) + "\n",
+		},
+		{
+			name:      "line with left margin",
+			character: '-',
+			format:    TextFormat().WithLeftMargin(5),
+			color:     false,
+			expected:  "     " + strings.Repeat("-", 73) + "\n",
+		},
+		{
+			name:      "line with padding",
+			character: '*',
+			format:    TextFormat().WithLeftPadding(3).WithRightPadding(2),
+			color:     false,
+			expected:  "   " + strings.Repeat("*", 73) + "  \n",
+		},
+		{
+			name:      "line with all margins and padding",
+			character: '#',
+			format:    TextFormat().WithLeftMargin(2).WithLeftPadding(1).WithRightPadding(1).WithRightMargin(2),
+			color:     false,
+			expected:  "   " + strings.Repeat("#", 72) + "   \n",
+		},
+		{
+			name:      "colored line",
+			character: '~',
+			format:    TextFormat().WithForegroundColor(ForegroundBlue),
+			color:     true,
+			expected:  "\033[34m" + strings.Repeat("~", 78) + "\033[0m\n",
+		},
+		{
+			name:      "line with excessive margins (zero width)",
+			character: '-',
+			format:    TextFormat().WithLeftMargin(40).WithRightMargin(40),
+			color:     false,
+			expected:  "\n",
+		},
+		{
+			name:      "line with color disabled",
+			character: '+',
+			format:    TextFormat().WithForegroundColor(ForegroundRed),
+			color:     false,
+			expected:  strings.Repeat("+", 78) + "\n",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			var outBuf, errBuf bytes.Buffer
-			ui := MockUI(&outBuf, &errBuf, false)
+			ui := MockUI(&outBuf, &errBuf, tt.color)
 
-			ui.PrintLine(tt.character)
+			result := ui.FormatLine(tt.character, tt.format)
 
-			if outBuf.String() != tt.expected {
-				t.Errorf("Expected output: %q, got: %q", tt.expected, outBuf.String())
+			if result != tt.expected {
+				t.Errorf("Expected: %q, got: %q", tt.expected, result)
 			}
 		})
 	}
 }
 
-func TestPrintLineWithFormat(t *testing.T) {
-
+func TestText(t *testing.T) {
 	tests := []struct {
-		name         string
-		character    rune
-		color        bool
-		args         []TextArgument
-		leftPadding  int
-		rightPadding int
-		expected     string
+		name     string
+		message  string
+		secrets  []string
+		expected string
 	}{
 		{
-			name:         "hyphen",
-			character:    '-',
-			color:        false,
-			leftPadding:  0,
-			rightPadding: 0,
-			expected:     fmt.Sprintf("%s\n", strings.Repeat("-", 78)),
+			name:     "simple text",
+			message:  "Hello World",
+			secrets:  []string{},
+			expected: "Hello World",
 		},
 		{
-			name:         "equal sign",
-			character:    '=',
-			color:        false,
-			leftPadding:  0,
-			rightPadding: 0,
-			expected:     fmt.Sprintf("%s\n", strings.Repeat("=", 78)),
+			name:     "text with secret",
+			message:  "API Key: secret123",
+			secrets:  []string{"secret123"},
+			expected: "API Key: <redacted>",
 		},
 		{
-			name:         "hyphen with padding",
-			character:    '-',
-			color:        false,
-			leftPadding:  2,
-			rightPadding: 2,
-			expected:     fmt.Sprintf("  %s  \n", strings.Repeat("-", 74)),
-		},
-		{
-			name:         "colored asterisk",
-			character:    '*',
-			color:        true,
-			args:         []TextArgument{1, 31}, // Bold + Red
-			leftPadding:  0,
-			rightPadding: 0,
-			expected:     fmt.Sprintf("\033[1;31m%s\033[0m\n", strings.Repeat("*", 78)),
-		},
-		{
-			name:         "colored equal sign with padding",
-			character:    '=',
-			color:        true,
-			args:         []TextArgument{32}, // Green
-			leftPadding:  2,
-			rightPadding: 0,
-			expected:     fmt.Sprintf("\033[32m  %s\033[0m\n", strings.Repeat("=", 76)),
+			name:     "empty text",
+			message:  "",
+			secrets:  []string{},
+			expected: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
-			var outBuf, errBuf bytes.Buffer
-			ui := MockUI(&outBuf, &errBuf, tt.color)
-
-			ui.PrintLineWithFormat(tt.character, TextFormatting{
-				Args:         tt.args,
-				LeftPadding:  tt.leftPadding,
-				RightPadding: tt.rightPadding,
-			})
-
-			if outBuf.String() != tt.expected {
-				t.Errorf("Expected output: %q, got: %q", tt.expected, outBuf.String())
-			}
-		})
-	}
-}
-
-func TestPrintColumns(t *testing.T) {
-
-	tests := []struct {
-		name            string
-		leftMessage     string
-		leftFormatting  TextFormatting
-		rightMessage    string
-		rightFormatting TextFormatting
-		color           bool
-		secrets         []string
-		expected        string
-	}{
-		{
-			name:            "simple two columns",
-			leftMessage:     "Left",
-			leftFormatting:  TextFormatting{},
-			rightMessage:    "Right",
-			rightFormatting: TextFormatting{},
-			color:           false,
-			secrets:         []string{},
-			expected:        fmt.Sprintf("Left%sRight\n", strings.Repeat(" ", 69)),
-		},
-		{
-			name:            "columns with left padding",
-			leftMessage:     "Left",
-			leftFormatting:  TextFormatting{LeftPadding: 2},
-			rightMessage:    "Right",
-			rightFormatting: TextFormatting{},
-			color:           false,
-			secrets:         []string{},
-			expected:        fmt.Sprintf("  Left%sRight\n", strings.Repeat(" ", 67)),
-		},
-		{
-			name:            "columns with right padding",
-			leftMessage:     "Left",
-			leftFormatting:  TextFormatting{},
-			rightMessage:    "Right",
-			rightFormatting: TextFormatting{RightPadding: 3},
-			color:           false,
-			secrets:         []string{},
-			expected:        fmt.Sprintf("Left%sRight   \n", strings.Repeat(" ", 66)),
-		},
-		{
-			name:            "columns with both left and right padding",
-			leftMessage:     "Left",
-			leftFormatting:  TextFormatting{LeftPadding: 2, RightPadding: 1},
-			rightMessage:    "Right",
-			rightFormatting: TextFormatting{LeftPadding: 1, RightPadding: 2},
-			color:           false,
-			secrets:         []string{},
-			expected:        fmt.Sprintf("  Left %s Right  \n", strings.Repeat(" ", 63)),
-		},
-		{
-			name:            "colored left column",
-			leftMessage:     "Left",
-			leftFormatting:  TextFormatting{Args: []TextArgument{ForegroundColorRed}},
-			rightMessage:    "Right",
-			rightFormatting: TextFormatting{},
-			color:           true,
-			secrets:         []string{},
-			expected:        fmt.Sprintf("\033[31mLeft\033[0m%sRight\n", strings.Repeat(" ", 69)),
-		},
-		{
-			name:            "colored right column",
-			leftMessage:     "Left",
-			leftFormatting:  TextFormatting{},
-			rightMessage:    "Right",
-			rightFormatting: TextFormatting{Args: []TextArgument{ForegroundColorGreen}},
-			color:           true,
-			secrets:         []string{},
-			expected:        fmt.Sprintf("Left%s\033[32mRight\033[0m\n", strings.Repeat(" ", 69)),
-		},
-		{
-			name:            "both columns colored",
-			leftMessage:     "Left",
-			leftFormatting:  TextFormatting{Args: []TextArgument{Bold, ForegroundColorRed}},
-			rightMessage:    "Right",
-			rightFormatting: TextFormatting{Args: []TextArgument{Bold, ForegroundColorGreen}},
-			color:           true,
-			secrets:         []string{},
-			expected:        fmt.Sprintf("\033[1;31mLeft\033[0m%s\033[1;32mRight\033[0m\n", strings.Repeat(" ", 69)),
-		},
-		{
-			name:            "colored columns with padding",
-			leftMessage:     "Left",
-			leftFormatting:  TextFormatting{Args: []TextArgument{31}, LeftPadding: 1},
-			rightMessage:    "Right",
-			rightFormatting: TextFormatting{Args: []TextArgument{32}, RightPadding: 1},
-			color:           true,
-			secrets:         []string{},
-			expected:        fmt.Sprintf("\033[31m Left\033[0m%s\033[32mRight \033[0m\n", strings.Repeat(" ", 67)),
-		},
-		{
-			name:            "color disabled with args provided",
-			leftMessage:     "Left",
-			leftFormatting:  TextFormatting{Args: []TextArgument{31}},
-			rightMessage:    "Right",
-			rightFormatting: TextFormatting{Args: []TextArgument{32}},
-			color:           false,
-			secrets:         []string{},
-			expected:        fmt.Sprintf("Left%sRight\n", strings.Repeat(" ", 69)),
-		},
-		{
-			name:            "columns with secret filtering",
-			leftMessage:     "User: admin",
-			leftFormatting:  TextFormatting{},
-			rightMessage:    "Pass: secret123",
-			rightFormatting: TextFormatting{},
-			color:           false,
-			secrets:         []string{"admin", "secret123"},
-			expected:        fmt.Sprintf("User: <redacted>%sPass: <redacted>\n", strings.Repeat(" ", 46)),
-		},
-		{
-			name:            "colored columns with secret filtering",
-			leftMessage:     "API Key",
-			leftFormatting:  TextFormatting{Args: []TextArgument{ForegroundColorYellow}},
-			rightMessage:    "apikey123",
-			rightFormatting: TextFormatting{Args: []TextArgument{ForegroundColorRed}},
-			color:           true,
-			secrets:         []string{"apikey123"},
-			expected:        fmt.Sprintf("\033[33mAPI Key\033[0m%s\033[31m<redacted>\033[0m\n", strings.Repeat(" ", 61)),
-		},
-		{
-			name:            "empty left column",
-			leftMessage:     "",
-			leftFormatting:  TextFormatting{},
-			rightMessage:    "Right",
-			rightFormatting: TextFormatting{},
-			color:           false,
-			secrets:         []string{},
-			expected:        fmt.Sprintf("%sRight\n", strings.Repeat(" ", 73)),
-		},
-		{
-			name:            "empty right column",
-			leftMessage:     "Left",
-			leftFormatting:  TextFormatting{},
-			rightMessage:    "",
-			rightFormatting: TextFormatting{},
-			color:           false,
-			secrets:         []string{},
-			expected:        fmt.Sprintf("Left%s\n", strings.Repeat(" ", 74)),
-		},
-		{
-			name:            "both columns empty",
-			leftMessage:     "",
-			leftFormatting:  TextFormatting{},
-			rightMessage:    "",
-			rightFormatting: TextFormatting{},
-			color:           false,
-			secrets:         []string{},
-			expected:        fmt.Sprintf("%s\n", strings.Repeat(" ", 78)),
-		},
-		{
-			name:            "long messages that fill width",
-			leftMessage:     strings.Repeat("A", 39),
-			leftFormatting:  TextFormatting{},
-			rightMessage:    strings.Repeat("B", 39),
-			rightFormatting: TextFormatting{},
-			color:           false,
-			secrets:         []string{},
-			expected:        fmt.Sprintf("%s%s\n", strings.Repeat("A", 39), strings.Repeat("B", 39)),
-		},
-		{
-			name:            "messages that exceed width",
-			leftMessage:     strings.Repeat("A", 40),
-			leftFormatting:  TextFormatting{},
-			rightMessage:    strings.Repeat("B", 40),
-			rightFormatting: TextFormatting{},
-			color:           false,
-			secrets:         []string{},
-			expected:        fmt.Sprintf("%s%s\n", strings.Repeat("A", 40), strings.Repeat("B", 40)), // No spaces when exceeding width
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			var outBuf, errBuf bytes.Buffer
-			ui := MockUI(&outBuf, &errBuf, tt.color)
-
+			// Setup secret filter
 			log.SecretFilter.Clear()
 			for _, secret := range tt.secrets {
 				log.SecretFilter.AddSecret(secret)
 			}
 
-			ui.PrintColumns(tt.leftMessage, tt.leftFormatting, tt.rightMessage, tt.rightFormatting)
+			result := Text(tt.message)
 
-			if outBuf.String() != tt.expected {
-				t.Errorf("Expected output: %q, got: %q", tt.expected, outBuf.String())
+			if result.message != tt.expected {
+				t.Errorf("Expected message: %q, got: %q", tt.expected, result.message)
 			}
 		})
+	}
+}
+
+func TestTextFormat(t *testing.T) {
+	format := TextFormat()
+
+	if format == nil {
+		t.Error("Expected non-nil textFormat")
+	}
+
+	if format.styles == nil {
+		t.Error("Expected non-nil styles slice")
+	}
+
+	if len(format.styles) != 0 {
+		t.Error("Expected empty styles slice initially")
+	}
+}
+
+func TestTextFormatChaining(t *testing.T) {
+	format := TextFormat().
+		WithBackgroundColor(BackgroundRed).
+		WithForegroundColor(ForegroundWhite).
+		WithStyle(StyleBold).
+		WithStyle(StyleUnderline).
+		WithLeftPadding(2).
+		WithRightPadding(3).
+		WithLeftMargin(1).
+		WithRightMargin(4)
+
+	if format.backgroundColor != BackgroundRed {
+		t.Errorf("Expected background color %s, got %s", BackgroundRed, format.backgroundColor)
+	}
+
+	if format.foregroundColor != ForegroundWhite {
+		t.Errorf("Expected foreground color %s, got %s", ForegroundWhite, format.foregroundColor)
+	}
+
+	if len(format.styles) != 2 {
+		t.Errorf("Expected 2 styles, got %d", len(format.styles))
+	}
+
+	if format.styles[0] != StyleBold || format.styles[1] != StyleUnderline {
+		t.Errorf("Expected styles [Bold, Underline], got %v", format.styles)
+	}
+
+	if format.leftPadding != 2 {
+		t.Errorf("Expected left padding 2, got %d", format.leftPadding)
+	}
+
+	if format.rightPadding != 3 {
+		t.Errorf("Expected right padding 3, got %d", format.rightPadding)
+	}
+
+	if format.leftMargin != 1 {
+		t.Errorf("Expected left margin 1, got %d", format.leftMargin)
+	}
+
+	if format.rightMargin != 4 {
+		t.Errorf("Expected right margin 4, got %d", format.rightMargin)
+	}
+}
+
+func TestTextFormatClone(t *testing.T) {
+	original := TextFormat().
+		WithBackgroundColor(BackgroundGreen).
+		WithForegroundColor(ForegroundBlack).
+		WithStyle(StyleItalic).
+		WithLeftPadding(5)
+
+	cloned := original.Clone()
+
+	// Modify original
+	original.WithForegroundColor(ForegroundRed).WithStyle(StyleBold)
+
+	// Check that clone is independent
+	if cloned.foregroundColor != ForegroundBlack {
+		t.Errorf("Clone should not be affected by changes to original")
+	}
+
+	if len(cloned.styles) != 1 || cloned.styles[0] != StyleItalic {
+		t.Errorf("Clone styles should be independent")
+	}
+}
+
+func TestUITextChaining(t *testing.T) {
+	text := Text("Test").
+		WithBackgroundColor(BackgroundYellow).
+		WithForegroundColor(ForegroundBlue).
+		WithStyle(StyleDim).
+		WithLeftPadding(1).
+		WithRightPadding(2).
+		WithLeftMargin(3).
+		WithRightMargin(4)
+
+	if text.message != "Test" {
+		t.Errorf("Expected message 'Test', got %s", text.message)
+	}
+
+	if text.backgroundColor != BackgroundYellow {
+		t.Errorf("Expected background color %s, got %s", BackgroundYellow, text.backgroundColor)
+	}
+
+	if text.foregroundColor != ForegroundBlue {
+		t.Errorf("Expected foreground color %s, got %s", ForegroundBlue, text.foregroundColor)
+	}
+
+	if len(text.styles) != 1 || text.styles[0] != StyleDim {
+		t.Errorf("Expected styles [Dim], got %v", text.styles)
+	}
+}
+
+func TestUITextWithFormat(t *testing.T) {
+	format := TextFormat().WithForegroundColor(ForegroundMagenta).WithStyle(StyleBlink)
+	text := Text("Formatted").WithFormat(format)
+
+	if text.foregroundColor != ForegroundMagenta {
+		t.Errorf("Expected foreground color %s, got %s", ForegroundMagenta, text.foregroundColor)
+	}
+
+	if len(text.styles) != 1 || text.styles[0] != StyleBlink {
+		t.Errorf("Expected styles [Blink], got %v", text.styles)
+	}
+
+	// Test with nil format
+	text2 := Text("Default").WithFormat(nil)
+	if text2.textFormat == nil {
+		t.Error("Expected non-nil textFormat when nil format provided")
 	}
 }

@@ -24,15 +24,15 @@ var (
 // UI wraps the standard output and error streams to allow them to be
 // used by multiple goroutines.
 type UI interface {
-	Print(message string)                                          // Print outputs a message to the standard output.
-	PrintWithFormat(message string, formatting TextFormatting)     // PrintWithFormat outputs a formatted message to the standard output.
-	Error(message string)                                          // Error outputs an error message to the standard error.
-	ErrorWithFormat(message string, formatting TextFormatting)     // ErrorWithFormat outputs a formatted error message to the standard error.
-	PrintLine(character rune)                                      // PrintLine outputs a line of a specific character repeated to the standard output.
-	PrintLineWithFormat(character rune, formatting TextFormatting) // PrintLineWithFormat outputs a line of a specific character repeated to the standard output.
+	Print(message string) // Print outputs a message to the standard output.
+	Error(message string) // Error outputs an error message to the standard error.
 
-	// PrintColumns outputs two columns of text with the specified formatting.
-	PrintColumns(leftMessage string, leftFormatting TextFormatting, rightMessage string, rightFormatting TextFormatting)
+	// Format formats the text with the specified formatting.
+	Format(text *uiText) string
+	// FormatColumns formats the text into two columns.
+	FormatColumns(text ...*uiText) string
+	// FormatLine formats a character as a line with the specified formatting.
+	FormatLine(character rune, format *textFormat) string
 }
 
 type ui struct {
@@ -70,66 +70,113 @@ func MockUI(outWriter, errWriter io.Writer, color bool) UI {
 
 // Print implements UI.
 func (u *ui) Print(message string) {
-	u.writeText(u.out, message, TextFormatting{})
-}
-
-// PrintWithFormat implements UI.
-func (u *ui) PrintWithFormat(message string, formatting TextFormatting) {
-	u.writeText(u.out, message, formatting)
+	u.writeText(u.out, message)
 }
 
 // Error implements UI.
 func (u *ui) Error(message string) {
-	u.writeText(u.err, message, TextFormatting{})
+	u.writeText(u.err, message)
 }
 
-// ErrorWithFormat implements UI.
-func (u *ui) ErrorWithFormat(message string, formatting TextFormatting) {
-	u.writeText(u.err, message, formatting)
-}
+// Format implements UI.
+func (u *ui) Format(text *uiText) string {
 
-// PrintLine implements UI.
-func (u *ui) PrintLine(character rune) {
-	length := u.consoleWidth()
-	line := strings.Repeat(string(character), length)
-	line = fmt.Sprintf("%s\n", line)
-	u.writeText(u.out, line, TextFormatting{})
-}
+	leftMargin := strings.Repeat(" ", text.leftMargin)
+	leftPadding := strings.Repeat(" ", text.leftPadding)
+	rightPadding := strings.Repeat(" ", text.rightPadding)
+	rightMargin := strings.Repeat(" ", text.rightMargin)
 
-// PrintLineWithFormat implements UI.
-func (u *ui) PrintLineWithFormat(character rune, formatting TextFormatting) {
-	length := u.consoleWidth() - formatting.LeftPadding - formatting.RightPadding
-	line := strings.Repeat(string(character), length)
-	line = u.formatText(line, formatting)
-	line = fmt.Sprintf("%s\n", line)
-	u.writeText(u.out, line, TextFormatting{})
-}
+	message := fmt.Sprintf("%s%s%s", leftPadding, text.message, rightPadding)
 
-// PrintColumns implements UI.
-func (u *ui) PrintColumns(leftMessage string, leftFormatting TextFormatting, rightMessage string, rightFormatting TextFormatting) {
+	if u.color {
+		terminalArgs := string(text.backgroundColor)
 
-	leftMessage = log.SecretFilter.Filter(leftMessage)
-	rightMessage = log.SecretFilter.Filter(rightMessage)
+		if terminalArgs == "" {
+			terminalArgs = string(text.foregroundColor)
+		} else if text.foregroundColor != "" {
+			terminalArgs = fmt.Sprintf("%s;%s", terminalArgs, text.foregroundColor)
+		}
 
-	leftRuneCount := utf8.RuneCountInString(leftMessage)
-	rightRuneCount := utf8.RuneCountInString(rightMessage)
+		if len(text.styles) > 0 {
+			for _, style := range text.styles {
+				if terminalArgs == "" {
+					terminalArgs = string(style)
+				} else {
+					terminalArgs = fmt.Sprintf("%s;%s", terminalArgs, style)
+				}
+			}
+		}
 
-	spaceCount := u.consoleWidth() - leftRuneCount - rightRuneCount - leftFormatting.LeftPadding - leftFormatting.RightPadding - rightFormatting.LeftPadding - rightFormatting.RightPadding
-	left := u.formatText(leftMessage, leftFormatting)
-
-	spaces := ""
-	if spaceCount > 0 {
-		spaces = strings.Repeat(" ", spaceCount)
+		if terminalArgs != "" {
+			message = fmt.Sprintf("\033[%sm%s\033[0m", terminalArgs, message)
+		}
 	}
 
-	right := u.formatText(rightMessage, rightFormatting)
-
-	message := fmt.Sprintf("%s%s%s\n", left, spaces, right)
-
-	u.writeText(u.out, message, TextFormatting{})
+	return fmt.Sprintf("%s%s%s", leftMargin, message, rightMargin)
 }
 
-func (u *ui) writeText(writer io.Writer, message string, formatting TextFormatting) {
+// FormatColumns implements UI.
+func (u *ui) FormatColumns(text ...*uiText) string {
+
+	if len(text) == 0 {
+		return "\n"
+	}
+
+	if len(text) == 1 {
+		return fmt.Sprintf("%s\n", u.Format(text[0]))
+	}
+
+	totalRuneCount := 0
+	for _, t := range text {
+		totalRuneCount += getRuneCount(t)
+	}
+
+	spacing := (u.consoleWidth() - totalRuneCount) / (len(text) - 1)
+	remainder := (u.consoleWidth() - totalRuneCount) % (len(text) - 1)
+
+	message := ""
+	if spacing <= 0 {
+		for _, t := range text {
+			message = fmt.Sprintf("%s%s", message, u.Format(t))
+		}
+
+		return fmt.Sprintf("%s\n", message)
+	}
+
+	for i, t := range text {
+		message = fmt.Sprintf("%s%s", message, u.Format(t))
+		if i >= len(text)-1 {
+			break
+		}
+
+		message = fmt.Sprintf("%s%s", message, strings.Repeat(" ", spacing))
+
+		if i < remainder {
+			message = fmt.Sprintf("%s ", message) // Add an extra space for the remainder.
+		}
+	}
+
+	return fmt.Sprintf("%s\n", message)
+}
+
+// FormatLine implements UI.
+func (u *ui) FormatLine(character rune, format *textFormat) string {
+	if format == nil {
+		format = TextFormat()
+	}
+
+	runeCount := u.consoleWidth() - format.leftMargin - format.leftPadding - format.rightPadding - format.rightMargin
+	if runeCount <= 0 {
+		return "\n"
+	}
+
+	message := strings.Repeat(string(character), runeCount)
+	text := &uiText{message: message, textFormat: format}
+	message = u.Format(text)
+	return fmt.Sprintf("%s\n", message)
+}
+
+func (u *ui) writeText(writer io.Writer, message string) {
 
 	if writer == nil {
 		return
@@ -140,40 +187,10 @@ func (u *ui) writeText(writer io.Writer, message string, formatting TextFormatti
 
 	message = log.SecretFilter.Filter(message)
 
-	message = u.formatText(message, formatting)
-
 	_, err := fmt.Fprint(writer, message)
 	if err != nil {
 		log.Errorf("Failed to write to UI: %v", err)
 	}
-}
-
-func (u *ui) formatText(message string, formatting TextFormatting) string {
-
-	result := ""
-	if formatting.LeftPadding > 0 {
-		result += strings.Repeat(" ", formatting.LeftPadding)
-	}
-
-	result += message
-
-	if formatting.RightPadding > 0 {
-		result += strings.Repeat(" ", formatting.RightPadding)
-	}
-
-	if u == nil || !u.color || len(formatting.Args) == 0 {
-		return result
-	}
-
-	args := ""
-	for i, arg := range formatting.Args {
-		if i > 0 {
-			args += ";"
-		}
-		args += fmt.Sprintf("%d", arg)
-	}
-
-	return fmt.Sprintf("\033[%sm%s\033[0m", args, result)
 }
 
 func (u *ui) consoleWidth() int {
@@ -188,4 +205,17 @@ func (u *ui) consoleWidth() int {
 	}
 
 	return width - 2
+}
+
+func getRuneCount(text *uiText) int {
+
+	messageRuneCount := utf8.RuneCountInString(text.message)
+
+	messageRuneCount += text.leftPadding
+	messageRuneCount += text.rightPadding
+
+	messageRuneCount += text.leftMargin
+	messageRuneCount += text.rightMargin
+
+	return messageRuneCount
 }

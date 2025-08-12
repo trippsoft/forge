@@ -10,7 +10,7 @@ import (
 
 	"github.com/trippsoft/forge/pkg/hclspec"
 	"github.com/trippsoft/forge/pkg/inventory"
-	"github.com/trippsoft/forge/pkg/plugin"
+	"github.com/trippsoft/forge/pkg/module"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -19,30 +19,30 @@ var (
 		"command": hclspec.RequiredField(hclspec.String),
 	}))
 
-	_ plugin.LocalPlugin = &Plugin{} // Ensure Plugin implements the plugin.LocalPlugin interface.
+	_ module.LocalModule = &Module{} // Ensure Module implements the module.LocalModule interface.
 )
 
-type Plugin struct{}
+type Module struct{}
 
-// InputSpec implements plugin.Plugin.
-func (s *Plugin) InputSpec() *hclspec.Spec {
+// InputSpec implements module.Module.
+func (s *Module) InputSpec() *hclspec.Spec {
 	return inputSpec
 }
 
-// Validate implements plugin.Plugin.
-func (s *Plugin) Validate(host *inventory.Host, input map[string]cty.Value) error {
-	return nil // No specific validation needed for this plugin.
+// Validate implements module.Module.
+func (s *Module) Validate(host *inventory.Host, input map[string]cty.Value) error {
+	return nil // No specific validation needed for this module.
 }
 
-// Run implements plugin.Plugin.
-func (s *Plugin) Run(host *inventory.Host, common *plugin.CommonConfig, input map[string]cty.Value) *plugin.Result {
+// Run implements module.Module.
+func (s *Module) Run(host *inventory.Host, common *module.CommonConfig, input map[string]cty.Value) *module.Result {
 
 	t := host.Transport()
 
 	command := input["command"].AsString()
 	cmd, err := t.NewCommand(command, common.Escalation)
 	if err != nil {
-		return plugin.NewFailure(err, "failed to create command")
+		return module.NewFailure(err, "failed to create command")
 	}
 
 	timeout := common.Timeout
@@ -57,7 +57,7 @@ func (s *Plugin) Run(host *inventory.Host, common *plugin.CommonConfig, input ma
 
 	stdout, stderr, err := cmd.OutputWithError(ctx)
 	if err != nil {
-		return plugin.NewFailure(err, fmt.Sprintf("failed to execute command: %s", stderr))
+		return module.NewFailure(err, fmt.Sprintf("failed to execute command: %s", stderr))
 	}
 
 	output := map[string]cty.Value{
@@ -65,5 +65,5 @@ func (s *Plugin) Run(host *inventory.Host, common *plugin.CommonConfig, input ma
 		"stderr": cty.StringVal(stderr),
 	}
 
-	return plugin.NewSuccess(true, output)
+	return module.NewSuccess(true, output)
 }

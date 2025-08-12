@@ -8,16 +8,16 @@ import (
 	"testing"
 
 	"github.com/trippsoft/forge/pkg/inventory"
-	"github.com/trippsoft/forge/pkg/plugin"
+	"github.com/trippsoft/forge/pkg/module"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
 )
 
-func TestPluginInputSpec(t *testing.T) {
+func TestModuleInputSpec(t *testing.T) {
 
-	plugin := &Plugin{}
+	module := &Module{}
 
-	spec := plugin.InputSpec()
+	spec := module.InputSpec()
 	if spec == nil {
 		t.Fatal("Expected non-nil input spec")
 	}
@@ -31,9 +31,9 @@ func TestPluginInputSpec(t *testing.T) {
 	}
 }
 
-func TestPluginValidate(t *testing.T) {
+func TestModuleValidate(t *testing.T) {
 
-	plugin := &Plugin{}
+	module := &Module{}
 
 	input := map[string]cty.Value{
 		"command": cty.StringVal("echo 'Hello, World!'"),
@@ -43,13 +43,13 @@ func TestPluginValidate(t *testing.T) {
 	escalateConfig := inventory.NewEscalateConfig("")
 	host := inventory.NewHost("linux", mockTransport, escalateConfig, map[string]cty.Value{})
 
-	err := plugin.Validate(host, input)
+	err := module.Validate(host, input)
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
 }
 
-func TestPluginRun(t *testing.T) {
+func TestModuleRun(t *testing.T) {
 
 	command := "echo 'Hello, World!'"
 
@@ -64,9 +64,9 @@ func TestPluginRun(t *testing.T) {
 
 	host := inventory.NewHost("linux", mockTransport, escalateConfig, map[string]cty.Value{})
 
-	p := &Plugin{}
+	p := &Module{}
 
-	commonConfig := &plugin.CommonConfig{
+	commonConfig := &module.CommonConfig{
 		Escalation: nil,
 		Timeout:    10,
 	}
@@ -82,7 +82,7 @@ func TestPluginRun(t *testing.T) {
 	}
 
 	if !result.Changed {
-		t.Fatal("Expected plugin to indicate changes were made")
+		t.Fatal("Expected module to indicate changes were made")
 	}
 
 	if result.Output == nil {
