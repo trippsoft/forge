@@ -5,6 +5,7 @@ package shell
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/trippsoft/forge/pkg/hclspec"
@@ -41,7 +42,7 @@ func (s *Plugin) Run(host *inventory.Host, common *plugin.CommonConfig, input ma
 	command := input["command"].AsString()
 	cmd, err := t.NewCommand(command, common.Escalation)
 	if err != nil {
-		return plugin.NewFailure(err)
+		return plugin.NewFailure(err, "failed to create command")
 	}
 
 	timeout := common.Timeout
@@ -56,7 +57,7 @@ func (s *Plugin) Run(host *inventory.Host, common *plugin.CommonConfig, input ma
 
 	stdout, stderr, err := cmd.OutputWithError(ctx)
 	if err != nil {
-		return plugin.NewFailure(err)
+		return plugin.NewFailure(err, fmt.Sprintf("failed to execute command: %s", stderr))
 	}
 
 	output := map[string]cty.Value{

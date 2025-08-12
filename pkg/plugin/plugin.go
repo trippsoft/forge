@@ -34,9 +34,10 @@ type Plugin interface {
 // Result holds the result of a plugin execution.
 // It includes whether the plugin made any changes, any error encountered, and the output data.
 type Result struct {
-	Changed bool                 // Indicates if the plugin made any changes.
-	Err     error                // Error encountered during plugin execution, if any.
-	Output  map[string]cty.Value // Output data from the plugin execution.
+	Changed   bool                 // Indicates if the plugin made any changes.
+	Err       error                // Error encountered during plugin execution, if any.
+	ErrDetail string               // Detailed error message, if any.
+	Output    map[string]cty.Value // Output data from the plugin execution.
 }
 
 func NewSuccess(changed bool, output map[string]cty.Value) *Result {
@@ -46,9 +47,10 @@ func NewSuccess(changed bool, output map[string]cty.Value) *Result {
 	}
 }
 
-func NewFailure(err error) *Result {
+func NewFailure(err error, errDetail string) *Result {
 	return &Result{
-		Err: err,
+		Err:       err,
+		ErrDetail: errDetail,
 	}
 }
 
