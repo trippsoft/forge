@@ -33,11 +33,46 @@ type Module interface {
 	// Validate checks if the module input is valid.
 	// This validation is done after ensuring the input matches the InputSpec.
 	Validate(host *inventory.Host, input map[string]cty.Value) error
+
+	// Run executes the module with the provided host and input.
+	Run(host *inventory.Host, common *CommonConfig, input map[string]cty.Value) *Result
+}
+
+type MockModule struct {
+	inputSpec    *hclspec.Spec
+	validateFunc func(host *inventory.Host, input map[string]cty.Value) error
+	Result       *Result
+}
+
+func NewMockModule(spec *hclspec.Spec, validate func(host *inventory.Host, input map[string]cty.Value) error) *MockModule {
+	return &MockModule{
+		inputSpec:    spec,
+		validateFunc: validate,
+	}
+}
+
+func (m *MockModule) InputSpec() *hclspec.Spec {
+	return m.inputSpec
+}
+
+func (m *MockModule) Validate(host *inventory.Host, input map[string]cty.Value) error {
+
+	if m.validateFunc == nil {
+		return nil
+	}
+
+	return m.validateFunc(host, input)
+}
+
+func (m *MockModule) Run(host *inventory.Host, common *CommonConfig, input map[string]cty.Value) *Result {
+	return m.Result
 }
 
 // Result holds the result of a module execution.
 // It includes whether the module made any changes, any error encountered, and the output data.
 type Result struct {
+	Failed    bool                 // Indicates if the module execution failed.
+	Skipped   bool                 // Indicates if the module was skipped.
 	Changed   bool                 // Indicates if the module made any changes.
 	Err       error                // Error encountered during module execution, if any.
 	ErrDetail string               // Detailed error message, if any.
@@ -51,19 +86,18 @@ func NewSuccess(changed bool, output map[string]cty.Value) *Result {
 	}
 }
 
+func NewSkipped() *Result {
+	return &Result{
+		Skipped: true,
+	}
+}
+
 func NewFailure(err error, errDetail string) *Result {
 	return &Result{
 		Err:       err,
 		ErrDetail: errDetail,
+		Failed:    true,
 	}
-}
-
-// LocalModule extends the Module interface with a Run method for local execution.
-type LocalModule interface {
-	Module
-
-	// Run executes the module with the provided host and input.
-	Run(host *inventory.Host, common *CommonConfig, input map[string]cty.Value) *Result
 }
 
 // Registry manages a collection of modules.

@@ -19,7 +19,7 @@ var (
 		"command": hclspec.RequiredField(hclspec.String),
 	}))
 
-	_ module.LocalModule = &Module{} // Ensure Module implements the module.LocalModule interface.
+	_ module.Module = &Module{} // Ensure Module implements the module.Module interface.
 )
 
 type Module struct{}

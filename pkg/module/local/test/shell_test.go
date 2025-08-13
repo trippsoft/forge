@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/trippsoft/forge/pkg/inventory"
-	"github.com/trippsoft/forge/pkg/plugin"
-	"github.com/trippsoft/forge/pkg/plugin/local/shell"
+	"github.com/trippsoft/forge/pkg/module"
+	"github.com/trippsoft/forge/pkg/module/local/shell"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -33,9 +33,9 @@ func TestPluginRun_Linux(t *testing.T) {
 
 	host := inventory.NewHost("linux", sshTransport, escalateConfig, map[string]cty.Value{})
 
-	p := &shell.Plugin{}
+	p := &shell.Module{}
 
-	commonConfig := &plugin.CommonConfig{
+	commonConfig := &module.CommonConfig{
 		Escalation: nil,
 		Timeout:    10,
 	}
@@ -103,11 +103,11 @@ func TestPluginRun_Linux_SudoPassword(t *testing.T) {
 
 	host := inventory.NewHost("linux", sshTransport, escalateConfig, map[string]cty.Value{})
 
-	p := &shell.Plugin{}
+	p := &shell.Module{}
 
 	escalation := transport.NewEscalation(linuxPWPassword)
 
-	commonConfig := &plugin.CommonConfig{
+	commonConfig := &module.CommonConfig{
 		Escalation: escalation,
 		Timeout:    10,
 	}
@@ -169,11 +169,11 @@ func TestPluginRun_Linux_NoSudoPassword(t *testing.T) {
 
 	host := inventory.NewHost("linux", sshTransport, escalateConfig, map[string]cty.Value{})
 
-	p := &shell.Plugin{}
+	p := &shell.Module{}
 
 	escalation := transport.NewNoPasswordEscalation()
 
-	commonConfig := &plugin.CommonConfig{
+	commonConfig := &module.CommonConfig{
 		Escalation: escalation,
 		Timeout:    10,
 	}
@@ -242,9 +242,9 @@ func TestPluginRun_Windows_SSH_PowerShell(t *testing.T) {
 
 	host := inventory.NewHost("windows", sshTransport, escalateConfig, map[string]cty.Value{})
 
-	p := &shell.Plugin{}
+	p := &shell.Module{}
 
-	commonConfig := &plugin.CommonConfig{
+	commonConfig := &module.CommonConfig{
 		Escalation: nil,
 		Timeout:    10,
 	}
