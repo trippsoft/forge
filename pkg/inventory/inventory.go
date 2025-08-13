@@ -7,7 +7,6 @@ import (
 	"errors"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/trippsoft/forge/pkg/hclfunction"
 	"github.com/trippsoft/forge/pkg/info"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
@@ -88,13 +87,19 @@ func (h *Host) EscalateConfig() *EscalateConfig {
 // This is by design to allow for task updates.
 func (h *Host) StoreTask(key string, value cty.Value) error {
 
-	taskContext, err := h.getCurrentContextTasks()
+	taskContext, err := h.GetCurrentContextTasks()
 	if err != nil {
 		return err
 	}
 
 	taskContext[key] = value // Overwrites existing keys by design
 	return nil
+}
+
+// ClearTasks clears all tasks and procedure inputs for the host.
+func (i *Host) ClearTasks() {
+	i.taskContexts = []map[string]cty.Value{make(map[string]cty.Value)}
+	i.procedureInputs = []map[string]cty.Value{}
 }
 
 // StartProcedure initializes a new procedure context for the host.
@@ -116,28 +121,8 @@ func (h *Host) EndProcedure() error {
 	return nil
 }
 
-// EvaluateAndCache evaluates an HCL attribute expression in the context of the host.
-func (h *Host) EvaluateAndCache(attr *hcl.Attribute, evalContext *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
-
-	if value, exists := h.getCachedValue(attr); exists {
-		return value, nil
-	}
-
-	value, diags := attr.Expr.Value(evalContext)
-	if diags.HasErrors() {
-		return cty.NilVal, diags
-	}
-
-	h.storeCachedValue(attr, value)
-	return value, diags
-}
-
-// ClearCachedValues clears all cached values for the host.
-func (h *Host) ClearCachedValues() {
-	h.cachedValues = make(map[*hcl.Attribute]cty.Value)
-}
-
-func (h *Host) getCurrentContextTasks() (map[string]cty.Value, error) {
+// GetCurrentContextTasks retrieves the current task context for the host.
+func (h *Host) GetCurrentContextTasks() (map[string]cty.Value, error) {
 
 	if len(h.taskContexts) == 0 {
 		return nil, errors.New("no task context available")
@@ -146,21 +131,13 @@ func (h *Host) getCurrentContextTasks() (map[string]cty.Value, error) {
 	return h.taskContexts[len(h.taskContexts)-1], nil
 }
 
-func (h *Host) getCurrentProcedureInputs() map[string]cty.Value {
+// GetCurrentProcedureInputs retrieves the inputs for the current procedure context.
+func (h *Host) GetCurrentProcedureInputs() map[string]cty.Value {
 	if len(h.procedureInputs) == 0 {
 		return nil
 	}
 
 	return h.procedureInputs[len(h.procedureInputs)-1]
-}
-
-func (h *Host) getCachedValue(attr *hcl.Attribute) (cty.Value, bool) {
-	value, exists := h.cachedValues[attr]
-	return value, exists
-}
-
-func (h *Host) storeCachedValue(attr *hcl.Attribute, value cty.Value) {
-	h.cachedValues[attr] = value
 }
 
 // Inventory represents a collection of hosts, groups, and targets.
@@ -169,6 +146,14 @@ type Inventory struct {
 
 	groups  map[string][]*Host
 	targets map[string][]*Host
+}
+
+func NewInventory(hosts map[string]*Host, groups map[string][]*Host, targets map[string][]*Host) *Inventory {
+	return &Inventory{
+		hosts:   hosts,
+		groups:  groups,
+		targets: targets,
+	}
 }
 
 // Host retrieves a host by name from the inventory.
@@ -212,34 +197,9 @@ func (i *Inventory) Targets() map[string][]*Host {
 	return i.targets
 }
 
-// GetHostEvalContext retrieves the evaluation context for a specific host by name.
-func (i *Inventory) GetHostEvalContext(hostName string) (*hcl.EvalContext, error) {
-	variables := make(map[string]cty.Value)
-	hostVars := make(map[string]cty.Value)
-	for name, host := range i.hosts {
-		hostVars[name] = cty.ObjectVal(host.Vars())
-		if hostName == name {
-
-			variables["var"] = hostVars[name]
-			variables["info"] = cty.ObjectVal(host.Info().ToMapOfCtyValues())
-
-			tasks, err := host.getCurrentContextTasks()
-			variables["tasks"] = cty.ObjectVal(tasks)
-			if err != nil {
-				return nil, err
-			}
-
-			procedureInputs := host.getCurrentProcedureInputs()
-			if procedureInputs != nil {
-				variables["input"] = cty.ObjectVal(procedureInputs)
-			}
-		}
+// ClearTasks clears all tasks and procedure inputs for the inventory.
+func (i *Inventory) ClearTasks() {
+	for _, host := range i.hosts {
+		host.ClearTasks()
 	}
-
-	variables["hostvars"] = cty.ObjectVal(hostVars)
-
-	return &hcl.EvalContext{
-		Variables: variables,
-		Functions: hclfunction.HCLFunctions(),
-	}, nil
 }

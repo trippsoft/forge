@@ -21,7 +21,7 @@ group "secure_servers" {
   }
   transport "ssh" {
     user = "secure_deploy"
-    address = "${var.bastion_host}"
+    host = "${var.bastion_host}"
     port = 2222
   }
   host "secure1" {

@@ -661,6 +661,132 @@ func TestGetAllCtyStrings(t *testing.T) {
 	}
 }
 
+func TestModifyUnexpectedElementDiags(t *testing.T) {
+	tests := []struct {
+		name     string
+		diags    hcl.Diagnostics
+		location string
+		expected hcl.Diagnostics
+	}{
+		{
+			name:     "nil",
+			diags:    nil,
+			location: "in test file",
+			expected: nil,
+		},
+		{
+			name:     "no diagnostics",
+			diags:    hcl.Diagnostics{},
+			location: "in test file",
+			expected: hcl.Diagnostics{},
+		},
+		{
+			name: "non-matching diagnostic",
+			diags: hcl.Diagnostics{&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "original error",
+				Detail:   "original error",
+			}},
+			location: "in test file",
+			expected: hcl.Diagnostics{&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "original error",
+				Detail:   "original error",
+			}},
+		},
+		{
+			name: "matching diagnostics with location",
+			diags: hcl.Diagnostics{
+				&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "Unsupported argument",
+					Detail:   "An argument named \"test\" is not expected here.",
+				},
+				&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "Unsupported block type",
+					Detail:   "Blocks of type \"test\" are not expected here.",
+				},
+				&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "Unexpected \"test\" block",
+					Detail:   "Blocks are not allowed here.",
+				},
+			},
+			location: "in a test file",
+			expected: hcl.Diagnostics{
+				&hcl.Diagnostic{
+					Severity: hcl.DiagWarning,
+					Summary:  "Unsupported argument",
+					Detail:   "An argument named \"test\" is not expected in a test file.",
+				},
+				&hcl.Diagnostic{
+					Severity: hcl.DiagWarning,
+					Summary:  "Unsupported block type",
+					Detail:   "Blocks of type \"test\" are not expected in a test file.",
+				},
+				&hcl.Diagnostic{
+					Severity: hcl.DiagWarning,
+					Summary:  "Unexpected \"test\" block",
+					Detail:   "Blocks are not allowed in a test file.",
+				},
+			},
+		},
+		{
+			name: "matching diagnostics with no location",
+			diags: hcl.Diagnostics{
+				&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "Unsupported argument",
+					Detail:   "An argument named \"test\" is not expected here.",
+				},
+				&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "Unsupported block type",
+					Detail:   "Blocks of type \"test\" are not expected here.",
+				},
+				&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "Unexpected \"test\" block",
+					Detail:   "Blocks are not allowed here.",
+				},
+			},
+			location: "",
+			expected: hcl.Diagnostics{
+				&hcl.Diagnostic{
+					Severity: hcl.DiagWarning,
+					Summary:  "Unsupported argument",
+					Detail:   "An argument named \"test\" is not expected here.",
+				},
+				&hcl.Diagnostic{
+					Severity: hcl.DiagWarning,
+					Summary:  "Unsupported block type",
+					Detail:   "Blocks of type \"test\" are not expected here.",
+				},
+				&hcl.Diagnostic{
+					Severity: hcl.DiagWarning,
+					Summary:  "Unexpected \"test\" block",
+					Detail:   "Blocks are not allowed here.",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ModifyUnexpectedElementDiags(tt.diags, tt.location)
+
+			for i := range tt.diags {
+				if tt.diags[i].Severity != tt.expected[i].Severity ||
+					tt.diags[i].Summary != tt.expected[i].Summary ||
+					tt.diags[i].Detail != tt.expected[i].Detail {
+					t.Errorf("expected %v, got %v", tt.expected[i], tt.diags[i])
+				}
+			}
+		})
+	}
+}
+
 // mockExpr is a simple mock implementation of hcl.Expression for testing
 type mockExpr struct {
 	value cty.Value

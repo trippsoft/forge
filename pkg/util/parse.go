@@ -5,6 +5,7 @@ package util
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
@@ -146,4 +147,26 @@ func GetAllCtyStrings(value cty.Value) []string {
 	}
 
 	return results
+}
+
+// ModifyUnexpectedElementDiags modifies diagnostics for unexpected elements to be more specific and be of warning severity.
+func ModifyUnexpectedElementDiags(diags hcl.Diagnostics, location string) hcl.Diagnostics {
+
+	if diags == nil {
+		return nil
+	}
+
+	for _, diag := range diags {
+		if diag.Summary != "Unsupported argument" &&
+			diag.Summary != "Unsupported block type" &&
+			!(strings.HasPrefix(diag.Summary, "Unexpected ") && strings.HasSuffix(diag.Summary, " block")) {
+			continue
+		}
+		diag.Severity = hcl.DiagWarning
+		if location != "" && location != "here" {
+			diag.Detail = strings.Replace(diag.Detail, "here", location, 1)
+		}
+	}
+
+	return diags
 }

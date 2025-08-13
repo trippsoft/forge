@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/trippsoft/forge/pkg/transport"
+	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -108,90 +109,91 @@ func parseHCLBody(body hcl.Body) (*Inventory, hcl.Diagnostics) {
 
 func parseHCLBodyToIntermediate(body hcl.Body) (*intermediateInventory, hcl.Diagnostics) {
 
-	diags := hcl.Diagnostics{}
 	intermediate := &intermediateInventory{
 		allHosts: make(map[string]*intermediateHost),
 	}
+	diags := hcl.Diagnostics{}
 
-	varBlocks, body, moreDiags := body.PartialContent(varsBlockSchema)
+	content, moreDiags := body.Content(inventoryBodySchema)
+	util.ModifyUnexpectedElementDiags(moreDiags, "in an inventory file")
 	diags = diags.Extend(moreDiags)
+
 	if moreDiags.HasErrors() {
 		return nil, diags
 	}
 
-	intermediate.vars, moreDiags = parseVarsBlocksToIntermediate(varBlocks)
-	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
+	varsBlocks := []*hcl.Block{}
+	transportBlocks := []*hcl.Block{}
+	escalateBlocks := []*hcl.Block{}
+	groupBlocks := []*hcl.Block{}
+	hostBlocks := []*hcl.Block{}
+
+	for _, block := range content.Blocks {
+
+		switch block.Type {
+		case "vars":
+			varsBlocks = append(varsBlocks, block)
+		case "transport":
+			transportBlocks = append(transportBlocks, block)
+		case "escalate":
+			escalateBlocks = append(escalateBlocks, block)
+		case "group":
+			groupBlocks = append(groupBlocks, block)
+		case "host":
+			hostBlocks = append(hostBlocks, block)
+		}
 	}
 
-	transportBlocks, body, moreDiags := body.PartialContent(transportBlockSchema)
+	vars, moreDiags := parseVarsBlocksToIntermediate(varsBlocks)
 	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
+
+	if !moreDiags.HasErrors() {
+		intermediate.vars = vars
 	}
 
-	intermediate.transport, moreDiags = parseTransportBlocksToIntermediate(transportBlocks)
+	transport, moreDiags := parseTransportBlocksToIntermediate(transportBlocks)
 	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
+
+	if !moreDiags.HasErrors() {
+		intermediate.transport = transport
 	}
 
-	escalateBlocks, body, moreDiags := body.PartialContent(escalateBlockSchema)
+	escalate, moreDiags := parseEscalateBlocksToIntermediate(escalateBlocks)
 	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
+
+	if !moreDiags.HasErrors() {
+		intermediate.escalate = escalate
 	}
 
-	intermediate.escalate, moreDiags = parseEscalateBlocksToIntermediate(escalateBlocks)
+	groups, moreDiags := parseGroupBlocksToIntermediate(groupBlocks)
 	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
+
+	if !moreDiags.HasErrors() {
+		intermediate.groups = groups
 	}
 
-	groupBlocks, body, moreDiags := body.PartialContent(groupBlockSchema)
+	hosts, moreDiags := parseHostBlocksToIntermediate(hostBlocks)
 	diags = diags.Extend(moreDiags)
+
 	if moreDiags.HasErrors() {
 		return nil, diags
-	}
-
-	intermediate.groups, moreDiags = parseGroupBlocksToIntermediate(groupBlocks)
-	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
-	}
-
-	hostBlocks, body, moreDiags := body.PartialContent(hostBlockSchema)
-	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
-	}
-
-	intermediate.hosts, moreDiags = parseHostBlocksToIntermediate(hostBlocks)
-	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
-	}
-
-	if !body.MissingItemRange().Empty() {
-		missingItemRange := body.MissingItemRange()
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagWarning,
-			Summary:  "Unexpected content in inventory file",
-			Detail:   "The inventory file contains unexpected content that was not parsed. This may indicate a syntax error or unsupported features.",
-			Subject:  &missingItemRange,
-		})
+	} else {
+		intermediate.hosts = hosts
 	}
 
 	return intermediate, diags
 }
 
-func parseVarsBlocksToIntermediate(varBlocks *hcl.BodyContent) (map[string]*hcl.Attribute, hcl.Diagnostics) {
+func parseVarsBlocksToIntermediate(blocks []*hcl.Block) (map[string]*hcl.Attribute, hcl.Diagnostics) {
+
+	if len(blocks) == 0 {
+		return map[string]*hcl.Attribute{}, hcl.Diagnostics{}
+	}
 
 	vars := make(map[string]*hcl.Attribute)
 	diags := hcl.Diagnostics{}
 
-	for _, block := range varBlocks.Blocks {
+	for _, block := range blocks {
 
 		blockVars, moreDiags := parseVarsBlockToIntermediate(block)
 		diags = diags.Extend(moreDiags)
@@ -224,29 +226,20 @@ func parseVarsBlocksToIntermediate(varBlocks *hcl.BodyContent) (map[string]*hcl.
 
 func parseVarsBlockToIntermediate(block *hcl.Block) (map[string]*hcl.Attribute, hcl.Diagnostics) {
 
-	if block.Type != "vars" {
-		return nil, hcl.Diagnostics{
-			&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Invalid block type",
-				Detail:   fmt.Sprintf("Expected 'vars' block, but found '%s'.", block.Type),
-				Subject:  &block.DefRange,
-			},
-		}
-	}
-
 	vars := make(map[string]*hcl.Attribute)
 	diags := hcl.Diagnostics{}
 
 	attributes, moreDiags := block.Body.JustAttributes()
+	util.ModifyUnexpectedElementDiags(moreDiags, "in a vars block")
 	diags = diags.Extend(moreDiags)
+
 	if moreDiags.HasErrors() {
 		return nil, diags
 	}
 
-	for _, attr := range attributes {
+	for name, attr := range attributes {
 
-		if _, exists := vars[attr.Name]; exists {
+		if _, exists := vars[name]; exists {
 			diags = diags.Append(&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  "Duplicate variable name",
@@ -266,19 +259,20 @@ func parseVarsBlockToIntermediate(block *hcl.Block) (map[string]*hcl.Attribute, 
 	return vars, diags
 }
 
-func parseTransportBlocksToIntermediate(transportBlocks *hcl.BodyContent) (*intermediateTransport, hcl.Diagnostics) {
+func parseTransportBlocksToIntermediate(blocks []*hcl.Block) (*intermediateTransport, hcl.Diagnostics) {
 
-	if len(transportBlocks.Blocks) == 0 {
+	if len(blocks) == 0 {
 		return nil, hcl.Diagnostics{}
 	}
 
 	diags := hcl.Diagnostics{}
 	var transport *intermediateTransport
 
-	for _, block := range transportBlocks.Blocks {
+	for _, block := range blocks {
 
 		t, moreDiags := parseTransportBlockToIntermediate(block)
 		diags = diags.Extend(moreDiags)
+
 		if moreDiags.HasErrors() {
 			continue // Skip blocks with errors
 		}
@@ -333,46 +327,44 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 		}
 	}
 
-	if len(block.Labels) != 1 {
-		return nil, hcl.Diagnostics{
-			&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Invalid transport block",
-				Detail:   "The 'transport' block must have exactly one label specifying the transport type.",
-				Subject:  &block.DefRange,
-			},
-		}
-	}
-
 	transportType := block.Labels[0]
 
 	diags := hcl.Diagnostics{}
 	var body *hcl.BodyContent
-	var remaining hcl.Body
 
 	switch transportType {
 	case string(transport.TransportTypeNone):
-		body, remaining, _ = block.Body.PartialContent(transportNoneSchema)
-	case string(transport.TransportTypeSSH):
 		var moreDiags hcl.Diagnostics
-		body, remaining, moreDiags = block.Body.PartialContent(transportSSHSchema)
+		body, moreDiags = block.Body.Content(transportNoneSchema)
+		util.ModifyUnexpectedElementDiags(moreDiags, "in a transport \"none\" block")
 		diags = diags.Extend(moreDiags)
+
 		if moreDiags.HasErrors() {
 			return nil, diags
 		}
-	default:
-		return nil, hcl.Diagnostics{
-			&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Invalid transport type",
-				Detail: fmt.Sprintf(
-					"The transport type '%s' is not supported. Allowed types are: %s, %s",
-					transportType,
-					transport.TransportTypeNone,
-					transport.TransportTypeSSH),
-				Subject: &block.DefRange,
-			},
+
+	case string(transport.TransportTypeSSH):
+		var moreDiags hcl.Diagnostics
+		body, moreDiags = block.Body.Content(transportSSHSchema)
+		util.ModifyUnexpectedElementDiags(moreDiags, "in a transport \"ssh\" block")
+		diags = diags.Extend(moreDiags)
+
+		if moreDiags.HasErrors() {
+			return nil, diags
 		}
+
+	default:
+
+		return nil, diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "Invalid transport type",
+			Detail: fmt.Sprintf(
+				"The transport type %q is not supported. Allowed types are: %q, %q",
+				transportType,
+				transport.TransportTypeNone,
+				transport.TransportTypeSSH),
+			Subject: &block.DefRange,
+		})
 	}
 
 	transport := &intermediateTransport{
@@ -381,28 +373,8 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 		hclRange: &block.DefRange,
 	}
 
-	for _, attr := range body.Attributes {
-		if _, exists := transport.config[attr.Name]; exists {
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Duplicate transport configuration",
-				Detail:   fmt.Sprintf("The attribute '%s' is defined multiple times in the 'transport' block. Each attribute must have a unique name.", attr.Name),
-				Subject:  &attr.Range,
-			})
-			continue
-		}
-
-		transport.config[attr.Name] = attr
-	}
-
-	if !remaining.MissingItemRange().Empty() {
-		missingItemRange := remaining.MissingItemRange()
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagWarning,
-			Summary:  "Unexpected content in transport block",
-			Detail:   "The 'transport' block contains unexpected content that was not parsed. This may indicate a syntax error or unsupported features.",
-			Subject:  &missingItemRange,
-		})
+	for name, attr := range body.Attributes {
+		transport.config[name] = attr
 	}
 
 	if diags.HasErrors() {
@@ -412,82 +384,42 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 	return transport, diags
 }
 
-func parseEscalateBlocksToIntermediate(escalateBlocks *hcl.BodyContent) (*intermediateEscalate, hcl.Diagnostics) {
+func parseEscalateBlocksToIntermediate(blocks []*hcl.Block) (*intermediateEscalate, hcl.Diagnostics) {
 
-	if len(escalateBlocks.Blocks) == 0 {
+	if len(blocks) == 0 {
 		return nil, hcl.Diagnostics{}
 	}
 
-	if len(escalateBlocks.Blocks) > 1 {
-		diags := hcl.Diagnostics{
-			&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Multiple escalate blocks",
-				Detail:   "Only one 'escalate' block is allowed. Multiple 'escalate' blocks were found.",
-				Subject:  &escalateBlocks.Blocks[1].DefRange,
-			},
-		}
-
-		return nil, diags
-	}
-
-	return parseEscalateBlockToIntermediate(escalateBlocks.Blocks[0])
-}
-
-func parseEscalateBlockToIntermediate(block *hcl.Block) (*intermediateEscalate, hcl.Diagnostics) {
-
-	if block.Type != "escalate" {
-		return nil, hcl.Diagnostics{
-			&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Invalid block type",
-				Detail:   fmt.Sprintf("Expected 'escalate' block, but found '%s'.", block.Type),
-				Subject:  &block.DefRange,
-			},
-		}
-	}
-
-	if len(block.Labels) != 0 {
-		return nil, hcl.Diagnostics{
-			&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Invalid escalate block",
-				Detail:   "The 'escalate' block must not have any labels.",
-				Subject:  &block.DefRange,
-			},
-		}
-	}
-
 	diags := hcl.Diagnostics{}
-	var body *hcl.BodyContent
-	var remaining hcl.Body
+	var escalate *intermediateEscalate
 
-	body, remaining, _ = block.Body.PartialContent(escalateAttributesSchema)
+	for _, block := range blocks {
 
-	escalate := &intermediateEscalate{}
+		e, moreDiags := parseEscalateBlockToIntermediate(block)
+		diags = diags.Extend(moreDiags)
 
-	for _, attr := range body.Attributes {
-		switch attr.Name {
-		case "password":
-			escalate.password = attr
-		default:
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Invalid escalate attribute",
-				Detail:   fmt.Sprintf("The attribute '%s' is not allowed in the 'escalate' block.", attr.Name),
-				Subject:  &attr.Range,
-			})
+		if moreDiags.HasErrors() {
+			continue // Skip blocks with errors
 		}
-	}
 
-	if !remaining.MissingItemRange().Empty() {
-		missingItemRange := remaining.MissingItemRange()
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagWarning,
-			Summary:  "Unexpected content in transport block",
-			Detail:   "The 'transport' block contains unexpected content that was not parsed. This may indicate a syntax error or unsupported features.",
-			Subject:  &missingItemRange,
-		})
+		if escalate == nil {
+			escalate = e
+		} else {
+			// Merge the configuration attributes
+			if escalate.password != nil && e.password != nil {
+				diags = diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "Duplicate escalate configuration",
+					Detail:   "The attribute 'password' is defined multiple times in the 'escalate' block.",
+					Subject:  &e.password.Range,
+				})
+				continue
+			}
+
+			if escalate.password == nil && e.password != nil {
+				escalate.password = e.password
+			}
+		}
 	}
 
 	if diags.HasErrors() {
@@ -497,12 +429,36 @@ func parseEscalateBlockToIntermediate(block *hcl.Block) (*intermediateEscalate, 
 	return escalate, diags
 }
 
-func parseGroupBlocksToIntermediate(groupBlocks *hcl.BodyContent) (map[string]*intermediateGroup, hcl.Diagnostics) {
+func parseEscalateBlockToIntermediate(block *hcl.Block) (*intermediateEscalate, hcl.Diagnostics) {
+
+	diags := hcl.Diagnostics{}
+
+	body, moreDiags := block.Body.Content(escalateBlockSchema)
+	util.ModifyUnexpectedElementDiags(moreDiags, "in an escalate block")
+	diags = diags.Extend(moreDiags)
+
+	if moreDiags.HasErrors() {
+		return nil, diags
+	}
+
+	escalate := &intermediateEscalate{}
+
+	for _, attr := range body.Attributes {
+		switch attr.Name {
+		case "password":
+			escalate.password = attr
+		}
+	}
+
+	return escalate, diags
+}
+
+func parseGroupBlocksToIntermediate(blocks []*hcl.Block) (map[string]*intermediateGroup, hcl.Diagnostics) {
 
 	diags := hcl.Diagnostics{}
 	groups := make(map[string]*intermediateGroup)
 
-	for _, block := range groupBlocks.Blocks {
+	for _, block := range blocks {
 
 		group, moreDiags := parseGroupBlockToIntermediate(block)
 		diags = diags.Extend(moreDiags)
@@ -544,39 +500,15 @@ func parseGroupBlockToIntermediate(block *hcl.Block) (*intermediateGroup, hcl.Di
 
 	diags := hcl.Diagnostics{}
 
-	if block.Type != "group" {
-		return nil, hcl.Diagnostics{
-			&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Invalid block type",
-				Detail:   fmt.Sprintf("Expected 'group' block, but found '%s'.", block.Type),
-				Subject:  &block.DefRange,
-			},
-		}
-	}
-
-	if len(block.Labels) != 1 {
-		return nil, hcl.Diagnostics{
-			&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Invalid group block",
-				Detail:   "The 'group' block must have exactly one label specifying the group name.",
-				Subject:  &block.DefRange,
-			},
-		}
-	}
-
 	groupName := block.Labels[0]
 
 	if groupName == "" {
-		return nil, hcl.Diagnostics{
-			&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Empty group name",
-				Detail:   "The group name cannot be empty.",
-				Subject:  &block.DefRange,
-			},
-		}
+		return nil, hcl.Diagnostics{&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "Empty group name",
+			Detail:   "The group name cannot be empty.",
+			Subject:  &block.DefRange,
+		}}
 	}
 
 	group := &intermediateGroup{
@@ -586,65 +518,61 @@ func parseGroupBlockToIntermediate(block *hcl.Block) (*intermediateGroup, hcl.Di
 		vars:           make(map[string]*hcl.Attribute),
 	}
 
-	varsBlocks, body, moreDiags := block.Body.PartialContent(varsBlockSchema)
+	content, moreDiags := block.Body.Content(groupBlockSchema)
+	util.ModifyUnexpectedElementDiags(moreDiags, "in a group block")
 	diags = diags.Extend(moreDiags)
+
 	if moreDiags.HasErrors() {
 		return nil, diags
 	}
 
-	group.vars, moreDiags = parseVarsBlocksToIntermediate(varsBlocks)
-	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
+	varsBlocks := []*hcl.Block{}
+	transportBlocks := []*hcl.Block{}
+	escalateBlocks := []*hcl.Block{}
+	hostBlocks := []*hcl.Block{}
+
+	for _, block := range content.Blocks {
+		switch block.Type {
+		case "vars":
+			varsBlocks = append(varsBlocks, block)
+		case "transport":
+			transportBlocks = append(transportBlocks, block)
+		case "escalate":
+			escalateBlocks = append(escalateBlocks, block)
+		case "host":
+			hostBlocks = append(hostBlocks, block)
+		}
 	}
 
-	transportBlocks, body, moreDiags := body.PartialContent(transportBlockSchema)
+	vars, moreDiags := parseVarsBlocksToIntermediate(varsBlocks)
 	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
+	if !moreDiags.HasErrors() {
+		group.vars = vars
 	}
 
-	group.transport, moreDiags = parseTransportBlocksToIntermediate(transportBlocks)
+	transport, moreDiags := parseTransportBlocksToIntermediate(transportBlocks)
 	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
+	if !moreDiags.HasErrors() {
+		group.transport = transport
 	}
 
-	escalateBlocks, body, moreDiags := body.PartialContent(escalateBlockSchema)
+	escalate, moreDiags := parseEscalateBlocksToIntermediate(escalateBlocks)
 	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
+	if !moreDiags.HasErrors() {
+		group.escalate = escalate
 	}
 
-	group.escalate, moreDiags = parseEscalateBlocksToIntermediate(escalateBlocks)
+	childHosts, moreDiags := parseHostBlocksToIntermediate(hostBlocks)
 	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
-	}
-
-	childHostBlocks, body, moreDiags := body.PartialContent(hostBlockSchema)
-	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
-	}
-
-	group.childHosts, moreDiags = parseHostBlocksToIntermediate(childHostBlocks)
-	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
+	if !moreDiags.HasErrors() {
+		group.childHosts = childHosts
 	}
 
 	for _, host := range group.childHosts {
 		host.parentGroup = group.name
 	}
 
-	attributes, body, moreDiags := body.PartialContent(groupAttributesSchema)
-	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
-	}
-
-	for _, attr := range attributes.Attributes {
+	for _, attr := range content.Attributes {
 		switch attr.Name {
 		case "parent":
 			if group.parent != "" {
@@ -729,16 +657,6 @@ func parseGroupBlockToIntermediate(block *hcl.Block) (*intermediateGroup, hcl.Di
 		}
 	}
 
-	if !body.MissingItemRange().Empty() {
-		missingItemRange := body.MissingItemRange()
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagWarning,
-			Summary:  "Unexpected content in group block",
-			Detail:   "The 'group' block contains unexpected content that was not parsed. This may indicate a syntax error or unsupported features.",
-			Subject:  &missingItemRange,
-		})
-	}
-
 	if diags.HasErrors() {
 		return nil, diags
 	}
@@ -746,15 +664,16 @@ func parseGroupBlockToIntermediate(block *hcl.Block) (*intermediateGroup, hcl.Di
 	return group, diags
 }
 
-func parseHostBlocksToIntermediate(hostBlocks *hcl.BodyContent) (map[string]*intermediateHost, hcl.Diagnostics) {
+func parseHostBlocksToIntermediate(blocks []*hcl.Block) (map[string]*intermediateHost, hcl.Diagnostics) {
 
 	diags := hcl.Diagnostics{}
 	hosts := make(map[string]*intermediateHost)
 
-	for _, block := range hostBlocks.Blocks {
+	for _, block := range blocks {
 
 		host, moreDiags := parseHostBlockToIntermediate(block)
 		diags = diags.Extend(moreDiags)
+
 		if moreDiags.HasErrors() {
 			continue
 		}
@@ -782,28 +701,6 @@ func parseHostBlocksToIntermediate(hostBlocks *hcl.BodyContent) (map[string]*int
 
 func parseHostBlockToIntermediate(block *hcl.Block) (*intermediateHost, hcl.Diagnostics) {
 
-	if block.Type != "host" {
-		return nil, hcl.Diagnostics{
-			&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Invalid block type",
-				Detail:   fmt.Sprintf("Expected 'host' block, but found '%s'.", block.Type),
-				Subject:  &block.DefRange,
-			},
-		}
-	}
-
-	if len(block.Labels) != 1 {
-		return nil, hcl.Diagnostics{
-			&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Invalid host block",
-				Detail:   "The 'host' block must have exactly one label specifying the host name.",
-				Subject:  &block.DefRange,
-			},
-		}
-	}
-
 	hostName := block.Labels[0]
 
 	if hostName == "" {
@@ -825,39 +722,48 @@ func parseHostBlockToIntermediate(block *hcl.Block) (*intermediateHost, hcl.Diag
 		hclRange:  &block.DefRange,
 	}
 
-	varsBlocks, body, moreDiags := block.Body.PartialContent(varsBlockSchema)
+	content, moreDiags := block.Body.Content(hostBlockSchema)
+	util.ModifyUnexpectedElementDiags(moreDiags, "in a host block")
 	diags = diags.Extend(moreDiags)
+
 	if moreDiags.HasErrors() {
 		return nil, diags
 	}
 
-	host.vars, moreDiags = parseVarsBlocksToIntermediate(varsBlocks)
-	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
+	varsBlocks := []*hcl.Block{}
+	transportBlocks := []*hcl.Block{}
+	escalateBlocks := []*hcl.Block{}
+
+	for _, block := range content.Blocks {
+		switch block.Type {
+		case "vars":
+			varsBlocks = append(varsBlocks, block)
+		case "transport":
+			transportBlocks = append(transportBlocks, block)
+		case "escalate":
+			escalateBlocks = append(escalateBlocks, block)
+		}
 	}
 
-	transportBlocks, body, moreDiags := body.PartialContent(transportBlockSchema)
+	vars, moreDiags := parseVarsBlocksToIntermediate(varsBlocks)
 	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
+	if !moreDiags.HasErrors() {
+		host.vars = vars
 	}
 
-	host.transport, moreDiags = parseTransportBlocksToIntermediate(transportBlocks)
+	transport, moreDiags := parseTransportBlocksToIntermediate(transportBlocks)
 	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
+	if !moreDiags.HasErrors() {
+		host.transport = transport
 	}
 
-	escalateBlocks, body, moreDiags := body.PartialContent(escalateBlockSchema)
+	escalate, moreDiags := parseEscalateBlocksToIntermediate(escalateBlocks)
 	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
-		return nil, diags
+	if !moreDiags.HasErrors() {
+		host.escalate = escalate
 	}
 
-	host.escalate, moreDiags = parseEscalateBlocksToIntermediate(escalateBlocks)
-	diags = diags.Extend(moreDiags)
-	if moreDiags.HasErrors() {
+	if diags.HasErrors() {
 		return nil, diags
 	}
 

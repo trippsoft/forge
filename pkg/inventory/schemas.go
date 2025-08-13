@@ -19,21 +19,30 @@ const (
 )
 
 var (
-	varsBlockSchema = &hcl.BodySchema{
+	inventoryBodySchema = &hcl.BodySchema{
 		Blocks: []hcl.BlockHeaderSchema{
 			{
 				Type:       "vars",
 				LabelNames: []string{},
 			},
-		},
-	}
-	transportBlockSchema = &hcl.BodySchema{
-		Blocks: []hcl.BlockHeaderSchema{
 			{
 				Type:       "transport",
 				LabelNames: []string{"type"},
 			},
+			{
+				Type:       "escalate",
+				LabelNames: []string{},
+			},
+			{
+				Type:       "group",
+				LabelNames: []string{"name"},
+			},
+			{
+				Type:       "host",
+				LabelNames: []string{"name"},
+			},
 		},
+		Attributes: []hcl.AttributeSchema{},
 	}
 	transportNoneSchema = &hcl.BodySchema{}
 	transportSSHSchema  = &hcl.BodySchema{
@@ -52,14 +61,6 @@ var (
 		Blocks: []hcl.BlockHeaderSchema{},
 	}
 	escalateBlockSchema = &hcl.BodySchema{
-		Blocks: []hcl.BlockHeaderSchema{
-			{
-				Type:       "escalate",
-				LabelNames: []string{},
-			},
-		},
-	}
-	escalateAttributesSchema = &hcl.BodySchema{
 		Attributes: []hcl.AttributeSchema{
 			{Name: "password", Required: false},
 		},
@@ -67,22 +68,46 @@ var (
 	groupBlockSchema = &hcl.BodySchema{
 		Blocks: []hcl.BlockHeaderSchema{
 			{
-				Type:       "group",
+				Type:       "vars",
+				LabelNames: []string{},
+			},
+			{
+				Type:       "transport",
+				LabelNames: []string{"type"},
+			},
+			{
+				Type:       "escalate",
+				LabelNames: []string{},
+			},
+			{
+				Type:       "host",
 				LabelNames: []string{"name"},
 			},
 		},
-	}
-	groupAttributesSchema = &hcl.BodySchema{
 		Attributes: []hcl.AttributeSchema{
-			{Name: "parent", Required: false},
-			{Name: "hosts", Required: false},
+			{
+				Name:     "parent",
+				Required: false,
+			},
+			{
+				Name:     "hosts",
+				Required: false,
+			},
 		},
 	}
 	hostBlockSchema = &hcl.BodySchema{
 		Blocks: []hcl.BlockHeaderSchema{
 			{
-				Type:       "host",
-				LabelNames: []string{"name"},
+				Type:       "vars",
+				LabelNames: []string{},
+			},
+			{
+				Type:       "transport",
+				LabelNames: []string{"type"},
+			},
+			{
+				Type:       "escalate",
+				LabelNames: []string{},
 			},
 		},
 	}

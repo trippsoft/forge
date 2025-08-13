@@ -945,11 +945,7 @@ func buildFinalInventory(
 
 	diags := hcl.Diagnostics{}
 
-	inventory := &Inventory{
-		groups:  make(map[string][]*Host),
-		hosts:   make(map[string]*Host),
-		targets: make(map[string][]*Host),
-	}
+	inventory := NewInventory(map[string]*Host{}, map[string][]*Host{}, map[string][]*Host{})
 
 	inventory.targets["all"] = make([]*Host, 0, len(intermediate.allHosts))
 
