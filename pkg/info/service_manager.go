@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/trippsoft/forge/pkg/transport"
+	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -35,11 +35,11 @@ func (s *ServiceManagerInfo) Name() string {
 	return s.name
 }
 
-func (s *ServiceManagerInfo) populateServiceManagerInfo(osInfo *OSInfo, transport transport.Transport) diag.Diags {
+func (s *ServiceManagerInfo) populateServiceManagerInfo(osInfo *OSInfo, transport transport.Transport) util.Diags {
 
 	if osInfo == nil || osInfo.ID() == "" {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagWarning,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Missing OS information",
 			Detail:   "Skipping service manager information collection due to missing or invalid OS info",
 		}}
@@ -51,28 +51,28 @@ func (s *ServiceManagerInfo) populateServiceManagerInfo(osInfo *OSInfo, transpor
 
 	if osInfo.Families().Contains("windows") {
 		s.name = "windows-service-manager"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	if osInfo.Families().Contains("linux") {
 		return s.populateLinuxServiceManagerInfo(transport)
 	}
 
-	return diag.Diags{&diag.Diag{
-		Severity: diag.DiagError,
+	return util.Diags{&util.Diag{
+		Severity: util.DiagError,
 		Summary:  "Unsupported OS family",
 		Detail:   "Service manager information collection is not supported for this OS family",
 	}}
 }
 
-func (s *ServiceManagerInfo) populateDarwinServiceManagerInfo(osInfo *OSInfo) diag.Diags {
+func (s *ServiceManagerInfo) populateDarwinServiceManagerInfo(osInfo *OSInfo) util.Diags {
 
 	s.name = "launchd" // Default to launchd for macOS
 
 	majorVersion, err := strconv.Atoi(osInfo.MajorVersion())
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Invalid OS major version",
 			Detail:   fmt.Sprintf("Error parsing OS major version: %v", err),
 		}}
@@ -80,18 +80,18 @@ func (s *ServiceManagerInfo) populateDarwinServiceManagerInfo(osInfo *OSInfo) di
 
 	if majorVersion < 10 {
 		s.name = "systemstarter"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	if majorVersion > 10 {
 		s.name = "launchd"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	versionParts := strings.Split(osInfo.Version(), ".")
 	if len(versionParts) < 2 {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Invalid OS version format",
 			Detail:   "OS version does not contain enough parts to determine service manager",
 		}}
@@ -99,8 +99,8 @@ func (s *ServiceManagerInfo) populateDarwinServiceManagerInfo(osInfo *OSInfo) di
 
 	minorVersion, err := strconv.Atoi(versionParts[1])
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Invalid OS minor version",
 			Detail:   fmt.Sprintf("Error parsing OS minor version: %v", err),
 		}}
@@ -112,15 +112,15 @@ func (s *ServiceManagerInfo) populateDarwinServiceManagerInfo(osInfo *OSInfo) di
 		s.name = "launchd"
 	}
 
-	return diag.Diags{}
+	return util.Diags{}
 }
 
-func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transport) diag.Diags {
+func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transport) util.Diags {
 
 	cmd, err := t.NewCommand(serviceManagerLinuxDiscoveryScript, nil)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to create service manager discovery command",
 			Detail:   fmt.Sprintf("Error creating command: %v", err),
 		}}
@@ -128,12 +128,12 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transpo
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to execute service manager discovery script",
 			Detail:   fmt.Sprintf("Error executing service manager discovery script: %v", err),
-		}, &diag.Diag{
-			Severity: diag.DiagDebug,
+		}, &util.Diag{
+			Severity: util.DiagDebug,
 			Summary:  "Discovery command stderr",
 			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
@@ -142,8 +142,8 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transpo
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to parse service manager discovery script output",
 			Detail:   fmt.Sprintf("Error parsing service manager discovery script output: %v", err),
 		}}
@@ -159,21 +159,21 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transpo
 
 		if runSystemdSystemExists == "1" {
 			s.name = "systemd"
-			return diag.Diags{}
+			return util.Diags{}
 		}
 
 		devRunSystemdExists, _ := discoveredData["dev_run_systemd_exists"]
 
 		if devRunSystemdExists == "1" {
 			s.name = "systemd"
-			return diag.Diags{}
+			return util.Diags{}
 		}
 
 		devSystemdExists, _ := discoveredData["dev_systemd_exists"]
 
 		if devSystemdExists == "1" {
 			s.name = "systemd"
-			return diag.Diags{}
+			return util.Diags{}
 		}
 	}
 
@@ -184,7 +184,7 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transpo
 
 		if etcInitExists == "1" {
 			s.name = "upstart"
-			return diag.Diags{}
+			return util.Diags{}
 		}
 	}
 
@@ -192,7 +192,7 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transpo
 
 	if openrcExists == "1" {
 		s.name = "openrc"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	initLinkTarget, _ := discoveredData["init_link_target"]
@@ -201,14 +201,14 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transpo
 	initLinkTarget = initLinkTargetParts[len(initLinkTargetParts)-1] // Get the last part of the path
 	if initLinkTarget == "systemd" {
 		s.name = "systemd"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	etcInitDExists, _ := discoveredData["etc_init_d_exists"]
 
 	if etcInitDExists == "1" {
 		s.name = "sysvinit"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	proc1Comm, _ := discoveredData["proc1_comm"]
@@ -216,25 +216,25 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transpo
 	if proc1Comm != "" && proc1Comm != "COMMAND" && proc1Comm != "init" && !strings.HasSuffix(proc1Comm, "sh") {
 		if serviceManager, ok := proc1CommMap[proc1Comm]; ok {
 			s.name = serviceManager
-			return diag.Diags{}
+			return util.Diags{}
 		}
 
 		s.name = proc1Comm
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	if initLinkTarget != "" && initLinkTarget != "init" && !strings.HasSuffix(initLinkTarget, "sh") {
 		if serviceManager, ok := proc1CommMap[initLinkTarget]; ok {
 			s.name = serviceManager
-			return diag.Diags{}
+			return util.Diags{}
 		}
 
 		s.name = initLinkTarget
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
-	return diag.Diags{&diag.Diag{
-		Severity: diag.DiagError,
+	return util.Diags{&util.Diag{
+		Severity: util.DiagError,
 		Summary:  "Failed to determine service manager",
 		Detail:   "Could not identify the service manager for the current Linux system",
 	}}

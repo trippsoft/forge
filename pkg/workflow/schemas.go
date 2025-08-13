@@ -1,3 +1,6 @@
+// Copyright (c) Forge
+// SPDX-License-Identifier: MPL-2.0
+
 package workflow
 
 import "github.com/hashicorp/hcl/v2"

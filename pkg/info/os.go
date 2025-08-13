@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
@@ -178,12 +177,12 @@ func (o *OSInfo) ProcArchBits() int {
 	return o.procArchBits
 }
 
-func (o *OSInfo) populateOSInfo(t transport.Transport) diag.Diags {
+func (o *OSInfo) populateOSInfo(t transport.Transport) util.Diags {
 
 	cmd, err := t.NewCommand("uname -s", nil)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to create uname command",
 			Detail:   fmt.Sprintf("Error creating uname command: %v", err),
 		}}
@@ -205,8 +204,8 @@ func (o *OSInfo) populateOSInfo(t transport.Transport) diag.Diags {
 
 	psCmd, psErr := t.NewPowerShellCommand("Write-Host $PSVersionTable.PSVersion", nil)
 	if psErr != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Unsupported OS family",
 			Detail:   fmt.Sprintf("uname error: %v, PowerShell error: %v", unameErr, psErr),
 		}}
@@ -219,22 +218,22 @@ func (o *OSInfo) populateOSInfo(t transport.Transport) diag.Diags {
 		return o.populateWindowsOSInfo(t)
 	}
 
-	return diag.Diags{&diag.Diag{
-		Severity: diag.DiagError,
+	return util.Diags{&util.Diag{
+		Severity: util.DiagError,
 		Summary:  "Unsupported OS family",
 		Detail:   fmt.Sprintf("uname error: %v, PowerShell error: %v", unameErr, psErr),
 	}}
 }
 
-func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) diag.Diags {
+func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) util.Diags {
 
 	o.id = "macos"
 	o.families.Add(o.id)
 
 	cmd, err := t.NewCommand(osDarwinDiscoveryScript, nil)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to create darwinOsDiscovery command",
 			Detail:   fmt.Sprintf("Error creating darwinOsDiscovery command: %v", err),
 		}}
@@ -243,12 +242,12 @@ func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) diag.Diags {
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
 		o.friendlyName = "macOS"
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to get macOS version",
 			Detail:   fmt.Sprintf("Error executing discovery command: %v", err),
-		}, &diag.Diag{
-			Severity: diag.DiagDebug,
+		}, &util.Diag{
+			Severity: util.DiagDebug,
 			Summary:  "Discovery command stderr",
 			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
@@ -258,8 +257,8 @@ func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) diag.Diags {
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
 	if err != nil {
 		o.friendlyName = "macOS"
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to parse macOS discovery output",
 			Detail:   fmt.Sprintf("Error parsing JSON output: %v", err),
 		}}
@@ -286,8 +285,8 @@ func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) diag.Diags {
 	case "11":
 		o.release = "Big Sur"
 	default:
-		diags = diags.Append(&diag.Diag{
-			Severity: diag.DiagWarning,
+		diags = diags.Append(&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Unknown macOS release",
 			Detail:   fmt.Sprintf("Unknown macOS release detected for major version %s", o.majorVersion),
 		})
@@ -296,12 +295,12 @@ func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) diag.Diags {
 	return diags
 }
 
-func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) diag.Diags {
+func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) util.Diags {
 
 	cmd, err := t.NewCommand(osLinuxDiscoveryScript, nil)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to create Linux discovery command",
 			Detail:   fmt.Sprintf("Error creating Linux discovery command: %v", err),
 		}}
@@ -309,12 +308,12 @@ func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) diag.Diags {
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to get Linux OS information",
 			Detail:   fmt.Sprintf("Error executing Linux discovery script: %v", err),
-		}, &diag.Diag{
-			Severity: diag.DiagDebug,
+		}, &util.Diag{
+			Severity: util.DiagDebug,
 			Summary:  "Discovery command stderr",
 			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
@@ -323,8 +322,8 @@ func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) diag.Diags {
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to parse Linux discovery output",
 			Detail:   fmt.Sprintf("Error parsing JSON output: %v", err),
 		}}
@@ -391,12 +390,12 @@ func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) diag.Diags {
 	return diags
 }
 
-func (o *OSInfo) populateWindowsOSInfo(t transport.Transport) diag.Diags {
+func (o *OSInfo) populateWindowsOSInfo(t transport.Transport) util.Diags {
 
 	cmd, err := t.NewPowerShellCommand(osWindowsDiscoveryScript, nil)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to get Windows OS information",
 			Detail:   fmt.Sprintf("Error executing Windows discovery script: %v", err),
 		}}
@@ -404,12 +403,12 @@ func (o *OSInfo) populateWindowsOSInfo(t transport.Transport) diag.Diags {
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to get Windows OS information",
 			Detail:   fmt.Sprintf("Error executing Windows discovery script: %v", err),
-		}, &diag.Diag{
-			Severity: diag.DiagDebug,
+		}, &util.Diag{
+			Severity: util.DiagDebug,
 			Summary:  "Discovery command stderr",
 			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
@@ -418,8 +417,8 @@ func (o *OSInfo) populateWindowsOSInfo(t transport.Transport) diag.Diags {
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to parse Windows discovery output",
 			Detail:   fmt.Sprintf("Error parsing JSON output: %v", err),
 		}}
@@ -582,7 +581,7 @@ func (o *OSInfo) populateWindowsOSInfo(t transport.Transport) diag.Diags {
 	return diags
 }
 
-func (o *OSInfo) populatePosixArchitectureInfo(data map[string]string) diag.Diags {
+func (o *OSInfo) populatePosixArchitectureInfo(data map[string]string) util.Diags {
 
 	archString, exists := data["os_arch"]
 	if !exists {
@@ -590,8 +589,8 @@ func (o *OSInfo) populatePosixArchitectureInfo(data map[string]string) diag.Diag
 		o.procArchBits = 0
 		o.osArch = ""
 		o.osArchBits = 0
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagWarning,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Unknown architecture",
 			Detail:   "No architecture information found in discovery output",
 		}}
@@ -605,8 +604,8 @@ func (o *OSInfo) populatePosixArchitectureInfo(data map[string]string) diag.Diag
 		o.procArchBits = 0
 		o.osArch = archString
 		o.osArchBits = 0
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagWarning,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Unknown architecture",
 			Detail:   fmt.Sprintf("Unknown architecture %q detected, using it as is", archString),
 		}}
@@ -620,8 +619,8 @@ func (o *OSInfo) populatePosixArchitectureInfo(data map[string]string) diag.Diag
 		o.procArchBits = 0
 		o.osArchBits = 0
 
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagWarning,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Unknown architecture bits",
 			Detail:   fmt.Sprintf("Unknown architecture bits for %q detected", arch),
 		}}
@@ -630,10 +629,10 @@ func (o *OSInfo) populatePosixArchitectureInfo(data map[string]string) diag.Diag
 	o.procArchBits = archBits
 	o.osArchBits = archBits
 
-	return diag.Diags{}
+	return util.Diags{}
 }
 
-func (o *OSInfo) populateWindowsArchitectureInfo(data map[string]string) diag.Diags {
+func (o *OSInfo) populateWindowsArchitectureInfo(data map[string]string) util.Diags {
 
 	procArchString, exists := data["processor_arch"]
 	if !exists {
@@ -641,8 +640,8 @@ func (o *OSInfo) populateWindowsArchitectureInfo(data map[string]string) diag.Di
 		o.procArchBits = 0
 		o.osArch = ""
 		o.osArchBits = 0
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagWarning,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Unknown architecture",
 			Detail:   "No architecture information found in discovery output",
 		}}
@@ -656,8 +655,8 @@ func (o *OSInfo) populateWindowsArchitectureInfo(data map[string]string) diag.Di
 		o.procArchBits = 0
 		o.osArch = procArchString
 		o.osArchBits = 0
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagWarning,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Unknown architecture",
 			Detail:   fmt.Sprintf("Unknown architecture %q detected, using it as is", procArchString),
 		}}
@@ -671,8 +670,8 @@ func (o *OSInfo) populateWindowsArchitectureInfo(data map[string]string) diag.Di
 		o.osArch = procArch
 		o.osArchBits = 0
 
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagWarning,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Unknown architecture bits",
 			Detail:   fmt.Sprintf("Unknown architecture bits for %q detected", procArch),
 		}}
@@ -684,8 +683,8 @@ func (o *OSInfo) populateWindowsArchitectureInfo(data map[string]string) diag.Di
 	if !exists {
 		o.osArch = procArch
 		o.osArchBits = procArchBits
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagWarning,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Unknown OS architecture",
 			Detail:   "No OS architecture found in discovery output, using processor architecture",
 		}}
@@ -713,17 +712,17 @@ func (o *OSInfo) populateWindowsArchitectureInfo(data map[string]string) diag.Di
 	default:
 		o.osArch = procArch
 		o.osArchBits = procArchBits
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagWarning,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Unknown OS architecture",
 			Detail:   fmt.Sprintf("Unknown OS architecture %q detected, using processor architecture", procArch),
 		}}
 	}
 
-	return diag.Diags{}
+	return util.Diags{}
 }
 
-func (o *OSInfo) populateVersionInfo(data map[string]string) diag.Diags {
+func (o *OSInfo) populateVersionInfo(data map[string]string) util.Diags {
 
 	o.version, _ = data["os_version"]
 
@@ -732,7 +731,7 @@ func (o *OSInfo) populateVersionInfo(data map[string]string) diag.Diags {
 	versionParts := strings.Split(o.version, ".")
 	o.majorVersion = versionParts[0]
 
-	return diag.Diags{}
+	return util.Diags{}
 }
 
 func (o *OSInfo) toMapOfCtyValues() map[string]cty.Value {

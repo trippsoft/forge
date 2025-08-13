@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/trippsoft/forge/pkg/transport"
+	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -65,11 +65,11 @@ func (s *SELinuxInfo) SelinuxType() SELinuxType {
 	return s.selinuxType
 }
 
-func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport) diag.Diags {
+func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport) util.Diags {
 
 	if osInfo == nil || osInfo.id == "" {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagWarning,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Missing OS information",
 			Detail:   "Skipping SELinux information collection due to missing or invalid OS info",
 		}}
@@ -81,15 +81,15 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport)
 		s.status = SELinuxNotSupported
 		s.selinuxType = SELinuxTypeNotSupported
 
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	s.supported = true
 
 	cmd, err := t.NewCommand(selinuxDiscoveryScript, nil)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to create SELinux discovery command",
 			Detail:   fmt.Sprintf("Error creating command: %v", err),
 		}}
@@ -97,12 +97,12 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport)
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to execute SELinux discovery script",
 			Detail:   fmt.Sprintf("Error executing SELinux discovery script: %v", err),
-		}, &diag.Diag{
-			Severity: diag.DiagDebug,
+		}, &util.Diag{
+			Severity: util.DiagDebug,
 			Summary:  "Discovery command stderr",
 			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
@@ -111,8 +111,8 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport)
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to parse SELinux discovery script output",
 			Detail:   fmt.Sprintf("Error parsing SELinux discovery script output: %v", err),
 		}}
@@ -125,7 +125,7 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport)
 		s.status = SELinuxNotSupported
 		s.selinuxType = SELinuxTypeNotSupported
 
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	status, _ := discoveredData["selinux_status"]
@@ -133,13 +133,13 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport)
 
 	if s.status == SELinuxDisabled {
 		s.selinuxType = SELinuxTypeNotSupported
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	selinuxType, _ := discoveredData["selinux_type"]
 	s.selinuxType = SELinuxType(selinuxType)
 
-	return diag.Diags{}
+	return util.Diags{}
 }
 
 func (s *SELinuxInfo) toMapOfCtyValues() map[string]cty.Value {

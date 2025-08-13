@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/trippsoft/forge/pkg/transport"
+	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -33,24 +33,24 @@ func (p *PackageManagerInfo) Path() string {
 	return p.path
 }
 
-func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transport.Transport) diag.Diags {
+func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transport.Transport) util.Diags {
 
 	if osInfo == nil || osInfo.ID() == "" {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagWarning,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Missing OS information",
 			Detail:   "Skipping package manager information collection due to missing or invalid OS info",
 		}}
 	}
 
 	if osInfo.Families().Contains("windows") {
-		return diag.Diags{} // Windows does not have a traditional package manager like other OS families
+		return util.Diags{} // Windows does not have a traditional package manager like other OS families
 	}
 
 	cmd, err := t.NewCommand(packageManagerDiscoveryScript, nil)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to create command for package manager discovery",
 			Detail:   fmt.Sprintf("Error creating command: %v", err),
 		}}
@@ -58,12 +58,12 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transp
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to check package manager status",
 			Detail:   fmt.Sprintf("Error checking package manager status: %v", err),
-		}, &diag.Diag{
-			Severity: diag.DiagDebug,
+		}, &util.Diag{
+			Severity: util.DiagDebug,
 			Summary:  "Discovery command stderr",
 			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
@@ -72,8 +72,8 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transp
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to parse package manager information",
 			Detail:   fmt.Sprintf("Error parsing package manager information: %v", err),
 		}}
@@ -83,7 +83,7 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transp
 		return p.populateDarwinPackageManagerInfo(discoveredData)
 	}
 
-	diags := diag.Diags{}
+	diags := util.Diags{}
 	if osInfo.Families().Contains("archlinux") {
 		moreDiags := p.populateArchLinuxPackageManagerInfo(discoveredData)
 		diags = diags.AppendAll(moreDiags)
@@ -135,53 +135,53 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transp
 	return diags
 }
 
-func (p *PackageManagerInfo) populateDarwinPackageManagerInfo(data map[string]string) diag.Diags {
+func (p *PackageManagerInfo) populateDarwinPackageManagerInfo(data map[string]string) util.Diags {
 
 	optHomebrewBinBrewExists, _ := data["opt_homebrew_bin_brew_exists"]
 	if optHomebrewBinBrewExists == "1" {
 		p.name = "homebrew"
 		p.path = "/opt/homebrew/bin/brew"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrLocalBinBrewExists, _ := data["usr_local_bin_brew_exists"]
 	if usrLocalBinBrewExists == "1" {
 		p.name = "homebrew"
 		p.path = "/usr/local/bin/brew"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	optLocalBinPortExists, _ := data["opt_local_bin_port_exists"]
 	if optLocalBinPortExists == "1" {
 		p.name = "macports"
 		p.path = "/opt/local/bin/port"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
-	return diag.Diags{&diag.Diag{
-		Severity: diag.DiagWarning,
+	return util.Diags{&util.Diag{
+		Severity: util.DiagWarning,
 		Summary:  "No package manager found",
 		Detail:   "No known package manager found for macOS. Please ensure Homebrew or MacPorts is installed.",
 	}}
 }
 
-func (p *PackageManagerInfo) populateArchLinuxPackageManagerInfo(data map[string]string) diag.Diags {
+func (p *PackageManagerInfo) populateArchLinuxPackageManagerInfo(data map[string]string) util.Diags {
 
 	usrBinPacmanExists, _ := data["usr_bin_pacman_exists"]
 	if usrBinPacmanExists == "1" {
 		p.name = "pacman"
 		p.path = "/usr/bin/pacman"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
-	return diag.Diags{&diag.Diag{
-		Severity: diag.DiagWarning,
+	return util.Diags{&util.Diag{
+		Severity: util.DiagWarning,
 		Summary:  "Primary package manager not found",
 		Detail:   "The primary package manager for Arch Linux (pacman) was not found",
 	}}
 }
 
-func (p *PackageManagerInfo) populateDebianPackageManagerInfo(data map[string]string) diag.Diags {
+func (p *PackageManagerInfo) populateDebianPackageManagerInfo(data map[string]string) util.Diags {
 
 	usrBinAptGetExists, _ := data["usr_bin_apt_get_exists"]
 	if usrBinAptGetExists == "1" {
@@ -190,244 +190,244 @@ func (p *PackageManagerInfo) populateDebianPackageManagerInfo(data map[string]st
 		if aptProvidedByRpmPackage != "" {
 			p.name = "apt-rpm"
 			p.path = "/usr/bin/apt-get"
-			return diag.Diags{}
+			return util.Diags{}
 		}
 
 		p.name = "apt"
 		p.path = "/usr/bin/apt-get"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
-	return diag.Diags{&diag.Diag{
-		Severity: diag.DiagWarning,
+	return util.Diags{&util.Diag{
+		Severity: util.DiagWarning,
 		Summary:  "Primary package manager not found",
 		Detail:   "The primary package manager for Debian or AltLinux (apt) was not found",
 	}}
 }
 
-func (p *PackageManagerInfo) populateEnterpriseLinuxPackageManagerInfo(data map[string]string) diag.Diags {
+func (p *PackageManagerInfo) populateEnterpriseLinuxPackageManagerInfo(data map[string]string) util.Diags {
 
 	usrBinDnf5Exists, _ := data["usr_bin_dnf5_exists"]
 	if usrBinDnf5Exists == "1" {
 		p.name = "dnf5"
 		p.path = "/usr/bin/dnf5"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinDnf3Exists, _ := data["usr_bin_dnf_3_exists"]
 	if usrBinDnf3Exists == "1" {
 		p.name = "dnf"
 		p.path = "/usr/bin/dnf-3"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinDnfExists, _ := data["usr_bin_dnf_exists"]
 	if usrBinDnfExists == "1" {
 		p.name = "dnf"
 		p.path = "/usr/bin/dnf"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinYumExists, _ := data["usr_bin_yum_exists"]
 	if usrBinYumExists == "1" {
 		p.name = "yum"
 		p.path = "/usr/bin/yum"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
-	return diag.Diags{&diag.Diag{
-		Severity: diag.DiagWarning,
+	return util.Diags{&util.Diag{
+		Severity: util.DiagWarning,
 		Summary:  "Primary package manager not found",
 		Detail:   "The primary package manager for Enterprise Linux (dnf or yum) was not found",
 	}}
 }
 
-func (p *PackageManagerInfo) populateGentooPackageManagerInfo(data map[string]string) diag.Diags {
+func (p *PackageManagerInfo) populateGentooPackageManagerInfo(data map[string]string) util.Diags {
 
 	usrBinEmergeExists, _ := data["usr_bin_emerge_exists"]
 	if usrBinEmergeExists == "1" {
 		p.name = "portage"
 		p.path = "/usr/bin/emerge"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
-	return diag.Diags{&diag.Diag{
-		Severity: diag.DiagWarning,
+	return util.Diags{&util.Diag{
+		Severity: util.DiagWarning,
 		Summary:  "Primary package manager not found",
 		Detail:   "The primary package manager for Gentoo (portage) was not found",
 	}}
 }
 
-func (p *PackageManagerInfo) populateSusePackageManagerInfo(data map[string]string) diag.Diags {
+func (p *PackageManagerInfo) populateSusePackageManagerInfo(data map[string]string) util.Diags {
 
 	usrBinZypperExists, _ := data["usr_bin_zypper_exists"]
 	if usrBinZypperExists == "1" {
 		p.name = "zypper"
 		p.path = "/usr/bin/zypper"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
-	return diag.Diags{&diag.Diag{
-		Severity: diag.DiagWarning,
+	return util.Diags{&util.Diag{
+		Severity: util.DiagWarning,
 		Summary:  "Primary package manager not found",
 		Detail:   "The primary package manager for SUSE (zypper) was not found",
 	}}
 }
 
-func (p *PackageManagerInfo) populateOtherPackageManagerInfo(data map[string]string) diag.Diags {
+func (p *PackageManagerInfo) populateOtherPackageManagerInfo(data map[string]string) util.Diags {
 
 	qopenSysPkgsBinYumExists, _ := data["qopensys_pkgs_bin_yum_exists"]
 	if qopenSysPkgsBinYumExists == "1" {
 		p.name = "yum"
 		p.path = "/QOpenSys/pkgs/bin/yum"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinInstallpExists, _ := data["usr_bin_installp_exists"]
 	if usrBinInstallpExists == "1" {
 		p.name = "installp"
 		p.path = "/usr/bin/installp"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrSbinSorceryExists, _ := data["usr_sbin_sorcery_exists"]
 	if usrSbinSorceryExists == "1" {
 		p.name = "sorcery"
 		p.path = "/usr/sbin/sorcery"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinSwupdExists, _ := data["usr_bin_swupd_exists"]
 	if usrBinSwupdExists == "1" {
 		p.name = "swupd"
 		p.path = "/usr/bin/swupd"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrLocalSbinPkgExists, _ := data["usr_local_sbin_pkg_exists"]
 	if usrLocalSbinPkgExists == "1" {
 		p.name = "pkgng"
 		p.path = "/usr/local/sbin/pkg"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinXbpsInstallExists, _ := data["usr_bin_xbps_install_exists"]
 	if usrBinXbpsInstallExists == "1" {
 		p.name = "xbps"
 		p.path = "/usr/bin/xbps-install"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinPkgExists, _ := data["usr_bin_pkg_exists"]
 	if usrBinPkgExists == "1" {
 		p.name = "pkg5"
 		p.path = "/usr/bin/pkg"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrSbinPkgaddExists, _ := data["usr_sbin_pkgadd_exists"]
 	if usrSbinPkgaddExists == "1" {
 		p.name = "svr4pkg"
 		p.path = "/usr/sbin/pkgadd"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinEmergeExists, _ := data["usr_bin_emerge_exists"]
 	if usrBinEmergeExists == "1" {
 		p.name = "portage"
 		p.path = "/usr/bin/emerge"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrSbinSwlistExists, _ := data["usr_sbin_swlist_exists"]
 	if usrSbinSwlistExists == "1" {
 		p.name = "swdepot"
 		p.path = "/usr/sbin/swlist"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrSbinPkgExists, _ := data["usr_sbin_pkg_exists"]
 	if usrSbinPkgExists == "1" {
 		p.name = "pkgng"
 		p.path = "/usr/sbin/pkg"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	sbinApkExists, _ := data["sbin_apk_exists"]
 	if sbinApkExists == "1" {
 		p.name = "apk"
 		p.path = "/sbin/apk"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	optHomebrewBinBrewExists, _ := data["opt_homebrew_bin_brew_exists"]
 	if optHomebrewBinBrewExists == "1" {
 		p.name = "homebrew"
 		p.path = "/opt/homebrew/bin/brew"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrLocalBinBrewExists, _ := data["usr_local_bin_brew_exists"]
 	if usrLocalBinBrewExists == "1" {
 		p.name = "homebrew"
 		p.path = "/usr/local/bin/brew"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	optLocalBinPortExists, _ := data["opt_local_bin_port_exists"]
 	if optLocalBinPortExists == "1" {
 		p.name = "macports"
 		p.path = "/opt/local/bin/port"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	optToolsBinPkginExists, _ := data["opt_tools_bin_pkgin_exists"]
 	if optToolsBinPkginExists == "1" {
 		p.name = "pkgin"
 		p.path = "/opt/tools/bin/pkgin"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	optLocalBinPkginExists, _ := data["opt_local_bin_pkgin_exists"]
 	if optLocalBinPkginExists == "1" {
 		p.name = "pkgin"
 		p.path = "/opt/local/bin/pkgin"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrPkgBinPkginExists, _ := data["usr_pkg_bin_pkgin_exists"]
 	if usrPkgBinPkginExists == "1" {
 		p.name = "pkgin"
 		p.path = "/usr/pkg/bin/pkgin"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	binOpkgExists, _ := data["bin_opkg_exists"]
 	if binOpkgExists == "1" {
 		p.name = "opkg"
 		p.path = "/bin/opkg"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinPacmanExists, _ := data["usr_bin_pacman_exists"]
 	if usrBinPacmanExists == "1" {
 		p.name = "pacman"
 		p.path = "/usr/bin/pacman"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrSbinUrpmiExists, _ := data["usr_sbin_urpmi_exists"]
 	if usrSbinUrpmiExists == "1" {
 		p.name = "urpmi"
 		p.path = "/usr/sbin/urpmi"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinZypperExists, _ := data["usr_bin_zypper_exists"]
 	if usrBinZypperExists == "1" {
 		p.name = "zypper"
 		p.path = "/usr/bin/zypper"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinAptGetExists, _ := data["usr_bin_apt_get_exists"]
@@ -436,43 +436,43 @@ func (p *PackageManagerInfo) populateOtherPackageManagerInfo(data map[string]str
 		if aptProvidedByRpmPackage != "" {
 			p.name = "apt-rpm"
 			p.path = "/usr/bin/apt-get"
-			return diag.Diags{}
+			return util.Diags{}
 		}
 		p.name = "apt"
 		p.path = "/usr/bin/apt-get"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinDnf5Exists, _ := data["usr_bin_dnf5_exists"]
 	if usrBinDnf5Exists == "1" {
 		p.name = "dnf5"
 		p.path = "/usr/bin/dnf5"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinDnf3Exists, _ := data["usr_bin_dnf_3_exists"]
 	if usrBinDnf3Exists == "1" {
 		p.name = "dnf"
 		p.path = "/usr/bin/dnf-3"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinDnfExists, _ := data["usr_bin_dnf_exists"]
 	if usrBinDnfExists == "1" {
 		p.name = "dnf"
 		p.path = "/usr/bin/dnf"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	usrBinYumExists, _ := data["usr_bin_yum_exists"]
 	if usrBinYumExists == "1" {
 		p.name = "yum"
 		p.path = "/usr/bin/yum"
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
-	return diag.Diags{&diag.Diag{
-		Severity: diag.DiagWarning,
+	return util.Diags{&util.Diag{
+		Severity: util.DiagWarning,
 		Summary:  "No package manager found",
 		Detail:   "No known package manager found",
 	}}

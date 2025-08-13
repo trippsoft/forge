@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/trippsoft/forge/pkg/transport"
+	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -54,11 +54,11 @@ func (u *UserInfo) Gecos() string {
 	return u.gecos
 }
 
-func (u *UserInfo) populateUserInfo(osInfo *OSInfo, transport transport.Transport) diag.Diags {
+func (u *UserInfo) populateUserInfo(osInfo *OSInfo, transport transport.Transport) util.Diags {
 
 	if osInfo == nil || osInfo.id == "" {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagWarning,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Invalid OS information",
 			Detail:   "Skipping user information collection due to missing or invalid OS info",
 		}}
@@ -72,19 +72,19 @@ func (u *UserInfo) populateUserInfo(osInfo *OSInfo, transport transport.Transpor
 		return u.populateWindowsUserInfo(transport)
 	}
 
-	return diag.Diags{&diag.Diag{
-		Severity: diag.DiagError,
+	return util.Diags{&util.Diag{
+		Severity: util.DiagError,
 		Summary:  "Unsupported OS family",
 		Detail:   "User information collection is not supported on this OS",
 	}}
 }
 
-func (u *UserInfo) populatePosixUserInfo(t transport.Transport) diag.Diags {
+func (u *UserInfo) populatePosixUserInfo(t transport.Transport) util.Diags {
 
 	cmd, err := t.NewCommand(userPosixDiscoveryScript, nil)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to get user information",
 			Detail:   fmt.Sprintf("Error getting user information on POSIX host: %v", err),
 		}}
@@ -92,12 +92,12 @@ func (u *UserInfo) populatePosixUserInfo(t transport.Transport) diag.Diags {
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to get user information",
 			Detail:   fmt.Sprintf("Error getting user information on POSIX host: %v", err),
-		}, &diag.Diag{
-			Severity: diag.DiagDebug,
+		}, &util.Diag{
+			Severity: util.DiagDebug,
 			Summary:  "Discovery command stderr",
 			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
@@ -106,8 +106,8 @@ func (u *UserInfo) populatePosixUserInfo(t transport.Transport) diag.Diags {
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to parse user information",
 			Detail:   fmt.Sprintf("Error parsing user information on POSIX host: %v", err),
 		}}
@@ -120,15 +120,15 @@ func (u *UserInfo) populatePosixUserInfo(t transport.Transport) diag.Diags {
 	u.shell, _ = discoveredData["user_shell"]
 	u.gecos, _ = discoveredData["user_gecos"]
 
-	return diag.Diags{}
+	return util.Diags{}
 }
 
-func (u *UserInfo) populateWindowsUserInfo(t transport.Transport) diag.Diags {
+func (u *UserInfo) populateWindowsUserInfo(t transport.Transport) util.Diags {
 
 	cmd, err := t.NewPowerShellCommand(userWindowsDiscoveryScript, nil)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to get user information",
 			Detail:   fmt.Sprintf("Error getting user information on Windows host: %v", err),
 		}}
@@ -136,12 +136,12 @@ func (u *UserInfo) populateWindowsUserInfo(t transport.Transport) diag.Diags {
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to get user information",
 			Detail:   fmt.Sprintf("Error getting user information on Windows host: %v", err),
-		}, &diag.Diag{
-			Severity: diag.DiagDebug,
+		}, &util.Diag{
+			Severity: util.DiagDebug,
 			Summary:  "Discovery command stderr",
 			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
@@ -150,8 +150,8 @@ func (u *UserInfo) populateWindowsUserInfo(t transport.Transport) diag.Diags {
 	discoveredData := make(map[string]string)
 	err = json.Unmarshal([]byte(stdout), &discoveredData)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to parse user information",
 			Detail:   fmt.Sprintf("Error parsing user information on Windows host: %v", err),
 		}}
@@ -161,7 +161,7 @@ func (u *UserInfo) populateWindowsUserInfo(t transport.Transport) diag.Diags {
 	u.userId, _ = discoveredData["user_id"]
 	u.homeDir, _ = discoveredData["user_home_dir"]
 
-	return diag.Diags{}
+	return util.Diags{}
 }
 
 func (u *UserInfo) toMapOfCtyValues() map[string]cty.Value {

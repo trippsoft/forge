@@ -7,8 +7,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/trippsoft/forge/pkg/transport"
+	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -34,11 +34,11 @@ func (a *AppArmorInfo) Enabled() bool {
 	return a.enabled
 }
 
-func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, t transport.Transport) diag.Diags {
+func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, t transport.Transport) util.Diags {
 
 	if osInfo == nil || osInfo.id == "" {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagWarning,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Missing OS information",
 			Detail:   "Skipping AppArmor information collection due to missing or invalid OS info",
 		}}
@@ -47,15 +47,15 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, t transport.Transpor
 	if !osInfo.families.Contains("linux") {
 		a.supported = false
 		a.enabled = false
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	a.supported = true
 
 	cmd, err := t.NewCommand(apparmorDiscoveryScript, nil)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to create AppArmor discovery command",
 			Detail:   fmt.Sprintf("Error creating command: %v", err),
 		}}
@@ -63,12 +63,12 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, t transport.Transpor
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to execute AppArmor discovery script",
 			Detail:   fmt.Sprintf("Error executing command: %v", err),
-		}, &diag.Diag{
-			Severity: diag.DiagDebug,
+		}, &util.Diag{
+			Severity: util.DiagDebug,
 			Summary:  "Discovery command stderr",
 			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
@@ -76,11 +76,11 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, t transport.Transpor
 
 	if stdout == "" {
 		a.enabled = false
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	a.enabled = stdout == "1"
-	return diag.Diags{}
+	return util.Diags{}
 }
 
 func (a *AppArmorInfo) toMapOfCtyValues() map[string]cty.Value {

@@ -7,8 +7,8 @@ import (
 	"maps"
 	"strings"
 
-	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/trippsoft/forge/pkg/transport"
+	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -62,17 +62,17 @@ func (i *HostInfo) UserInfo() *UserInfo {
 	return i.userInfo
 }
 
-func (i *HostInfo) Populate(transport transport.Transport) diag.Diags {
+func (i *HostInfo) Populate(transport transport.Transport) util.Diags {
 
 	if transport == nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Invalid transport",
 			Detail:   "Transport cannot be nil",
 		}}
 	}
 
-	diags := diag.Diags{}
+	diags := util.Diags{}
 
 	moreDiags := i.osInfo.populateOSInfo(transport)
 	diags = diags.AppendAll(moreDiags)

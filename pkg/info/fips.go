@@ -7,8 +7,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/trippsoft/forge/pkg/diag"
 	"github.com/trippsoft/forge/pkg/transport"
+	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -35,11 +35,11 @@ func (f *FIPSInfo) Enabled() bool {
 	return f.enabled
 }
 
-func (f *FIPSInfo) populateFipsInfo(osInfo *OSInfo, transport transport.Transport) diag.Diags {
+func (f *FIPSInfo) populateFipsInfo(osInfo *OSInfo, transport transport.Transport) util.Diags {
 
 	if osInfo == nil || osInfo.id == "" {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagWarning,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagWarning,
 			Summary:  "Missing OS information",
 			Detail:   "Skipping FIPS information collection due to missing or invalid OS info",
 		}}
@@ -57,15 +57,15 @@ func (f *FIPSInfo) populateFipsInfo(osInfo *OSInfo, transport transport.Transpor
 
 	f.known = false
 	f.enabled = false
-	return diag.Diags{}
+	return util.Diags{}
 }
 
-func (f *FIPSInfo) populateLinuxFipsInfo(t transport.Transport) diag.Diags {
+func (f *FIPSInfo) populateLinuxFipsInfo(t transport.Transport) util.Diags {
 
 	cmd, err := t.NewCommand(fipsLinuxDiscoveryScript, nil)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to create FIPS discovery command",
 			Detail:   fmt.Sprintf("Error creating command: %v", err),
 		}}
@@ -73,12 +73,12 @@ func (f *FIPSInfo) populateLinuxFipsInfo(t transport.Transport) diag.Diags {
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to check FIPS status",
 			Detail:   fmt.Sprintf("Error checking FIPS status: %v", err),
-		}, &diag.Diag{
-			Severity: diag.DiagDebug,
+		}, &util.Diag{
+			Severity: util.DiagDebug,
 			Summary:  "Discovery command stderr",
 			Detail:   fmt.Sprintf("stderr: %s", stderr),
 		}}
@@ -86,20 +86,20 @@ func (f *FIPSInfo) populateLinuxFipsInfo(t transport.Transport) diag.Diags {
 
 	if stdout == "" {
 		f.enabled = false
-		return diag.Diags{}
+		return util.Diags{}
 	}
 
 	f.enabled = stdout == "1"
 
-	return diag.Diags{}
+	return util.Diags{}
 }
 
-func (f *FIPSInfo) populateWindowsFipsInfo(t transport.Transport) diag.Diags {
+func (f *FIPSInfo) populateWindowsFipsInfo(t transport.Transport) util.Diags {
 
 	cmd, err := t.NewPowerShellCommand(fipsWindowsDiscoveryScript, nil)
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to create PowerShell command",
 			Detail:   fmt.Sprintf("Error creating PowerShell command: %v", err),
 		}}
@@ -107,8 +107,8 @@ func (f *FIPSInfo) populateWindowsFipsInfo(t transport.Transport) diag.Diags {
 
 	stdout, err := cmd.Output(context.Background())
 	if err != nil {
-		return diag.Diags{&diag.Diag{
-			Severity: diag.DiagError,
+		return util.Diags{&util.Diag{
+			Severity: util.DiagError,
 			Summary:  "Failed to check FIPS status",
 			Detail:   fmt.Sprintf("Error checking FIPS status: %v", err),
 		}}
@@ -117,7 +117,7 @@ func (f *FIPSInfo) populateWindowsFipsInfo(t transport.Transport) diag.Diags {
 	f.known = true
 	f.enabled = stdout == "1"
 
-	return diag.Diags{}
+	return util.Diags{}
 }
 
 func (f *FIPSInfo) toMapOfCtyValues() map[string]cty.Value {
