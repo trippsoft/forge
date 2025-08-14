@@ -84,10 +84,26 @@ func (u *ui) Error(message string) {
 // Format implements UI.
 func (u *ui) Format(text *uiText) string {
 
-	leftMargin := strings.Repeat(" ", text.leftMargin)
-	leftPadding := strings.Repeat(" ", text.leftPadding)
-	rightPadding := strings.Repeat(" ", text.rightPadding)
-	rightMargin := strings.Repeat(" ", text.rightMargin)
+	leftMargin := ""
+	leftPadding := ""
+	rightPadding := ""
+	rightMargin := ""
+
+	if text.leftMargin > 0 {
+		leftMargin = strings.Repeat(" ", text.leftMargin)
+	}
+
+	if text.leftPadding > 0 {
+		leftPadding = strings.Repeat(" ", text.leftPadding)
+	}
+
+	if text.rightPadding > 0 {
+		rightPadding = strings.Repeat(" ", text.rightPadding)
+	}
+
+	if text.rightMargin > 0 {
+		rightMargin = strings.Repeat(" ", text.rightMargin)
+	}
 
 	message := fmt.Sprintf("%s%s%s", leftPadding, text.message, rightPadding)
 
