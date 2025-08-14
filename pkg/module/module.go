@@ -4,11 +4,13 @@
 package module
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"time"
 
 	"github.com/trippsoft/forge/pkg/hclspec"
+	"github.com/trippsoft/forge/pkg/info"
 	"github.com/trippsoft/forge/pkg/inventory"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
@@ -18,10 +20,12 @@ const (
 	DefaultTimeout = 10 * time.Minute
 )
 
-// CommonConfig holds configuration options common to all modules.
-type CommonConfig struct {
-	transport.Escalation               // Configuration for privilege escalation.
-	Timeout              time.Duration // Maximum duration to wait for a command to complete.
+// RunConfig provides the context for running a module on a specific host.
+type RunConfig struct {
+	Transport  transport.Transport  // The transport to use for the host.
+	HostInfo   *info.HostInfo       // The host info this context is associated with.
+	Escalation transport.Escalation // Privilege escalation configuration for the host.
+	Input      map[string]cty.Value // Input variables for the module.
 }
 
 // Module defines the interface for a module in the system.
@@ -35,7 +39,42 @@ type Module interface {
 	Validate(host *inventory.Host, input map[string]cty.Value) error
 
 	// Run executes the module with the provided host and input.
-	Run(host *inventory.Host, common *CommonConfig, input map[string]cty.Value) *Result
+	Run(ctx context.Context, config *RunConfig) *Result
+}
+
+// Local wraps a local module implementation.
+type Local struct {
+	module Module
+}
+
+// NewLocal creates a new Local module.
+func NewLocal(module Module) Module {
+	return &Local{
+		module: module,
+	}
+}
+
+func (l *Local) InputSpec() *hclspec.Spec {
+	return l.module.InputSpec()
+}
+
+func (l *Local) Validate(host *inventory.Host, input map[string]cty.Value) error {
+	return l.module.Validate(host, input)
+}
+
+func (l *Local) Run(ctx context.Context, config *RunConfig) *Result {
+
+	outputChannel := make(chan *Result)
+	go func(ctx context.Context) {
+		outputChannel <- l.module.Run(ctx, config)
+	}(ctx)
+
+	select {
+	case <-ctx.Done():
+		return NewFailure(ctx.Err(), "module run timed out")
+	case result := <-outputChannel:
+		return result
+	}
 }
 
 type MockModule struct {
@@ -64,19 +103,22 @@ func (m *MockModule) Validate(host *inventory.Host, input map[string]cty.Value) 
 	return m.validateFunc(host, input)
 }
 
-func (m *MockModule) Run(host *inventory.Host, common *CommonConfig, input map[string]cty.Value) *Result {
+func (m *MockModule) Run(ctx context.Context, config *RunConfig) *Result {
 	return m.Result
 }
 
 // Result holds the result of a module execution.
 // It includes whether the module made any changes, any error encountered, and the output data.
 type Result struct {
-	Failed    bool                 // Indicates if the module execution failed.
-	Skipped   bool                 // Indicates if the module was skipped.
-	Changed   bool                 // Indicates if the module made any changes.
-	Err       error                // Error encountered during module execution, if any.
-	ErrDetail string               // Detailed error message, if any.
-	Output    map[string]cty.Value // Output data from the module execution.
+	Failed         bool                 // Indicates if the module execution failed.
+	IgnoredFailure bool                 // Indicates if the failure was ignored.
+	Skipped        bool                 // Indicates if the module was skipped.
+	Changed        bool                 // Indicates if the module made any changes.
+	Err            error                // Error encountered during module execution, if any.
+	ErrDetail      string               // Detailed error message, if any.
+	Output         map[string]cty.Value // Output data from the module execution.
+	Warning        string               // Warning message, if any.
+	Message        string               // Informational message, if any.
 }
 
 func NewSuccess(changed bool, output map[string]cty.Value) *Result {

@@ -6,7 +6,6 @@ package shell
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/trippsoft/forge/pkg/hclspec"
 	"github.com/trippsoft/forge/pkg/inventory"
@@ -18,8 +17,6 @@ var (
 	inputSpec = hclspec.NewSpec(hclspec.Object(map[string]*hclspec.ObjectField{
 		"command": hclspec.RequiredField(hclspec.String),
 	}))
-
-	_ module.Module = &Module{} // Ensure Module implements the module.Module interface.
 )
 
 type Module struct{}
@@ -35,24 +32,14 @@ func (s *Module) Validate(host *inventory.Host, input map[string]cty.Value) erro
 }
 
 // Run implements module.Module.
-func (s *Module) Run(host *inventory.Host, common *module.CommonConfig, input map[string]cty.Value) *module.Result {
+func (s *Module) Run(ctx context.Context, config *module.RunConfig) *module.Result {
 
-	t := host.Transport()
+	t := config.Transport
 
-	command := input["command"].AsString()
-	cmd, err := t.NewCommand(command, common.Escalation)
+	command := config.Input["command"].AsString()
+	cmd, err := t.NewCommand(command, config.Escalation)
 	if err != nil {
 		return module.NewFailure(err, "failed to create command")
-	}
-
-	timeout := common.Timeout
-
-	ctx := context.Background()
-
-	if timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, timeout*time.Second)
-		defer cancel()
 	}
 
 	stdout, stderr, err := cmd.OutputWithError(ctx)

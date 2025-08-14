@@ -4,8 +4,10 @@
 package shell
 
 import (
+	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/trippsoft/forge/pkg/inventory"
 	"github.com/trippsoft/forge/pkg/module"
@@ -66,16 +68,21 @@ func TestModuleRun(t *testing.T) {
 
 	p := &Module{}
 
-	commonConfig := &module.CommonConfig{
-		Escalation: nil,
-		Timeout:    10,
-	}
-
 	input := map[string]cty.Value{
 		"command": cty.StringVal("echo 'Hello, World!'"),
 	}
 
-	result := p.Run(host, commonConfig, input)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	config := &module.RunConfig{
+		Transport:  mockTransport,
+		HostInfo:   host.Info(),
+		Escalation: nil,
+		Input:      input,
+	}
+
+	result := p.Run(ctx, config)
 
 	if result.Err != nil {
 		t.Fatalf("Expected no error, got: %v", result.Err)

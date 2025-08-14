@@ -4,11 +4,13 @@
 package test
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/trippsoft/forge/pkg/inventory"
 	"github.com/trippsoft/forge/pkg/module"
-	"github.com/trippsoft/forge/pkg/module/local/shell"
+	"github.com/trippsoft/forge/pkg/module/shell"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -35,16 +37,21 @@ func TestPluginRun_Linux(t *testing.T) {
 
 	p := &shell.Module{}
 
-	commonConfig := &module.CommonConfig{
-		Escalation: nil,
-		Timeout:    10,
-	}
-
 	input := map[string]cty.Value{
 		"command": cty.StringVal("echo 'Hello, World!'"),
 	}
 
-	result := p.Run(host, commonConfig, input)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	config := &module.RunConfig{
+		Transport:  sshTransport,
+		HostInfo:   host.Info(),
+		Escalation: nil,
+		Input:      input,
+	}
+
+	result := p.Run(ctx, config)
 
 	if result.Err != nil {
 		t.Fatalf("Expected no error, got: %v", result.Err)
@@ -107,16 +114,21 @@ func TestPluginRun_Linux_SudoPassword(t *testing.T) {
 
 	escalation := transport.NewEscalation(linuxPWPassword)
 
-	commonConfig := &module.CommonConfig{
-		Escalation: escalation,
-		Timeout:    10,
-	}
-
 	input := map[string]cty.Value{
 		"command": cty.StringVal("echo 'Hello, World!'"),
 	}
 
-	result := p.Run(host, commonConfig, input)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	config := &module.RunConfig{
+		Transport:  sshTransport,
+		HostInfo:   host.Info(),
+		Escalation: escalation,
+		Input:      input,
+	}
+
+	result := p.Run(ctx, config)
 
 	if result.Err != nil {
 		t.Fatalf("Expected no error, got: %v", result.Err)
@@ -173,16 +185,21 @@ func TestPluginRun_Linux_NoSudoPassword(t *testing.T) {
 
 	escalation := transport.NewNoPasswordEscalation()
 
-	commonConfig := &module.CommonConfig{
-		Escalation: escalation,
-		Timeout:    10,
-	}
-
 	input := map[string]cty.Value{
 		"command": cty.StringVal("echo 'Hello, World!'"),
 	}
 
-	result := p.Run(host, commonConfig, input)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	config := &module.RunConfig{
+		Transport:  sshTransport,
+		HostInfo:   host.Info(),
+		Escalation: escalation,
+		Input:      input,
+	}
+
+	result := p.Run(ctx, config)
 
 	if result.Err != nil {
 		t.Fatalf("Expected no error, got: %v", result.Err)
@@ -244,16 +261,21 @@ func TestPluginRun_Windows_SSH_PowerShell(t *testing.T) {
 
 	p := &shell.Module{}
 
-	commonConfig := &module.CommonConfig{
-		Escalation: nil,
-		Timeout:    10,
-	}
-
 	input := map[string]cty.Value{
 		"command": cty.StringVal("echo hello"),
 	}
 
-	result := p.Run(host, commonConfig, input)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	config := &module.RunConfig{
+		Transport:  sshTransport,
+		HostInfo:   host.Info(),
+		Escalation: nil,
+		Input:      input,
+	}
+
+	result := p.Run(ctx, config)
 
 	if result.Err != nil {
 		t.Fatalf("Expected no error, got: %v", result.Err)
