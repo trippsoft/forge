@@ -170,9 +170,9 @@ func (s *SingleStep) Module() module.Module {
 // Run implements Step.
 func (s *SingleStep) Run(ctx *workflowContext) error {
 
-	nameText := ui.Text(s.common.name).WithForegroundColor(ui.ForegroundGreen).WithStyle(ui.StyleBold)
+	nameText := ui.Text(s.common.name).WithStyle(ui.StyleBold)
 	name := ctx.ui.Format(nameText)
-	line := ctx.ui.FormatLine('*', nil)
+	line := ctx.ui.FormatLine('=', nil)
 
 	message := fmt.Sprintf("\nSTEP - %s\n%s", name, line)
 	ctx.ui.Print(message)

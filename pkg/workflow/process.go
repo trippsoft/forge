@@ -40,7 +40,7 @@ func (p *Process) Steps() []Step {
 // Run executes the process with the given workflow context.
 func (p *Process) Run(ctx *workflowContext) error {
 
-	nameText := ui.Text(p.name).WithForegroundColor(ui.ForegroundGreen).WithStyle(ui.StyleBold)
+	nameText := ui.Text(p.name).WithStyle(ui.StyleBold)
 	name := ctx.ui.Format(nameText)
 	line := ctx.ui.FormatLine('*', nil)
 

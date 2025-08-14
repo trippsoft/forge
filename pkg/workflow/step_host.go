@@ -4,8 +4,10 @@
 package workflow
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/trippsoft/forge/pkg/module"
@@ -39,14 +41,17 @@ var (
 		stepResultNotChanged: ui.TextFormat().WithForegroundColor(ui.ForegroundGreen).WithStyle(ui.StyleBold),
 	}
 
-	stepErrorFormat = ui.TextFormat().WithForegroundColor(ui.ForegroundRed).WithStyle(ui.StyleBold).WithStyle(ui.StyleItalic)
+	stepErrorFormat   = ui.TextFormat().WithForegroundColor(ui.ForegroundRed).WithStyle(ui.StyleBold).WithStyle(ui.StyleItalic)
+	stepWarningFormat = ui.TextFormat().WithForegroundColor(ui.ForegroundYellow).WithStyle(ui.StyleBold).WithStyle(ui.StyleItalic)
+	stepMessageFormat = ui.TextFormat().WithForegroundColor(ui.ForegroundGreen).WithStyle(ui.StyleBold).WithStyle(ui.StyleItalic)
 )
 
 func (s *SingleStep) runOnHost(ctx *hostWorkflowContext) error {
 
 	err := ctx.LoadEvalContext()
 	if err != nil {
-		_, _ = s.handleHostError(ctx, err) // ignore output for this error
+		result := module.NewFailure(err, "failed to load evaluation context")
+		s.handleHostResult(ctx, result)
 		return err
 	}
 
@@ -55,47 +60,60 @@ func (s *SingleStep) runOnHost(ctx *hostWorkflowContext) error {
 		var diags hcl.Diagnostics
 		condition, diags = util.ConvertHCLAttributeToBool(s.common.condition, ctx.evalContext)
 		if diags.HasErrors() {
-			output, _ := s.handleHostError(ctx, diags)
-			ctx.host.StoreTask(s.common.id, output)
+			result := module.NewFailure(diags, diags.Error())
+			s.handleHostResult(ctx, result)
 			return diags
 		}
 	}
 
 	if !condition {
-		hostMessage := s.formatHostResult(ctx, stepResultSkipped)
-		ctx.ui.Print(hostMessage)
-		output := cty.ObjectVal(map[string]cty.Value{
-			"changed": cty.False,
-			"failed":  cty.False,
-			"skipped": cty.True,
-		})
-		ctx.host.StoreTask(s.common.id, output)
+		result := module.NewSkipped()
+		s.handleHostResult(ctx, result)
 		return nil // Skipped
 	}
 
 	iterator, err := s.getStepIterator(ctx)
 	if err != nil {
-		output, _ := s.handleHostError(ctx, err)
-		ctx.host.StoreTask(s.common.id, output)
+		result := module.NewFailure(err, err.Error())
+		s.handleHostResult(ctx, result)
 		return err
 	}
 
-	resultsMap := map[cty.Value]cty.Value{}
+	resultsMap := map[string]cty.Value{}
 	results := []cty.Value{}
 	e := []error{}
 
 	for iterator.Next() {
+
 		iteration := iterator.Value()
 		result, err := s.runHostIteration(ctx, iteration)
+
 		if iteration != nil {
-			resultsMap[iteration.item] = result
-			results = append(results, result)
+			if iteration.index.IsWhollyKnown() && !iteration.index.IsNull() && iteration.index.Type().Equals(cty.String) {
+				resultsMap[iteration.index.AsString()] = result
+			} else {
+				results = append(results, result)
+			}
 		} else {
-			resultsMap[cty.DynamicVal] = result
-			results = append(results, cty.DynamicVal)
+			results = append(results, result)
 		}
+
 		e = append(e, err)
 	}
+
+	var output cty.Value
+	switch {
+	case len(resultsMap) > 0:
+		output = cty.ObjectVal(resultsMap)
+	case len(results) > 1:
+		output = cty.ListVal(results)
+	case len(results) == 1:
+		output = results[0]
+	default:
+		output = cty.ListValEmpty(cty.EmptyObject)
+	}
+
+	ctx.host.StoreTask(s.common.id, output)
 
 	return errors.Join(e...)
 }
@@ -115,7 +133,8 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 		if s.common != nil && s.common.loop != nil && s.common.loop.label != nil {
 			iteration.label, diags = util.ConvertHCLAttributeToString(s.common.loop.label, ctx.evalContext)
 			if diags.HasErrors() {
-				return s.handleHostIterationError(ctx, iteration, diags, diags.Error())
+				output := module.NewFailure(diags, diags.Error())
+				return s.handleHostIterationResult(ctx, iteration, output)
 			}
 		}
 
@@ -128,20 +147,15 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 		}
 
 		if !condition {
-			message := s.formatHostIterationResult(ctx, iteration, stepResultSkipped)
-			ctx.ui.Print(message)
-			output := cty.ObjectVal(map[string]cty.Value{
-				"changed": cty.False,
-				"failed":  cty.False,
-				"skipped": cty.True,
-			})
-			return output, nil // Skipped iteration
+			result := module.NewSkipped()
+			return s.handleHostIterationResult(ctx, iteration, result)
 		}
 	}
 
 	escalation, err := s.getEscalation(ctx)
 	if err != nil {
-		return s.handleHostIterationError(ctx, iteration, err, err.Error())
+		result := module.NewFailure(err, err.Error())
+		return s.handleHostIterationResult(ctx, iteration, result)
 	}
 
 	timeout := module.DefaultTimeout
@@ -150,13 +164,9 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 		var diags hcl.Diagnostics
 		timeout, diags = util.ConvertHCLAttributeToDuration(s.common.execTimeout, ctx.evalContext)
 		if diags.HasErrors() {
-			return s.handleHostIterationError(ctx, iteration, diags, diags.Error())
+			result := module.NewFailure(diags, diags.Error())
+			return s.handleHostIterationResult(ctx, iteration, result)
 		}
-	}
-
-	commonConfig := &module.CommonConfig{
-		Escalation: escalation,
-		Timeout:    timeout,
 	}
 
 	input := make(map[string]cty.Value, len(s.common.input))
@@ -164,54 +174,51 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 		for k, attr := range s.common.input {
 			var diags hcl.Diagnostics
 			input[k], diags = attr.Expr.Value(ctx.evalContext)
+
 			if diags.HasErrors() {
-				return s.handleHostIterationError(ctx, iteration, diags, diags.Error())
+				result := module.NewFailure(diags, diags.Error())
+				return s.handleHostIterationResult(ctx, iteration, result)
 			}
 		}
 	}
 
 	input, err = s.module.InputSpec().Convert(input)
 	if err != nil {
-		return s.handleHostIterationError(ctx, iteration, err, err.Error())
+		result := module.NewFailure(err, err.Error())
+		return s.handleHostIterationResult(ctx, iteration, result)
 	}
 
 	err = s.module.InputSpec().Validate(input)
 	if err != nil {
-		return s.handleHostIterationError(ctx, iteration, err, err.Error())
+		result := module.NewFailure(err, err.Error())
+		return s.handleHostIterationResult(ctx, iteration, result)
 	}
 
 	err = s.module.Validate(ctx.host, input)
 	if err != nil {
-		return s.handleHostIterationError(ctx, iteration, err, err.Error())
-	}
-
-	result := s.module.Run(ctx.host, commonConfig, input)
-	if result == nil {
-		err := errors.New("no result returned from module")
-		return s.handleHostIterationError(ctx, iteration, err, err.Error())
-	}
-
-	outputMap := map[string]cty.Value{}
-
-	outputMap["failed"] = cty.BoolVal(result.Failed)
-	outputMap["skipped"] = cty.BoolVal(result.Skipped)
-	outputMap["changed"] = cty.BoolVal(result.Changed)
-
-	if result.Err != nil {
-		outputMap["error"] = cty.StringVal(result.Err.Error())
-		outputMap["error_detail"] = cty.StringVal(result.ErrDetail)
-	}
-
-	if len(result.Output) > 0 {
-		outputMap["output"] = cty.ObjectVal(result.Output)
-	}
-
-	ctx.evalContext.Variables["result"] = cty.ObjectVal(outputMap)
-	defer delete(ctx.evalContext.Variables, "result")
-
-	if s.output == nil {
+		result := module.NewFailure(err, err.Error())
 		return s.handleHostIterationResult(ctx, iteration, result)
 	}
+
+	runCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	config := &module.RunConfig{
+		Transport:  ctx.host.Transport(),
+		HostInfo:   ctx.host.Info(),
+		Escalation: escalation,
+		Input:      input,
+	}
+
+	result := s.module.Run(runCtx, config)
+	if result == nil || s.output == nil {
+		return s.handleHostIterationResult(ctx, iteration, result)
+	}
+
+	output := formatResultOutput(result)
+
+	ctx.evalContext.Variables["result"] = output
+	defer delete(ctx.evalContext.Variables, "result")
 
 	if s.output.failedCondition != nil {
 		var diags hcl.Diagnostics
@@ -243,7 +250,7 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 		}
 	}
 
-	output, err := s.handleHostIterationResult(ctx, iteration, result)
+	output, err = s.handleHostIterationResult(ctx, iteration, result)
 
 	if err != nil && !continueOnFail {
 		return output, err
@@ -321,110 +328,94 @@ func (s *SingleStep) getEscalation(ctx *hostWorkflowContext) (transport.Escalati
 	return transport.NewImpersonation(impersonateUser, ctx.host.EscalateConfig().Pass()), nil
 }
 
+func (s *SingleStep) handleHostResult(ctx *hostWorkflowContext, result *module.Result) {
+
+	if result == nil {
+		result = module.NewFailure(errors.New("no result returned from module"), "no result returned from module")
+	}
+
+	errMessage := s.formatHostError(ctx, result.Err)
+	outMessage := s.formatHostResult(ctx, result)
+
+	ctx.ui.Print(outMessage)
+	if errMessage != "" {
+		ctx.ui.Error(errMessage)
+	}
+
+	output := formatResultOutput(result)
+
+	ctx.host.StoreTask(s.common.id, output)
+}
+
 func (s *SingleStep) handleHostIterationResult(ctx *hostWorkflowContext, iteration *stepIteration, result *module.Result) (cty.Value, error) {
 
 	if result == nil {
-		err := errors.New("no result returned from module")
-		return s.handleHostIterationError(ctx, iteration, err, err.Error())
+		result = module.NewFailure(errors.New("no result returned from module"), "no result returned from module")
 	}
 
-	if result.Err != nil {
-		return s.handleHostIterationError(ctx, iteration, result.Err, result.ErrDetail)
-	}
+	errMessage := s.formatHostError(ctx, result.Err)
+	outMessage := s.formatHostIterationResult(ctx, iteration, result)
 
-	var hostMessage string
-	if result.Changed {
-		hostMessage = s.formatHostIterationResult(ctx, iteration, stepResultChanged)
-	} else {
-		hostMessage = s.formatHostIterationResult(ctx, iteration, stepResultNotChanged)
-	}
-
-	ctx.ui.Print(hostMessage)
-
-	outputMap := map[string]cty.Value{}
-
-	outputMap["failed"] = cty.BoolVal(result.Failed)
-	outputMap["skipped"] = cty.BoolVal(result.Skipped)
-	outputMap["changed"] = cty.BoolVal(result.Changed)
-
-	if result.Err != nil {
-		outputMap["error"] = cty.StringVal(result.Err.Error())
-		outputMap["error_detail"] = cty.StringVal(result.ErrDetail)
-	}
-
-	if len(result.Output) > 0 {
-		outputMap["output"] = cty.ObjectVal(result.Output)
-	}
-
-	return cty.ObjectVal(outputMap), nil
-}
-
-func (s *SingleStep) handleHostError(ctx *hostWorkflowContext, err error) (cty.Value, error) {
-	hostMessage := s.formatHostResult(ctx, stepResultFailure)
-	errMessage := s.formatHostError(ctx, err)
-	outMessage := fmt.Sprintf("%s\n%s\n", hostMessage, errMessage)
 	ctx.ui.Print(outMessage)
-	ctx.ui.Error(errMessage)
+	if errMessage != "" {
+		ctx.ui.Error(errMessage)
+	}
 
-	return cty.ObjectVal(map[string]cty.Value{
-		"changed":      cty.BoolVal(false),
-		"failed":       cty.BoolVal(true),
-		"skipped":      cty.BoolVal(false),
-		"error":        cty.StringVal(err.Error()),
-		"error_detail": cty.StringVal(err.Error()),
-	}), err
-}
-
-func (s *SingleStep) handleHostIterationError(ctx *hostWorkflowContext, iteration *stepIteration, err error, detail string) (cty.Value, error) {
-
-	hostMessage := s.formatHostIterationResult(ctx, iteration, stepResultFailure)
-	errMessage := s.formatHostIterationError(ctx, iteration, err)
-	outMessage := fmt.Sprintf("%s\n%s\n", hostMessage, errMessage)
-	ctx.ui.Print(outMessage)
-	ctx.ui.Error(errMessage)
-
-	return cty.ObjectVal(map[string]cty.Value{
-		"changed":      cty.BoolVal(false),
-		"failed":       cty.BoolVal(true),
-		"skipped":      cty.BoolVal(false),
-		"error":        cty.StringVal(err.Error()),
-		"error_detail": cty.StringVal(detail),
-	}), err
+	return formatResultOutput(result), result.Err
 }
 
 func (s *SingleStep) formatHostError(ctx *hostWorkflowContext, err error) string {
-	message := fmt.Sprintf("host %s: step %s: ERROR: %v\n", ctx.host.Name(), s.common.id, err)
+	if err == nil {
+		return ""
+	}
+
+	message := fmt.Sprintf("ERROR:   %v\n", err)
 	messageText := ui.Text(message).WithFormat(stepErrorFormat).WithLeftMargin(4)
 	return ctx.ui.Format(messageText)
 }
 
-func (s *SingleStep) formatHostIterationError(ctx *hostWorkflowContext, iteration *stepIteration, err error) string {
-	if iteration == nil {
-		return s.formatHostError(ctx, err)
+func (s *SingleStep) formatHostWarning(ctx *hostWorkflowContext, warning string) string {
+
+	if warning == "" {
+		return ""
 	}
 
-	label := iteration.label
-
-	if label == "" {
-		label = getIndexAsString(iteration.index)
-	}
-
-	message := fmt.Sprintf("host %s: step %s: item %s: ERROR: %v\n", ctx.host.Name(), s.common.id, label, err)
-	messageText := ui.Text(message).WithFormat(stepErrorFormat).WithLeftMargin(4)
+	message := fmt.Sprintf("WARNING: %s\n", warning)
+	messageText := ui.Text(message).WithFormat(stepWarningFormat).WithLeftMargin(4)
 	return ctx.ui.Format(messageText)
 }
 
-func (s *SingleStep) formatHostResult(ctx *hostWorkflowContext, result stepResultCode) string {
+func (s *SingleStep) formatHostMessage(ctx *hostWorkflowContext, message string) string {
 
-	hostMessage := fmt.Sprintf("%s:", ctx.host.Name())
-	hostText := ui.Text(hostMessage).WithFormat(stepResultFormat[result]).WithLeftMargin(2)
+	if message == "" {
+		return ""
+	}
 
-	statusText := ui.Text(stepResultText[result]).WithFormat(stepResultFormat[result]).WithRightMargin(2)
-
-	return ctx.ui.FormatColumns(hostText, statusText)
+	message = fmt.Sprintf("MESSAGE: %s\n", message)
+	messageText := ui.Text(message).WithFormat(stepMessageFormat).WithLeftMargin(4)
+	return ctx.ui.Format(messageText)
 }
 
-func (s *SingleStep) formatHostIterationResult(ctx *hostWorkflowContext, iteration *stepIteration, result stepResultCode) string {
+func (s *SingleStep) formatHostResult(ctx *hostWorkflowContext, result *module.Result) string {
+
+	hostName := ctx.host.Name()
+	hostMessage := fmt.Sprintf("%s:", hostName)
+	runeCount := utf8.RuneCountInString(hostName)
+	hostText := ui.Text(hostMessage).WithLeftMargin(2).WithRightMargin(65 - runeCount)
+
+	resultCode := getResultCode(result)
+
+	statusMessage := stepResultText[resultCode]
+	runeCount = utf8.RuneCountInString(statusMessage)
+	statusText := ui.Text(statusMessage).WithFormat(stepResultFormat[resultCode]).WithLeftMargin(12 - runeCount)
+
+	warning := s.formatHostWarning(ctx, result.Warning)
+	message := s.formatHostMessage(ctx, result.Message)
+
+	return fmt.Sprintf("%s%s\n%s%s", ctx.ui.Format(hostText), ctx.ui.Format(statusText), warning, message)
+}
+
+func (s *SingleStep) formatHostIterationResult(ctx *hostWorkflowContext, iteration *stepIteration, result *module.Result) string {
 
 	if iteration == nil {
 		return s.formatHostResult(ctx, result)
@@ -436,13 +427,43 @@ func (s *SingleStep) formatHostIterationResult(ctx *hostWorkflowContext, iterati
 		label = getIndexAsString(iteration.index)
 	}
 
+	hostName := ctx.host.Name()
+	hostRuneCount := utf8.RuneCountInString(hostName)
+	labelRuneCount := utf8.RuneCountInString(label)
 	iterationMessage := ctx.ui.Format(ui.Text(label).WithStyle(ui.StyleItalic))
-	hostMessage := fmt.Sprintf("%s->%s:", ctx.host.Name(), iterationMessage)
-	hostText := ui.Text(hostMessage).WithFormat(stepResultFormat[result]).WithLeftMargin(2)
+	hostMessage := fmt.Sprintf("%s->%s:", hostName, iterationMessage)
+	hostText := ui.Text(hostMessage).WithLeftMargin(2).WithRightMargin(63 - hostRuneCount - labelRuneCount)
 
-	statusText := ui.Text(stepResultText[result]).WithFormat(stepResultFormat[result]).WithRightMargin(2)
+	resultCode := getResultCode(result)
 
-	return ctx.ui.FormatColumns(hostText, statusText)
+	statusMessage := stepResultText[resultCode]
+	statusRuneCount := utf8.RuneCountInString(statusMessage)
+	statusText := ui.Text(statusMessage).WithFormat(stepResultFormat[resultCode]).WithLeftMargin(12 - statusRuneCount)
+
+	warning := s.formatHostWarning(ctx, result.Warning)
+	message := s.formatHostMessage(ctx, result.Message)
+
+	return fmt.Sprintf("%s%s\n%s%s", ctx.ui.Format(hostText), ctx.ui.Format(statusText), warning, message)
+}
+
+func formatResultOutput(result *module.Result) cty.Value {
+
+	outputMap := map[string]cty.Value{
+		"failed":  cty.BoolVal(result.Failed),
+		"skipped": cty.BoolVal(result.Skipped),
+		"changed": cty.BoolVal(result.Changed),
+	}
+
+	if result.Err != nil {
+		outputMap["error"] = cty.StringVal(result.Err.Error())
+		outputMap["error_detail"] = cty.StringVal(result.ErrDetail)
+	}
+
+	if result.Output != nil {
+		outputMap["output"] = cty.ObjectVal(result.Output)
+	}
+
+	return cty.ObjectVal(outputMap)
 }
 
 func getIndexAsString(value cty.Value) string {
@@ -458,4 +479,21 @@ func getIndexAsString(value cty.Value) string {
 	}
 
 	return value.GoString()
+}
+
+func getResultCode(result *module.Result) stepResultCode {
+
+	if result.Skipped {
+		return stepResultSkipped
+	}
+
+	if result.Failed {
+		return stepResultFailure
+	}
+
+	if result.Changed {
+		return stepResultChanged
+	}
+
+	return stepResultNotChanged
 }
