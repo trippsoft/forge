@@ -1,3 +1,6 @@
+// Copyright (c) Forge
+// SPDX-License-Identifier: MPL-2.0
+
 package ui
 
 import "github.com/trippsoft/forge/pkg/log"
