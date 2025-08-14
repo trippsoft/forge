@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/convert"
 	"github.com/zclconf/go-cty/cty/gocty"
 )
 
@@ -169,4 +170,79 @@ func ModifyUnexpectedElementDiags(diags hcl.Diagnostics, location string) hcl.Di
 	}
 
 	return diags
+}
+
+func FormatCtyValueToString(value cty.Value, currentIndent int, indentSize int) string {
+
+	if value.IsNull() || !value.IsWhollyKnown() {
+		return "null"
+	}
+
+	switch {
+	case value.Type() == cty.String:
+		return fmt.Sprintf("%q", value.AsString())
+	case value.Type() == cty.Bool:
+		return fmt.Sprintf("%t", value.True())
+	case value.Type() == cty.Number:
+		converted, _ := convert.Convert(value, cty.String)
+		return converted.AsString()
+	case value.Type().IsListType() || value.Type().IsSetType() || value.Type().IsTupleType():
+
+		length := value.LengthInt()
+		if length == 0 {
+			return "[]"
+		}
+
+		stringBuilder := &strings.Builder{}
+		it := value.ElementIterator()
+		stringBuilder.WriteString("[\n")
+		i := 0
+
+		for it.Next() {
+
+			stringBuilder.WriteString(strings.Repeat(" ", currentIndent+indentSize))
+			_, elemValue := it.Element()
+			stringBuilder.WriteString(FormatCtyValueToString(elemValue, currentIndent+indentSize, indentSize))
+
+			if i < length-1 {
+				stringBuilder.WriteString(",\n")
+			}
+
+			i++
+		}
+
+		stringBuilder.WriteString("\n")
+		stringBuilder.WriteString(strings.Repeat(" ", currentIndent))
+		stringBuilder.WriteString("]")
+		return stringBuilder.String()
+
+	case value.Type().IsMapType() || value.Type().IsObjectType():
+
+		length := value.LengthInt()
+		if length == 0 {
+			return "{}"
+		}
+
+		stringBuilder := &strings.Builder{}
+		it := value.ElementIterator()
+		stringBuilder.WriteString("{\n")
+		i := 0
+
+		for it.Next() {
+
+			stringBuilder.WriteString(strings.Repeat(" ", currentIndent+indentSize))
+			key, elemValue := it.Element()
+			fmt.Fprintf(stringBuilder, "%q: %s", key.AsString(), FormatCtyValueToString(elemValue, currentIndent+indentSize, indentSize))
+			if i < length-1 {
+				stringBuilder.WriteString(",\n")
+			}
+			i++
+		}
+		stringBuilder.WriteString("\n")
+		stringBuilder.WriteString(strings.Repeat(" ", currentIndent))
+		stringBuilder.WriteString("}")
+		return stringBuilder.String()
+	default:
+		return "unsupported type"
+	}
 }

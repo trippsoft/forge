@@ -787,6 +787,99 @@ func TestModifyUnexpectedElementDiags(t *testing.T) {
 	}
 }
 
+func TestFormatCtyValueToString(t *testing.T) {
+
+	tests := []struct {
+		name           string
+		value          cty.Value
+		startingIndent int
+		indentSize     int
+		expected       string
+	}{
+		{
+			name:           "null value",
+			value:          cty.NullVal(cty.String),
+			startingIndent: 0,
+			indentSize:     2,
+			expected:       "null",
+		},
+		{
+			name:           "unknown value",
+			value:          cty.UnknownVal(cty.String),
+			startingIndent: 0,
+			indentSize:     2,
+			expected:       "null",
+		},
+		{
+			name:           "string value",
+			value:          cty.StringVal("test"),
+			startingIndent: 0,
+			indentSize:     2,
+			expected:       "\"test\"",
+		},
+		{
+			name:           "integer value",
+			value:          cty.NumberIntVal(42),
+			startingIndent: 0,
+			indentSize:     2,
+			expected:       "42",
+		},
+		{
+			name:           "float value",
+			value:          cty.NumberFloatVal(3.14),
+			startingIndent: 0,
+			indentSize:     2,
+			expected:       "3.14",
+		},
+		{
+			name:           "boolean value",
+			value:          cty.BoolVal(true),
+			startingIndent: 0,
+			indentSize:     2,
+			expected:       "true",
+		},
+		{
+			name:           "list of strings value",
+			value:          cty.ListVal([]cty.Value{cty.StringVal("test1"), cty.StringVal("test2")}),
+			startingIndent: 0,
+			indentSize:     2,
+			expected:       "[\n  \"test1\",\n  \"test2\"\n]",
+		},
+		{
+			name:           "tuple value",
+			value:          cty.TupleVal([]cty.Value{cty.StringVal("test1"), cty.NumberIntVal(42)}),
+			startingIndent: 0,
+			indentSize:     2,
+			expected:       "[\n  \"test1\",\n  42\n]",
+		},
+		{
+			name:           "map of strings value",
+			value:          cty.MapVal(map[string]cty.Value{"key1": cty.StringVal("value1"), "key2": cty.StringVal("value2")}),
+			startingIndent: 0,
+			indentSize:     2,
+			expected:       "{\n  \"key1\": \"value1\",\n  \"key2\": \"value2\"\n}",
+		},
+		{
+			name:           "object value",
+			value:          cty.ObjectVal(map[string]cty.Value{"key1": cty.StringVal("value1"), "key2": cty.NumberIntVal(42)}),
+			startingIndent: 0,
+			indentSize:     2,
+			expected:       "{\n  \"key1\": \"value1\",\n  \"key2\": 42\n}",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			actual := FormatCtyValueToString(tt.value, tt.startingIndent, tt.indentSize)
+
+			if actual != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, actual)
+			}
+		})
+	}
+}
+
 // mockExpr is a simple mock implementation of hcl.Expression for testing
 type mockExpr struct {
 	value cty.Value

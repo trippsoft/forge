@@ -7,6 +7,7 @@ require (
 	github.com/hashicorp/go-cty-funcs v0.0.0-20250603203933-af775f281b14
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/pkg/sftp v1.13.9
+	github.com/spf13/cobra v1.9.1
 	github.com/zclconf/go-cty v1.16.3
 	github.com/zclconf/go-cty-yaml v1.1.0
 	golang.org/x/crypto v0.41.0
@@ -21,9 +22,11 @@ require (
 	github.com/bmatcuk/doublestar v1.3.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
+	github.com/spf13/pflag v1.0.7 // indirect
 	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect

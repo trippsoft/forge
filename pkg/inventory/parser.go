@@ -13,9 +13,13 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-type inventoryFile struct {
+type InventoryFile struct {
 	path    string
 	content []byte
+}
+
+func (f *InventoryFile) Path() string {
+	return f.path
 }
 
 // DiscoverInventoryFiles retrieves all inventory files from the specified paths.
@@ -23,9 +27,9 @@ type inventoryFile struct {
 // that are considered inventory files. It returns a slice of pointers to inventoryFile
 // structs, each containing the file path and its content. If an error occurs during
 // reading the files, it returns an error.
-func DiscoverInventoryFiles(paths ...string) ([]*inventoryFile, error) {
+func DiscoverInventoryFiles(paths ...string) ([]*InventoryFile, error) {
 
-	inventoryFiles := make([]*inventoryFile, 0, len(paths))
+	inventoryFiles := make([]*InventoryFile, 0, len(paths))
 
 	for _, path := range paths {
 
@@ -44,7 +48,7 @@ func DiscoverInventoryFiles(paths ...string) ([]*inventoryFile, error) {
 				return fmt.Errorf("failed to read inventory file %q: %w", path, err)
 			}
 
-			inventoryFiles = append(inventoryFiles, &inventoryFile{
+			inventoryFiles = append(inventoryFiles, &InventoryFile{
 				path:    path,
 				content: content,
 			})
@@ -62,7 +66,7 @@ func DiscoverInventoryFiles(paths ...string) ([]*inventoryFile, error) {
 
 // ParseInventoryFiles parses the content of the inventory files and returns the
 // parsed inventory.
-func ParseInventoryFiles(files []*inventoryFile) (*Inventory, hcl.Diagnostics) {
+func ParseInventoryFiles(files []*InventoryFile) (*Inventory, hcl.Diagnostics) {
 
 	parser := hclparse.NewParser()
 	diags := hcl.Diagnostics{}
