@@ -232,31 +232,6 @@ func printInventoryVars(i *inventory.Inventory) {
 	}
 }
 
-func printDiags(diags util.Diags) {
-
-	if len(diags) == 0 {
-		return
-	}
-
-	for _, diag := range diags {
-
-		severityMessage := ""
-		if diag.Severity == util.DiagError {
-			severityText := ui.Text("ERROR").WithForegroundColor(ui.ForegroundRed).WithStyle(ui.StyleBold)
-			severityMessage = fmt.Sprintf("%s:  ", UI.Format(severityText))
-		} else {
-			severityText := ui.Text("WARNING").WithForegroundColor(ui.ForegroundYellow).WithStyle(ui.StyleBold)
-			severityMessage = fmt.Sprintf("%s:", UI.Format(severityText))
-		}
-
-		detailText := ui.Text(diag.Detail).WithStyle(ui.StyleItalic)
-		detailMessage := UI.Format(detailText)
-
-		message := fmt.Sprintf("  %s %s\n    %s\n", severityMessage, diag.Summary, detailMessage)
-		UI.Print(message)
-	}
-}
-
 func printHCLDiags(diags hcl.Diagnostics) {
 
 	if len(diags) == 0 {
