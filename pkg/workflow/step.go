@@ -4,9 +4,9 @@
 package workflow
 
 import (
-	"errors"
 	"fmt"
 	"maps"
+	"sync"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/trippsoft/forge/pkg/inventory"
@@ -17,7 +17,7 @@ import (
 
 // Step abstracts a single Step or a procedure in a process.
 type Step interface {
-	Run(ctx *workflowContext) error // Run executes the step with the given workflow context.
+	Run(ctx *workflowContext) // Run executes the step with the given workflow context.
 }
 
 type StepCommonConfig struct {
@@ -31,6 +31,7 @@ type StepCommonConfig struct {
 	condition *hcl.Attribute
 
 	execTimeout *hcl.Attribute
+	whatIf      *hcl.Attribute
 
 	input map[string]*hcl.Attribute
 }
@@ -168,7 +169,7 @@ func (s *SingleStep) Module() module.Module {
 }
 
 // Run implements Step.
-func (s *SingleStep) Run(ctx *workflowContext) error {
+func (s *SingleStep) Run(ctx *workflowContext) {
 
 	nameText := ui.Text(s.common.name).WithStyle(ui.StyleBold)
 	name := ctx.ui.Format(nameText)
@@ -179,22 +180,23 @@ func (s *SingleStep) Run(ctx *workflowContext) error {
 
 	ctx.LoadHostVars()
 
-	errs := make([]error, 0, len(s.common.targets))
-	errChannel := make(chan error)
+	wg := sync.WaitGroup{}
 
 	for _, host := range s.common.targets {
+		wg.Add(1)
 		go func(h *inventory.Host) {
+			defer wg.Done()
+			if ctx.IsFailed(h) {
+				return
+			}
 			err := s.runOnHost(HostWorkflowContext(ctx, h))
-			errChannel <- err
+			if err != nil {
+				ctx.MarkFailed(h)
+			}
 		}(host)
 	}
 
-	for range s.common.targets {
-		err := <-errChannel
-		errs = append(errs, err)
-	}
-
-	return errors.Join(errs...)
+	wg.Wait()
 }
 
 type stepIteration struct {

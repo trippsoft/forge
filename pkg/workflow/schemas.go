@@ -42,6 +42,14 @@ var (
 				Name:     "exec_timeout",
 				Required: false,
 			},
+			{
+				Name:     "what_if",
+				Required: false,
+			},
+			{
+				Name:     "gather_info",
+				Required: false,
+			},
 		},
 	}
 	stepBlockSchema = &hcl.BodySchema{

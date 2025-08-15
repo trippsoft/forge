@@ -11,7 +11,6 @@ import (
 
 	"github.com/trippsoft/forge/pkg/hclspec"
 	"github.com/trippsoft/forge/pkg/info"
-	"github.com/trippsoft/forge/pkg/inventory"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -25,6 +24,7 @@ type RunConfig struct {
 	Transport  transport.Transport  // The transport to use for the host.
 	HostInfo   *info.HostInfo       // The host info this context is associated with.
 	Escalation transport.Escalation // Privilege escalation configuration for the host.
+	WhatIf     bool                 // If true, the module should not make any changes.
 	Input      map[string]cty.Value // Input variables for the module.
 }
 
@@ -36,7 +36,7 @@ type Module interface {
 
 	// Validate checks if the module input is valid.
 	// This validation is done after ensuring the input matches the InputSpec.
-	Validate(host *inventory.Host, input map[string]cty.Value) error
+	Validate(config *RunConfig) error
 
 	// Run executes the module with the provided host and input.
 	Run(ctx context.Context, config *RunConfig) *Result
@@ -58,8 +58,8 @@ func (l *Local) InputSpec() *hclspec.Spec {
 	return l.module.InputSpec()
 }
 
-func (l *Local) Validate(host *inventory.Host, input map[string]cty.Value) error {
-	return l.module.Validate(host, input)
+func (l *Local) Validate(config *RunConfig) error {
+	return l.module.Validate(config)
 }
 
 func (l *Local) Run(ctx context.Context, config *RunConfig) *Result {
@@ -79,11 +79,11 @@ func (l *Local) Run(ctx context.Context, config *RunConfig) *Result {
 
 type MockModule struct {
 	inputSpec    *hclspec.Spec
-	validateFunc func(host *inventory.Host, input map[string]cty.Value) error
+	validateFunc func(config *RunConfig) error
 	Result       *Result
 }
 
-func NewMockModule(spec *hclspec.Spec, validate func(host *inventory.Host, input map[string]cty.Value) error) *MockModule {
+func NewMockModule(spec *hclspec.Spec, validate func(config *RunConfig) error) *MockModule {
 	return &MockModule{
 		inputSpec:    spec,
 		validateFunc: validate,
@@ -94,13 +94,13 @@ func (m *MockModule) InputSpec() *hclspec.Spec {
 	return m.inputSpec
 }
 
-func (m *MockModule) Validate(host *inventory.Host, input map[string]cty.Value) error {
+func (m *MockModule) Validate(config *RunConfig) error {
 
 	if m.validateFunc == nil {
 		return nil
 	}
 
-	return m.validateFunc(host, input)
+	return m.validateFunc(config)
 }
 
 func (m *MockModule) Run(ctx context.Context, config *RunConfig) *Result {

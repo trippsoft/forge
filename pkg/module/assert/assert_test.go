@@ -43,7 +43,14 @@ func TestModuleValidate(t *testing.T) {
 	escalateConfig := inventory.NewEscalateConfig("")
 	host := inventory.NewHost("linux", mockTransport, escalateConfig, map[string]cty.Value{})
 
-	err := m.Validate(host, input)
+	config := &module.RunConfig{
+		Transport:  mockTransport,
+		HostInfo:   host.Info(),
+		Escalation: nil,
+		Input:      input,
+	}
+
+	err := m.Validate(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
@@ -82,6 +89,7 @@ func TestModuleRun(t *testing.T) {
 			ctx := context.Background()
 
 			config := &module.RunConfig{
+				Transport:  mockTransport,
 				HostInfo:   host.Info(),
 				Escalation: nil,
 				Input:      tt.input,

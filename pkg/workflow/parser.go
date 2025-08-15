@@ -15,8 +15,9 @@ import (
 )
 
 type intermediateProcess struct {
-	common   *StepCommonConfig
-	escalate *StepEscalationConfig
+	common     *StepCommonConfig
+	escalate   *StepEscalationConfig
+	gatherInfo bool
 }
 
 type parser struct {
@@ -111,7 +112,7 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 		return nil, diags
 	}
 
-	intermediate := &intermediateProcess{}
+	intermediate := &intermediateProcess{gatherInfo: true}
 
 	foundEscalate := false
 	for _, block := range content.Blocks {
@@ -174,6 +175,17 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 		}
 	}
 
+	for name, attr := range content.Attributes {
+		switch name {
+		case "gather_info":
+			gatherInfo, moreDiags := util.ConvertHCLAttributeToBool(attr, nil)
+			diags = diags.Extend(moreDiags)
+			if !moreDiags.HasErrors() {
+				intermediate.gatherInfo = gatherInfo
+			}
+		}
+	}
+
 	if diags.HasErrors() {
 		return nil, diags
 	}
@@ -188,7 +200,7 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 		return nil, diags
 	}
 
-	process := NewProcess(common.name, steps...)
+	process := NewProcess(common.name, intermediate.gatherInfo, steps...)
 
 	return process, diags
 }
@@ -241,6 +253,10 @@ func (p *parser) parseStepBlock(block *hcl.Block, intermediate *intermediateProc
 			if common.execTimeout == nil {
 				common.execTimeout = intermediate.common.execTimeout
 			}
+
+			if common.whatIf == nil {
+				common.whatIf = intermediate.common.whatIf
+			}
 		}
 
 		common.id = block.Labels[0]
@@ -251,6 +267,7 @@ func (p *parser) parseStepBlock(block *hcl.Block, intermediate *intermediateProc
 			targets:     intermediate.common.targets,
 			execTimeout: intermediate.common.execTimeout,
 			input:       intermediate.common.input,
+			whatIf:      intermediate.common.whatIf,
 		}
 	}
 
@@ -453,6 +470,8 @@ func (p *parser) parseCommonElements(content *hcl.BodyContent) (*StepCommonConfi
 			config.condition = attr
 		case "exec_timeout":
 			config.execTimeout = attr
+		case "what_if":
+			config.whatIf = attr
 		}
 	}
 

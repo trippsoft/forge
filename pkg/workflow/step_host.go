@@ -113,7 +113,7 @@ func (s *SingleStep) runOnHost(ctx *hostWorkflowContext) error {
 		output = cty.ListValEmpty(cty.EmptyObject)
 	}
 
-	ctx.host.StoreTask(s.common.id, output)
+	ctx.host.StoreStepOutput(s.common.id, output)
 
 	return errors.Join(e...)
 }
@@ -169,6 +169,16 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 		}
 	}
 
+	whatIf := false
+	if s.common != nil && s.common.whatIf != nil {
+		var diags hcl.Diagnostics
+		whatIf, diags = util.ConvertHCLAttributeToBool(s.common.whatIf, ctx.evalContext)
+		if diags.HasErrors() {
+			result := module.NewFailure(diags, diags.Error())
+			return s.handleHostIterationResult(ctx, iteration, result)
+		}
+	}
+
 	input := make(map[string]cty.Value, len(s.common.input))
 	if s.common != nil && s.common.input != nil {
 		for k, attr := range s.common.input {
@@ -194,7 +204,15 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 		return s.handleHostIterationResult(ctx, iteration, result)
 	}
 
-	err = s.module.Validate(ctx.host, input)
+	config := &module.RunConfig{
+		Transport:  ctx.host.Transport(),
+		HostInfo:   ctx.host.Info(),
+		Escalation: escalation,
+		WhatIf:     whatIf,
+		Input:      input,
+	}
+
+	err = s.module.Validate(config)
 	if err != nil {
 		result := module.NewFailure(err, err.Error())
 		return s.handleHostIterationResult(ctx, iteration, result)
@@ -202,13 +220,6 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 
 	runCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-
-	config := &module.RunConfig{
-		Transport:  ctx.host.Transport(),
-		HostInfo:   ctx.host.Info(),
-		Escalation: escalation,
-		Input:      input,
-	}
 
 	result := s.module.Run(runCtx, config)
 	if result == nil || s.output == nil {
@@ -344,7 +355,7 @@ func (s *SingleStep) handleHostResult(ctx *hostWorkflowContext, result *module.R
 
 	output := formatResultOutput(result)
 
-	ctx.host.StoreTask(s.common.id, output)
+	ctx.host.StoreStepOutput(s.common.id, output)
 }
 
 func (s *SingleStep) handleHostIterationResult(ctx *hostWorkflowContext, iteration *stepIteration, result *module.Result) (cty.Value, error) {

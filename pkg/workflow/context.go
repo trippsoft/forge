@@ -8,21 +8,24 @@ import (
 	"github.com/trippsoft/forge/pkg/hclfunction"
 	"github.com/trippsoft/forge/pkg/inventory"
 	"github.com/trippsoft/forge/pkg/ui"
+	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
 
 // workflowContext holds the context for a workflow.
 type workflowContext struct {
-	ui        ui.UI                // ui represents the user interface used by the workflow.
-	inventory *inventory.Inventory // inventory represents the inventory used by the workflow.
-	hostVars  map[string]cty.Value // hostVars holds the variables for each host.
+	ui          ui.UI                      // ui represents the user interface used by the workflow.
+	inventory   *inventory.Inventory       // inventory represents the inventory used by the workflow.
+	hostVars    map[string]cty.Value       // hostVars holds the variables for each host.
+	failedHosts *util.Set[*inventory.Host] // failedHosts holds the hosts that have failed.
 }
 
 // WorkflowContext creates a new workflowContext.
-func WorkflowContext(ui ui.UI, inventory *inventory.Inventory) *workflowContext {
+func WorkflowContext(ui ui.UI, i *inventory.Inventory) *workflowContext {
 	return &workflowContext{
-		ui:        ui,
-		inventory: inventory,
+		ui:          ui,
+		inventory:   i,
+		failedHosts: util.NewSet[*inventory.Host](),
 	}
 }
 
@@ -36,6 +39,14 @@ func (ctx *workflowContext) LoadHostVars() {
 			ctx.hostVars[host.Name()] = cty.ObjectVal(vars)
 		}
 	}
+}
+
+func (ctx *workflowContext) IsFailed(host *inventory.Host) bool {
+	return ctx.failedHosts.Contains(host)
+}
+
+func (ctx *workflowContext) MarkFailed(host *inventory.Host) {
+	ctx.failedHosts.Add(host)
 }
 
 // hostWorkflowContext holds the context for a host workflow.
@@ -68,13 +79,13 @@ func (ctx *hostWorkflowContext) LoadEvalContext() error {
 		evalCtx.Variables["var"] = vars
 	}
 
-	tasks, err := ctx.host.GetCurrentContextTasks()
+	steps, err := ctx.host.GetCurrentContextSteps()
 	if err != nil {
 		return err
 	}
 
-	if len(tasks) > 0 {
-		evalCtx.Variables["tasks"] = cty.ObjectVal(tasks)
+	if len(steps) > 0 {
+		evalCtx.Variables["steps"] = cty.ObjectVal(steps)
 	}
 
 	procedureInputs := ctx.host.GetCurrentProcedureInputs()

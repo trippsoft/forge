@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"github.com/trippsoft/forge/pkg/hclspec"
-	"github.com/trippsoft/forge/pkg/inventory"
 	"github.com/trippsoft/forge/pkg/module"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -17,6 +16,8 @@ var (
 	inputSpec = hclspec.NewSpec(hclspec.Object(map[string]*hclspec.ObjectField{
 		"command": hclspec.RequiredField(hclspec.String),
 	}))
+
+	_ module.Module = (*Module)(nil)
 )
 
 type Module struct{}
@@ -27,12 +28,19 @@ func (s *Module) InputSpec() *hclspec.Spec {
 }
 
 // Validate implements module.Module.
-func (s *Module) Validate(host *inventory.Host, input map[string]cty.Value) error {
+func (s *Module) Validate(config *module.RunConfig) error {
 	return nil // No specific validation needed for this module.
 }
 
 // Run implements module.Module.
 func (s *Module) Run(ctx context.Context, config *module.RunConfig) *module.Result {
+
+	if config.WhatIf {
+		return module.NewSuccess(true, map[string]cty.Value{
+			"stdout": cty.NullVal(cty.String),
+			"stderr": cty.NullVal(cty.String),
+		})
+	}
 
 	t := config.Transport
 

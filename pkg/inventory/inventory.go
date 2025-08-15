@@ -35,7 +35,7 @@ type Host struct {
 	transport      transport.Transport
 	escalateConfig *EscalateConfig
 
-	taskContexts    []map[string]cty.Value
+	stepContexts    []map[string]cty.Value
 	procedureInputs []map[string]cty.Value
 	info            *info.HostInfo
 	vars            map[string]cty.Value
@@ -49,7 +49,7 @@ func NewHost(name string, transport transport.Transport, escalateConfig *Escalat
 		name:            name,
 		transport:       transport,
 		escalateConfig:  escalateConfig,
-		taskContexts:    []map[string]cty.Value{make(map[string]cty.Value)},
+		stepContexts:    []map[string]cty.Value{make(map[string]cty.Value)},
 		procedureInputs: []map[string]cty.Value{},
 		info:            info.NewHostInfo(),
 		vars:            vars,
@@ -82,38 +82,38 @@ func (h *Host) EscalateConfig() *EscalateConfig {
 	return h.escalateConfig
 }
 
-// StoreTask stores a task in the current task context.
+// StoreStepOutput stores a step in the current step context.
 // If the key already exists, it will overwrite the existing value.
-// This is by design to allow for task updates.
-func (h *Host) StoreTask(key string, value cty.Value) error {
+// This is by design to allow for step updates.
+func (h *Host) StoreStepOutput(key string, value cty.Value) error {
 
-	taskContext, err := h.GetCurrentContextTasks()
+	stepContext, err := h.GetCurrentContextSteps()
 	if err != nil {
 		return err
 	}
 
-	taskContext[key] = value // Overwrites existing keys by design
+	stepContext[key] = value // Overwrites existing keys by design
 	return nil
 }
 
-// ClearTasks clears all tasks and procedure inputs for the host.
-func (i *Host) ClearTasks() {
-	i.taskContexts = []map[string]cty.Value{make(map[string]cty.Value)}
+// ClearSteps clears all steps and procedure inputs for the host.
+func (i *Host) ClearSteps() {
+	i.stepContexts = []map[string]cty.Value{make(map[string]cty.Value)}
 	i.procedureInputs = []map[string]cty.Value{}
 }
 
 // StartProcedure initializes a new procedure context for the host.
 func (h *Host) StartProcedure(inputs map[string]cty.Value) {
-	h.taskContexts = append(h.taskContexts, make(map[string]cty.Value))
+	h.stepContexts = append(h.stepContexts, make(map[string]cty.Value))
 	h.procedureInputs = append(h.procedureInputs, inputs)
 }
 
 // EndProcedure ends the current procedure context for the host.
 func (h *Host) EndProcedure() error {
-	if len(h.taskContexts) < 2 {
-		return errors.New("no task context to end")
+	if len(h.stepContexts) < 2 {
+		return errors.New("no step context to end")
 	}
-	h.taskContexts = h.taskContexts[:len(h.taskContexts)-1]
+	h.stepContexts = h.stepContexts[:len(h.stepContexts)-1]
 	if len(h.procedureInputs) < 1 {
 		return errors.New("no procedure inputs to end")
 	}
@@ -121,14 +121,14 @@ func (h *Host) EndProcedure() error {
 	return nil
 }
 
-// GetCurrentContextTasks retrieves the current task context for the host.
-func (h *Host) GetCurrentContextTasks() (map[string]cty.Value, error) {
+// GetCurrentContextSteps retrieves the current step context for the host.
+func (h *Host) GetCurrentContextSteps() (map[string]cty.Value, error) {
 
-	if len(h.taskContexts) == 0 {
-		return nil, errors.New("no task context available")
+	if len(h.stepContexts) == 0 {
+		return nil, errors.New("no step context available")
 	}
 
-	return h.taskContexts[len(h.taskContexts)-1], nil
+	return h.stepContexts[len(h.stepContexts)-1], nil
 }
 
 // GetCurrentProcedureInputs retrieves the inputs for the current procedure context.
@@ -197,9 +197,9 @@ func (i *Inventory) Targets() map[string][]*Host {
 	return i.targets
 }
 
-// ClearTasks clears all tasks and procedure inputs for the inventory.
-func (i *Inventory) ClearTasks() {
+// ClearSteps clears all steps and procedure inputs for the inventory.
+func (i *Inventory) ClearSteps() {
 	for _, host := range i.hosts {
-		host.ClearTasks()
+		host.ClearSteps()
 	}
 }

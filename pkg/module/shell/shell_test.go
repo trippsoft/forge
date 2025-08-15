@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/trippsoft/forge/pkg/inventory"
 	"github.com/trippsoft/forge/pkg/module"
@@ -35,7 +34,7 @@ func TestModuleInputSpec(t *testing.T) {
 
 func TestModuleValidate(t *testing.T) {
 
-	module := &Module{}
+	m := &Module{}
 
 	input := map[string]cty.Value{
 		"command": cty.StringVal("echo 'Hello, World!'"),
@@ -45,7 +44,14 @@ func TestModuleValidate(t *testing.T) {
 	escalateConfig := inventory.NewEscalateConfig("")
 	host := inventory.NewHost("linux", mockTransport, escalateConfig, map[string]cty.Value{})
 
-	err := module.Validate(host, input)
+	config := &module.RunConfig{
+		Transport:  mockTransport,
+		HostInfo:   host.Info(),
+		Escalation: nil,
+		Input:      input,
+	}
+
+	err := m.Validate(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
@@ -72,9 +78,6 @@ func TestModuleRun(t *testing.T) {
 		"command": cty.StringVal("echo 'Hello, World!'"),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
 	config := &module.RunConfig{
 		Transport:  mockTransport,
 		HostInfo:   host.Info(),
@@ -82,7 +85,7 @@ func TestModuleRun(t *testing.T) {
 		Input:      input,
 	}
 
-	result := p.Run(ctx, config)
+	result := p.Run(context.Background(), config)
 
 	if result.Err != nil {
 		t.Fatalf("Expected no error, got: %v", result.Err)
