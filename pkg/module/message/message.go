@@ -38,7 +38,7 @@ func (s *Module) Run(ctx context.Context, config *module.RunConfig) *module.Resu
 
 	output := map[string]cty.Value{}
 
-	result := module.NewSuccess(true, output)
+	result := module.NewSuccess(false, output)
 
 	result.Message = message
 
