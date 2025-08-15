@@ -46,6 +46,11 @@ var (
 	stepMessageFormat = ui.TextFormat().WithForegroundColor(ui.ForegroundGreen).WithStyle(ui.StyleBold).WithStyle(ui.StyleItalic)
 )
 
+type iterationResult struct {
+	iteration *stepIteration
+	result    cty.Value
+}
+
 func (s *SingleStep) runOnHost(ctx *hostWorkflowContext) error {
 
 	err := ctx.LoadEvalContext()
@@ -79,43 +84,55 @@ func (s *SingleStep) runOnHost(ctx *hostWorkflowContext) error {
 		return err
 	}
 
-	resultsMap := map[string]cty.Value{}
-	results := []cty.Value{}
-	e := []error{}
+	results := []*iterationResult{}
 
 	for iterator.Next() {
 
 		iteration := iterator.Value()
-		result, err := s.runHostIteration(ctx, iteration)
+		var result cty.Value
+		result, err = s.runHostIteration(ctx, iteration)
 
-		if iteration != nil {
-			if iteration.index.IsWhollyKnown() && !iteration.index.IsNull() && iteration.index.Type().Equals(cty.String) {
-				resultsMap[iteration.index.AsString()] = result
-			} else {
-				results = append(results, result)
-			}
-		} else {
-			results = append(results, result)
+		results = append(results, &iterationResult{iteration: iteration, result: result})
+
+		if err != nil {
+			ctx.MarkFailed(ctx.host)
+			break
 		}
-
-		e = append(e, err)
 	}
 
 	var output cty.Value
-	switch {
-	case len(resultsMap) > 0:
-		output = cty.ObjectVal(resultsMap)
-	case len(results) > 1:
-		output = cty.ListVal(results)
-	case len(results) == 1:
-		output = results[0]
+	switch iterator.Type() {
+	case stepIteratorSingle:
+		output = results[0].result
+	case stepIteratorMap:
+		outputMap := make(map[string]cty.Value, len(results))
+		for _, r := range results {
+			outputMap[r.iteration.index.AsString()] = r.result
+		}
+
+		if len(outputMap) == 0 {
+			output = cty.EmptyObjectVal
+		} else {
+			output = cty.ObjectVal(outputMap)
+		}
+
+	case stepIteratorList:
+		outputList := make([]cty.Value, len(results))
+		for i, r := range results {
+			outputList[i] = r.result
+		}
+		if len(outputList) == 0 {
+			output = cty.EmptyTupleVal
+		} else {
+			output = cty.TupleVal(outputList)
+		}
 	default:
-		output = cty.ListValEmpty(cty.EmptyObject)
+		output = cty.EmptyObjectVal
 	}
 
 	ctx.host.StoreStepOutput(s.common.id, output)
 
-	return errors.Join(e...)
+	return err
 }
 
 func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepIteration) (cty.Value, error) {
@@ -290,7 +307,13 @@ func (s *SingleStep) getStepIterator(ctx *hostWorkflowContext) (StepIterator, er
 
 	itemsType := itemsValue.Type()
 
-	if !itemsType.IsListType() && !itemsType.IsTupleType() && !itemsType.IsMapType() && !itemsType.IsObjectType() {
+	var iteratorType stepIteratorType
+	switch {
+	case itemsType.IsListType() || itemsType.IsTupleType():
+		iteratorType = stepIteratorList
+	case itemsType.IsMapType() || itemsType.IsObjectType():
+		iteratorType = stepIteratorMap
+	default:
 		return nil, fmt.Errorf("items must be a list, tuple, map, or object, got %q", itemsType.FriendlyName())
 	}
 
@@ -305,7 +328,7 @@ func (s *SingleStep) getStepIterator(ctx *hostWorkflowContext) (StepIterator, er
 		})
 	}
 
-	return &multiIterator{iterations: iterations}, nil
+	return &multiIterator{iteratorType: iteratorType, iterations: iterations}, nil
 }
 
 func (s *SingleStep) getEscalation(ctx *hostWorkflowContext) (transport.Escalation, error) {

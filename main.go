@@ -76,7 +76,11 @@ func main() {
 			UI.Print("Successfully parsed workflow file.\n")
 			workflowContext := workflow.WorkflowContext(UI, i)
 
-			w.Run(workflowContext)
+			err = w.Run(workflowContext)
+
+			if err != nil {
+				os.Exit(1)
+			}
 		},
 	}
 	versionCmd := &cobra.Command{

@@ -25,15 +25,21 @@ func (w *Workflow) Processes() []*Process {
 }
 
 // Run executes the workflow.
-func (w *Workflow) Run(ctx *workflowContext) {
+func (w *Workflow) Run(ctx *workflowContext) error {
 
 	ctx.inventory.ClearSteps() // Clear any existing steps before running the workflow.
 
+	var err error
 	for _, process := range w.processes {
-		process.Run(ctx)
+		err = process.Run(ctx)
+		if err != nil {
+			break
+		}
 	}
 
 	for _, host := range ctx.inventory.Hosts() {
 		host.Transport().Close()
 	}
+
+	return err
 }

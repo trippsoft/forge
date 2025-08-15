@@ -4,9 +4,9 @@
 package workflow
 
 import (
+	"errors"
 	"fmt"
 	"slices"
-	"sync"
 	"unicode/utf8"
 
 	"github.com/trippsoft/forge/pkg/inventory"
@@ -45,7 +45,7 @@ func (p *Process) Steps() []Step {
 }
 
 // Run executes the process with the given workflow context.
-func (p *Process) Run(ctx *workflowContext) {
+func (p *Process) Run(ctx *workflowContext) error {
 
 	nameText := ui.Text(p.name).WithStyle(ui.StyleBold)
 	name := ctx.ui.Format(nameText)
@@ -53,6 +53,8 @@ func (p *Process) Run(ctx *workflowContext) {
 
 	message := fmt.Sprintf("\nPROCESS - %s\n%s", name, line)
 	ctx.ui.Print(message)
+
+	e := []error{}
 
 	if p.gatherInfo {
 		nameText = ui.Text("Gathering Information").WithStyle(ui.StyleBold)
@@ -62,27 +64,30 @@ func (p *Process) Run(ctx *workflowContext) {
 		message := fmt.Sprintf("\n%s\n%s", name, line)
 		ctx.ui.Print(message)
 
-		wg := sync.WaitGroup{}
+		errChannel := make(chan error)
 
-		for _, host := range ctx.inventory.Hosts() {
-			wg.Add(1)
+		hosts := ctx.inventory.Hosts()
+		for _, host := range hosts {
 			go func(host *inventory.Host) {
-				defer wg.Done()
 
 				t := host.Transport()
 
 				var resultCode stepResultCode
 				var diags util.Diags
+				var err error
 				if t.Type() != transport.TransportTypeNone {
 					diags = host.Info().Populate(host.Transport())
 
 					if diags.HasErrors() {
 						resultCode = stepResultFailure
+						err = diags
 					} else {
 						resultCode = stepResultNotChanged
+						err = nil
 					}
 				} else {
 					resultCode = stepResultSkipped
+					err = nil
 				}
 
 				hostName := host.Name()
@@ -98,15 +103,23 @@ func (p *Process) Run(ctx *workflowContext) {
 				if len(diags) > 0 {
 					printDiags(ctx, diags)
 				}
+
+				errChannel <- err
 			}(host)
 		}
 
-		wg.Wait()
+		for range hosts {
+			err := <-errChannel
+			e = append(e, err)
+		}
 	}
 
 	for _, step := range p.steps {
-		step.Run(ctx)
+		errs := step.Run(ctx)
+		e = append(e, errs...)
 	}
+
+	return errors.Join(e...)
 }
 
 func printDiags(ctx *workflowContext, diags util.Diags) {

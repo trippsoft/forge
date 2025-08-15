@@ -6,7 +6,6 @@ package workflow
 import (
 	"fmt"
 	"maps"
-	"sync"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/trippsoft/forge/pkg/inventory"
@@ -15,9 +14,17 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+type stepIteratorType uint8
+
+const (
+	stepIteratorSingle stepIteratorType = iota
+	stepIteratorList
+	stepIteratorMap
+)
+
 // Step abstracts a single Step or a procedure in a process.
 type Step interface {
-	Run(ctx *workflowContext) // Run executes the step with the given workflow context.
+	Run(ctx *workflowContext) []error // Run executes the step with the given workflow context.
 }
 
 type StepCommonConfig struct {
@@ -169,7 +176,7 @@ func (s *SingleStep) Module() module.Module {
 }
 
 // Run implements Step.
-func (s *SingleStep) Run(ctx *workflowContext) {
+func (s *SingleStep) Run(ctx *workflowContext) []error {
 
 	nameText := ui.Text(s.common.name).WithStyle(ui.StyleBold)
 	name := ctx.ui.Format(nameText)
@@ -180,23 +187,27 @@ func (s *SingleStep) Run(ctx *workflowContext) {
 
 	ctx.LoadHostVars()
 
-	wg := sync.WaitGroup{}
+	e := []error{}
+	errChannel := make(chan error)
 
 	for _, host := range s.common.targets {
-		wg.Add(1)
 		go func(h *inventory.Host) {
-			defer wg.Done()
+
 			if ctx.IsFailed(h) {
+				errChannel <- nil
 				return
 			}
-			err := s.runOnHost(HostWorkflowContext(ctx, h))
-			if err != nil {
-				ctx.MarkFailed(h)
-			}
+
+			errChannel <- s.runOnHost(HostWorkflowContext(ctx, h))
 		}(host)
 	}
 
-	wg.Wait()
+	for range s.common.targets {
+		err := <-errChannel
+		e = append(e, err)
+	}
+
+	return e
 }
 
 type stepIteration struct {
@@ -207,12 +218,17 @@ type stepIteration struct {
 
 // StepIterator handles any loop behavior for a step.
 type StepIterator interface {
-	Next() bool
-	Value() *stepIteration
+	Type() stepIteratorType // Type returns the type of the iterator (single, list, map).
+	Next() bool             // Next advances the iterator to the next step iteration.
+	Value() *stepIteration  // Value returns the current step iteration value.
 }
 
 type singleIterator struct {
 	completed bool
+}
+
+func (s *singleIterator) Type() stepIteratorType {
+	return stepIteratorSingle
 }
 
 func (s *singleIterator) Next() bool {
@@ -228,8 +244,13 @@ func (s *singleIterator) Value() *stepIteration {
 }
 
 type multiIterator struct {
-	index      int
-	iterations []*stepIteration
+	iteratorType stepIteratorType
+	index        int
+	iterations   []*stepIteration
+}
+
+func (m *multiIterator) Type() stepIteratorType {
+	return m.iteratorType
 }
 
 func (m *multiIterator) Next() bool {
