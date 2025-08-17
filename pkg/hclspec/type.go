@@ -22,11 +22,24 @@ var (
 )
 
 // Type represents an HCL type within an argument spec.
+// This will wrap a cty.Type and may provide additional validation or conversion logic for custom types.
 type Type interface {
-	CtyType() cty.Type                          // CtyType returns the cty.Type representation of the HCL type.
-	Convert(value cty.Value) (cty.Value, error) // Convert converts a cty.Value to this type.
-	Validate(value cty.Value) error             // Validate checks if a cty.Value is valid for this type.
-	ValidateSpec() []error                      // ValidateSpec checks if the type specification is valid.
+	// CtyType returns the cty.Type representation of the HCL type.
+	CtyType() cty.Type
+	// Convert converts a cty.Value to this type.
+	// This will provide an error if the conversion is not possible.
+	// If possible, this function should wrap all errors, if there are multiple.
+	// This function should be called before Validate.
+	Convert(value cty.Value) (cty.Value, error)
+	// Validate checks if a cty.Value is valid for this type.
+	// This validation is in addition to any cty value conversion.
+	// This function should be called after Convert.
+	// It returns an error if the value is not valid.
+	// If possible, this function should wrap all errors, if there are multiple.
+	Validate(value cty.Value) error
+	// ValidateSpec checks if the type specification is valid.
+	// This function will be called by input specifications to ensure they are valid.
+	ValidateSpec() error
 }
 
 // primitiveType represents a primitive HCL type.
@@ -46,18 +59,12 @@ func (p *primitiveType) Convert(value cty.Value) (cty.Value, error) {
 
 // Validate implements Type.
 func (p *primitiveType) Validate(value cty.Value) error {
-
-	_, err := p.Convert(value)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return nil // No additional validation for primitive types.
 }
 
 // ValidateSpec implements Type.
-func (p *primitiveType) ValidateSpec() []error {
-	return []error{}
+func (p *primitiveType) ValidateSpec() error {
+	return nil
 }
 
 // String represents the primitive type as a friendly string.
@@ -80,20 +87,13 @@ func (d *durationType) Convert(value cty.Value) (cty.Value, error) {
 
 // Validate implements Type.
 func (d *durationType) Validate(value cty.Value) error {
-
-	var err error
-	value, err = d.Convert(value)
-	if err != nil {
-		return err
-	}
-
-	_, err = time.ParseDuration(value.AsString())
+	_, err := time.ParseDuration(value.AsString())
 	return err
 }
 
 // ValidateSpec implements Type.
-func (d *durationType) ValidateSpec() []error {
-	return []error{}
+func (d *durationType) ValidateSpec() error {
+	return nil
 }
 
 // String represents the duration type as a friendly string.
@@ -112,35 +112,36 @@ func (s *sensitiveStringType) CtyType() cty.Type {
 // Convert implements Type.
 func (s *sensitiveStringType) Convert(value cty.Value) (cty.Value, error) {
 	v, err := convertCtyType(value, s.CtyType())
-	if err == nil && !v.IsNull() {
-		valStr := v.AsString()
-		if valStr != "" {
-			log.SecretFilter.AddSecret(valStr)
-		}
+	if err == nil {
+		s.AddToFilter(v)
 	}
 	return v, err
 }
 
 // Validate implements Type.
 func (s *sensitiveStringType) Validate(value cty.Value) error {
-
-	var err error
-	value, err = s.Convert(value)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return nil // No additional validation for sensitive string types.
 }
 
 // ValidateSpec implements Type.
-func (s *sensitiveStringType) ValidateSpec() []error {
-	return []error{}
+func (s *sensitiveStringType) ValidateSpec() error {
+	return nil
 }
 
 // String represents the sensitive string type as a friendly string.
 func (s *sensitiveStringType) String() string {
 	return "sensitive string"
+}
+
+func (s *sensitiveStringType) AddToFilter(value cty.Value) {
+	if value.IsNull() {
+		return // No need to add null values to the filter.
+	}
+
+	v := value.AsString()
+	if v != "" {
+		log.SecretFilter.AddSecret(v)
+	}
 }
 
 // listType represents a list of elements of a specific type.
@@ -160,30 +161,38 @@ func (l *listType) CtyType() cty.Type {
 
 // Convert implements Type.
 func (l *listType) Convert(value cty.Value) (cty.Value, error) {
+	converted, err := convertCtyType(value, l.CtyType())
 
-	convertedValue, listErr := convertCtyType(value, l.CtyType())
-
-	if listErr != nil {
-		var err error
-		convertedValue, err = l.elementType.Convert(value)
-		if err != nil {
-			return cty.NilVal, listErr
+	if err != nil {
+		var e error
+		converted, e = l.elementType.Convert(value)
+		if e != nil {
+			return cty.NilVal, err
 		}
 
-		convertedValue = cty.ListVal([]cty.Value{convertedValue})
+		if converted.IsNull() {
+			return cty.ListValEmpty(l.elementType.CtyType()), nil
+		}
+
+		return cty.ListVal([]cty.Value{converted}), nil
 	}
 
-	if convertedValue.IsNull() {
-		return convertedValue, nil
+	if converted.IsNull() {
+		return converted, nil
 	}
 
-	it := convertedValue.ElementIterator()
-	values := make([]cty.Value, 0, convertedValue.LengthInt())
+	it := converted.ElementIterator()
+	values := make([]cty.Value, 0, converted.LengthInt())
+	sensitiveString, isSensitiveString := l.elementType.(*sensitiveStringType)
 	for it.Next() {
 		_, elem := it.Element()
-		if !elem.IsNull() {
-			values = append(values, elem)
+		if elem.IsNull() {
+			continue // Skip null elements.
 		}
+		if isSensitiveString {
+			sensitiveString.AddToFilter(elem)
+		}
+		values = append(values, elem)
 	}
 
 	if len(values) == 0 {
@@ -195,32 +204,26 @@ func (l *listType) Convert(value cty.Value) (cty.Value, error) {
 
 // Validate implements Type.
 func (l *listType) Validate(value cty.Value) error {
-
-	var err error
-	value, err = l.Convert(value)
-	if err != nil {
-		return err
-	}
-
 	if value.IsNull() {
 		return nil // A null is presumed valid.
 	}
 
 	it := value.ElementIterator()
+	var err error
 	for it.Next() {
 		index, elem := it.Element()
-		err := l.elementType.Validate(elem)
-		if err != nil {
+		e := l.elementType.Validate(elem)
+		if e != nil {
 			i, _ := index.AsBigFloat().Int64()
-			return fmt.Errorf("element at index %d: %w", i, err)
+			err = errors.Join(err, fmt.Errorf("element at index %d: %w", i, e))
 		}
 	}
 
-	return nil
+	return err
 }
 
 // ValidateSpec implements Type.
-func (l *listType) ValidateSpec() []error {
+func (l *listType) ValidateSpec() error {
 	return l.elementType.ValidateSpec()
 }
 
@@ -246,36 +249,47 @@ func (m *mapType) CtyType() cty.Type {
 
 // Convert implements Type.
 func (m *mapType) Convert(value cty.Value) (cty.Value, error) {
-	return convertCtyType(value, m.CtyType())
+	converted, err := convertCtyType(value, m.CtyType())
+	if err != nil {
+		return cty.NilVal, err
+	}
+
+	sensitiveString, ok := m.valueType.(*sensitiveStringType)
+
+	if converted.IsNull() || !ok {
+		return converted, nil // A null is presumed valid.
+	}
+
+	it := converted.ElementIterator()
+	for it.Next() {
+		_, elem := it.Element()
+		sensitiveString.AddToFilter(elem)
+	}
+
+	return converted, nil
 }
 
 // Validate implements Type.
 func (m *mapType) Validate(value cty.Value) error {
-
-	var err error
-	value, err = m.Convert(value)
-	if err != nil {
-		return err
-	}
-
 	if value.IsNull() {
 		return nil // A null is presumed valid.
 	}
 
 	it := value.ElementIterator()
+	var err error
 	for it.Next() {
 		index, elem := it.Element()
-		err := m.valueType.Validate(elem)
-		if err != nil {
-			return fmt.Errorf("element at index %q: %w", index.AsString(), err)
+		e := m.valueType.Validate(elem)
+		if e != nil {
+			err = errors.Join(err, fmt.Errorf("element at index %q: %w", index.AsString(), e))
 		}
 	}
 
-	return nil
+	return err
 }
 
 // ValidateSpec implements Type.
-func (m *mapType) ValidateSpec() []error {
+func (m *mapType) ValidateSpec() error {
 	return m.valueType.ValidateSpec()
 }
 
@@ -301,30 +315,39 @@ func (s *setType) CtyType() cty.Type {
 
 // Convert implements Type.
 func (s *setType) Convert(value cty.Value) (cty.Value, error) {
+	converted, err := convertCtyType(value, s.CtyType())
 
-	convertedValue, setErr := convertCtyType(value, s.CtyType())
-
-	if setErr != nil {
-		var err error
-		convertedValue, err = s.elementType.Convert(value)
-		if err != nil {
-			return cty.NilVal, setErr
+	if err != nil {
+		var e error
+		converted, e = s.elementType.Convert(value)
+		if e != nil {
+			return cty.NilVal, err
 		}
 
-		convertedValue = cty.SetVal([]cty.Value{convertedValue})
+		if converted.IsNull() {
+			return cty.SetValEmpty(s.elementType.CtyType()), nil
+		}
+
+		return cty.SetVal([]cty.Value{converted}), nil
 	}
 
-	if convertedValue.IsNull() {
-		return convertedValue, nil
+	if converted.IsNull() {
+		return converted, nil
 	}
 
-	it := convertedValue.ElementIterator()
-	values := make([]cty.Value, 0, convertedValue.LengthInt())
+	it := converted.ElementIterator()
+	values := make([]cty.Value, 0, converted.LengthInt())
+	sensitiveString, isSensitiveString := s.elementType.(*sensitiveStringType)
 	for it.Next() {
 		_, elem := it.Element()
-		if !elem.IsNull() {
-			values = append(values, elem)
+		if elem.IsNull() {
+			continue
+
 		}
+		if isSensitiveString {
+			sensitiveString.AddToFilter(elem)
+		}
+		values = append(values, elem)
 	}
 
 	if len(values) == 0 {
@@ -336,31 +359,25 @@ func (s *setType) Convert(value cty.Value) (cty.Value, error) {
 
 // Validate implements Type.
 func (s *setType) Validate(value cty.Value) error {
-
-	var err error
-	value, err = s.Convert(value)
-	if err != nil {
-		return err
-	}
-
 	if value.IsNull() {
 		return nil // A null is presumed valid.
 	}
 
 	it := value.ElementIterator()
+	var err error
 	for it.Next() {
 		_, elem := it.Element()
-		err := s.elementType.Validate(elem)
-		if err != nil {
-			return fmt.Errorf("invalid set element: %w", err)
+		e := s.elementType.Validate(elem)
+		if e != nil {
+			err = errors.Join(err, fmt.Errorf("invalid set element: %w", e))
 		}
 	}
 
-	return nil
+	return err
 }
 
 // ValidateSpec implements Type.
-func (s *setType) ValidateSpec() []error {
+func (s *setType) ValidateSpec() error {
 	return s.elementType.ValidateSpec()
 }
 
@@ -388,10 +405,10 @@ func convertCtyType(value cty.Value, targetType cty.Type) (cty.Value, error) {
 		return cty.NilVal, fmt.Errorf("cannot convert %q to %q", value.Type().FriendlyName(), targetType.FriendlyName())
 	}
 
-	convertedValue, err := conversion(value)
+	converted, err := conversion(value)
 	if err != nil {
 		return cty.NilVal, fmt.Errorf("cannot convert %q to %q: %w", value.Type().FriendlyName(), targetType.FriendlyName(), err)
 	}
 
-	return convertedValue, nil
+	return converted, nil
 }

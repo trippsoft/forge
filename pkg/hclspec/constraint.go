@@ -10,13 +10,13 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// objectConstraint represents a constraint on an object type.
-type objectConstraint interface {
+// ObjectConstraint represents a constraint on an object type.
+type ObjectConstraint interface {
 	Validate(values map[string]cty.Value) error // Validate checks if the given value satisfies the constraint.
 	ValidateSpec(t *objectType) error           // ValidateSpec checks if the constraint is valid for the object type.
 }
 
-type ObjectConstraints []objectConstraint
+type ObjectConstraints []ObjectConstraint
 
 // Validate checks if all constraints in the objectConstraints slice are satisfied by the given value.
 func (c ObjectConstraints) Validate(values map[string]cty.Value) error {
@@ -34,7 +34,7 @@ type mutuallyExclusiveGroup struct {
 }
 
 // MutuallyExclusive creates a new mutuallyExclusiveGroup with the given field names.
-func MutuallyExclusive(fields ...string) objectConstraint {
+func MutuallyExclusive(fields ...string) ObjectConstraint {
 	return &mutuallyExclusiveGroup{fields: fields}
 }
 
@@ -75,7 +75,7 @@ type requiredTogetherGroup struct {
 }
 
 // RequiredTogether creates a new requiredTogetherGroup with the given field names.
-func RequiredTogether(fields ...string) objectConstraint {
+func RequiredTogether(fields ...string) ObjectConstraint {
 	return &requiredTogetherGroup{fields: fields}
 }
 
@@ -115,7 +115,7 @@ type requiredOneOfGroup struct {
 }
 
 // RequiredOneOf creates a new requiredOneOfGroup with the given field names.
-func RequiredOneOf(fields ...string) objectConstraint {
+func RequiredOneOf(fields ...string) ObjectConstraint {
 	return &requiredOneOfGroup{fields: fields}
 }
 
@@ -254,11 +254,11 @@ func (c *fieldEqualsCondition) ValidateSpec(t *objectType) error {
 // conditionalConstraint represents a constraint that is applied conditionally based on the evaluation of an ObjectCondition.
 type conditionalConstraint struct {
 	condition  ObjectCondition  // The condition that must be met for the constraint to apply.
-	constraint objectConstraint // The specific constraint to apply if the condition is met.
+	constraint ObjectConstraint // The specific constraint to apply if the condition is met.
 }
 
 // ConditionalConstraint creates a new conditionalConstraint for the given condition and constraint.
-func ConditionalConstraint(condition ObjectCondition, constraint objectConstraint) objectConstraint {
+func ConditionalConstraint(condition ObjectCondition, constraint ObjectConstraint) ObjectConstraint {
 	return &conditionalConstraint{
 		condition:  condition,
 		constraint: constraint,

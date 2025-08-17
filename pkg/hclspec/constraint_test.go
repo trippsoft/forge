@@ -10,7 +10,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// Helper function to create a mock objectType for testing
 func createMockObjectType() *objectType {
 	return Object(map[string]*ObjectField{
 		"field1": RequiredField(String),
@@ -1032,7 +1031,7 @@ func TestConditionalConstraintValidate_Pass(t *testing.T) {
 	tests := []struct {
 		name       string
 		condition  ObjectCondition
-		constraint objectConstraint
+		constraint ObjectConstraint
 		values     map[string]cty.Value
 	}{
 		{
@@ -1072,7 +1071,7 @@ func TestConditionalConstraintValidate_ConditionMetConstraintFails(t *testing.T)
 	tests := []struct {
 		name          string
 		condition     ObjectCondition
-		constraint    objectConstraint
+		constraint    ObjectConstraint
 		values        map[string]cty.Value
 		expectedError string
 	}{
@@ -1122,7 +1121,7 @@ func TestConditionalConstraintValidateSpec_Pass(t *testing.T) {
 	tests := []struct {
 		name       string
 		condition  ObjectCondition
-		constraint objectConstraint
+		constraint ObjectConstraint
 	}{
 		{
 			name:       "valid condition and constraint",
@@ -1156,7 +1155,7 @@ func TestConditionalConstraintValidateSpec_InvalidCondition(t *testing.T) {
 	tests := []struct {
 		name          string
 		condition     ObjectCondition
-		constraint    objectConstraint
+		constraint    ObjectConstraint
 		expectedError string
 	}{
 		{
@@ -1191,7 +1190,7 @@ func TestConditionalConstraintValidateSpec_InvalidConstraint(t *testing.T) {
 	tests := []struct {
 		name          string
 		condition     ObjectCondition
-		constraint    objectConstraint
+		constraint    ObjectConstraint
 		expectedError string
 	}{
 		{

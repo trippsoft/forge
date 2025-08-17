@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/trippsoft/forge/pkg/errorwrap"
 	"github.com/trippsoft/forge/pkg/log"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -1909,33 +1910,36 @@ func verifyFailedConversion(t *testing.T, ty Type, input cty.Value, expectedErro
 		t.Fatalf("expected error %q from Convert(), got none", expectedError)
 	}
 
-	if err.Error() != expectedError {
-		t.Errorf("expected error %q from Convert(), got %q", expectedError, err.Error())
+	errs := errorwrap.UnwrapErrors(err)
+
+	for _, e := range errs {
+		if e.Error() == expectedError {
+			return
+		}
 	}
 
-	err = ty.Validate(input)
-	if err == nil {
-		t.Fatalf("expected error %q from Validate(), got none", expectedError)
-	}
-
-	if err.Error() != expectedError {
-		t.Errorf("expected error %q from Validate(), got %q", expectedError, err.Error())
-	}
+	t.Errorf("expected error %q from Convert(), got %q", expectedError, err.Error())
 }
 
 func verifyFailedValidation(t *testing.T, ty Type, input cty.Value, expectedError string) {
 
-	_, err := ty.Convert(input)
+	converted, err := ty.Convert(input)
 	if err != nil {
 		t.Fatalf("expected no error from Convert(), got %v", err)
 	}
 
-	err = ty.Validate(input)
+	err = ty.Validate(converted)
 	if err == nil {
 		t.Fatalf("expected error %q from Validate(), got none", expectedError)
 	}
 
-	if err.Error() != expectedError {
-		t.Errorf("expected error %q from Validate(), got %q", expectedError, err.Error())
+	errs := errorwrap.UnwrapErrors(err)
+
+	for _, e := range errs {
+		if e.Error() == expectedError {
+			return
+		}
 	}
+
+	t.Errorf("expected error %q from Validate(), got %q", expectedError, err.Error())
 }

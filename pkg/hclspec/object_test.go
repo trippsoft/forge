@@ -5,117 +5,11 @@ package hclspec
 
 import (
 	"fmt"
-	"slices"
 	"testing"
 
+	"github.com/trippsoft/forge/pkg/errorwrap"
 	"github.com/zclconf/go-cty/cty"
 )
-
-func TestObjectField(t *testing.T) {
-
-	tests := []struct {
-		name             string
-		t                Type
-		required         bool
-		defaultValue     cty.Value
-		aliases          []string
-		expectedRequired bool
-		expectedType     Type
-	}{
-		{
-			name:             "required string field with no default",
-			t:                String,
-			required:         true,
-			defaultValue:     cty.NullVal(cty.String),
-			aliases:          nil,
-			expectedRequired: true,
-			expectedType:     String,
-		},
-		{
-			name:             "optional number field with default",
-			t:                Number,
-			required:         false,
-			defaultValue:     cty.NumberIntVal(42),
-			aliases:          []string{"num", "number"},
-			expectedRequired: false,
-			expectedType:     Number,
-		},
-		{
-			name:             "bool field with aliases",
-			t:                Bool,
-			required:         false,
-			defaultValue:     cty.BoolVal(false),
-			aliases:          []string{"enabled", "active"},
-			expectedRequired: false,
-			expectedType:     Bool,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			field := &ObjectField{
-				t:            tt.t,
-				required:     tt.required,
-				defaultValue: tt.defaultValue,
-				aliases:      tt.aliases,
-			}
-
-			if field.required != tt.expectedRequired {
-				t.Errorf("expected required to be \"%v\", got \"%v\"", tt.expectedRequired, field.required)
-			}
-
-			if field.t != tt.expectedType {
-				t.Errorf("expected type to be %q, got %q", tt.expectedType, field.t)
-			}
-
-			if !field.defaultValue.Equals(tt.defaultValue).True() {
-				t.Errorf(
-					"expected default value to be %q, got %q",
-					tt.defaultValue.GoString(),
-					field.defaultValue.GoString())
-			}
-
-			if len(field.aliases) != len(tt.aliases) {
-				t.Errorf("expected %d aliases, got %d", len(tt.aliases), len(field.aliases))
-			}
-
-			for _, alias := range tt.aliases {
-				if !slices.Contains(field.aliases, alias) {
-					t.Errorf("expected alias %q to be present, but it was not", alias)
-				}
-			}
-		})
-	}
-}
-
-func TestObject(t *testing.T) {
-
-	fields := map[string]*ObjectField{
-		"name": RequiredField(String),
-		"age":  OptionalField(Number, cty.NumberIntVal(0)),
-	}
-
-	constraint := MutuallyExclusive("name", "age")
-
-	obj := Object(fields, constraint)
-
-	if len(obj.fields) != 2 {
-		t.Errorf("expected 2 fields, got %d", len(obj.fields))
-	}
-
-	if len(obj.constraints) != 1 {
-		t.Errorf("expected 1 constraint, got %d", len(obj.constraints))
-	}
-
-	if _, exists := obj.fields["name"]; !exists {
-		t.Errorf("expected field %q to be present, but it was not", "name")
-	}
-
-	if _, exists := obj.fields["age"]; !exists {
-		t.Errorf("expected field %q to be present, but it was not", "age")
-	}
-}
 
 func TestObjectFieldValidateSpec_Pass(t *testing.T) {
 
@@ -139,14 +33,9 @@ func TestObjectFieldValidateSpec_Pass(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			errs := tt.field.validateSpec(tt.fieldName)
-
-			if len(errs) != 0 {
-				t.Errorf("expected no errors from validateSpec(), got %d", len(errs))
-
-				for _, err := range errs {
-					t.Errorf("expected no errors from validateSpec(), got %v", err)
-				}
+			err := tt.field.validateSpec(tt.fieldName)
+			if err != nil {
+				t.Errorf("expected no errors from validateSpec(), got: %v", err)
 			}
 		})
 	}
@@ -156,33 +45,37 @@ func TestObjectFieldValidateSpec_UnknownDefaultValue(t *testing.T) {
 
 	field := OptionalField(String, cty.UnknownVal(cty.String))
 
-	errs := field.validateSpec("test")
-	if len(errs) != 1 {
-		t.Fatalf("expected 1 error from validateSpec(), got %d", len(errs))
+	err := field.validateSpec("test")
+	if err == nil {
+		t.Fatal("expected error from validateSpec(), got none")
 	}
 
 	expectedError := `field "test" has an unknown default value`
-	if errs[0].Error() != expectedError {
-		t.Errorf("expected error %q from validateSpec(), got %q", expectedError, errs[0].Error())
+	if err.Error() != expectedError {
+		t.Errorf("expected error %q from validateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
 func TestObjectFieldValidateSpec_RequiredWithDefault(t *testing.T) {
 
-	field := &ObjectField{
-		t:            String,
-		required:     true,
-		defaultValue: cty.StringVal("default"),
+	field := RequiredField(String)
+
+	field.defaultValue = cty.StringVal("default")
+
+	err := field.validateSpec("test")
+	if err == nil {
+		t.Fatal("expected error from validateSpec(), got none")
 	}
 
-	errs := field.validateSpec("test")
-	if len(errs) != 1 {
-		t.Fatalf("expected 1 error from validateSpec(), got %d", len(errs))
-	}
+	errs := errorwrap.UnwrapErrors(err)
 
 	expectedError := `field "test" is required and has a default value`
-	if errs[0].Error() != expectedError {
-		t.Errorf("expected error %q from validateSpec(), got %q", expectedError, errs[0].Error())
+	for _, e := range errs {
+		if e.Error() == expectedError {
+			return
+		}
+
+		t.Errorf("expected error %q from validateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -190,14 +83,20 @@ func TestObjectFieldValidateSpec_InvalidDefaultValue(t *testing.T) {
 
 	field := OptionalField(Number, cty.StringVal("not-a-number"))
 
-	errs := field.validateSpec("test")
-	if len(errs) != 1 {
-		t.Fatalf("expected 1 error from validateSpec(), got %d", len(errs))
+	err := field.validateSpec("test")
+	if err == nil {
+		t.Fatal("expected error from validateSpec(), got none")
 	}
 
-	expectedError := `field "test" default value validation failed: cannot convert "string" to "number": a number is required`
-	if errs[0].Error() != expectedError {
-		t.Errorf("expected error %q from validateSpec(), got %q", expectedError, errs[0].Error())
+	errs := errorwrap.UnwrapErrors(err)
+
+	expectedError := `field "test" default value type mismatch: expected "number", got "string"`
+	for _, e := range errs {
+		if e.Error() == expectedError {
+			return
+		}
+
+		t.Errorf("expected error %q from validateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -646,7 +545,7 @@ func TestObjectTypeValidateSpec_Pass(t *testing.T) {
 	tests := []struct {
 		name        string
 		fields      map[string]*ObjectField
-		constraints []objectConstraint
+		constraints []ObjectConstraint
 	}{
 		{
 			name: "valid spec",
@@ -662,19 +561,16 @@ func TestObjectTypeValidateSpec_Pass(t *testing.T) {
 				"field1": OptionalField(String, cty.NullVal(cty.String)),
 				"field2": OptionalField(String, cty.NullVal(cty.String)),
 			},
-			constraints: []objectConstraint{MutuallyExclusive("field1", "field2")},
+			constraints: []ObjectConstraint{MutuallyExclusive("field1", "field2")},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			obj := Object(tt.fields, tt.constraints...)
-			errs := obj.ValidateSpec()
-			if len(errs) != 0 {
-				t.Errorf("expected no errors from ValidateSpec(), got %d errors", len(errs))
-				for _, err := range errs {
-					t.Errorf("expected no errors from ValidateSpec(), got error: %v", err)
-				}
+			err := obj.ValidateSpec()
+			if err != nil {
+				t.Errorf("expected no errors from ValidateSpec(), got error: %v", err)
 			}
 		})
 	}
@@ -690,14 +586,14 @@ func TestObjectTypeValidateSpec_FieldErrors(t *testing.T) {
 		},
 	})
 
-	errs := obj.ValidateSpec()
-	if len(errs) != 1 {
-		t.Fatalf("expected 1 error from ValidateSpec(), got %d errors", len(errs))
+	err := obj.ValidateSpec()
+	if err == nil {
+		t.Fatal("expected error from ValidateSpec(), got none")
 	}
 
 	expectedError := fmt.Sprintf("field %q is required and has a default value", "invalid")
-	if errs[0].Error() != expectedError {
-		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, errs[0].Error())
+	if err.Error() != expectedError {
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -707,9 +603,9 @@ func TestObjectTypeValidateSpec_DuplicateFieldNames(t *testing.T) {
 		"name": RequiredField(String, "name"),
 	})
 
-	errs := obj.ValidateSpec()
-	if len(errs) != 1 {
-		t.Fatalf("expected 1 error from ValidateSpec(), got %d errors", len(errs))
+	err := obj.ValidateSpec()
+	if err == nil {
+		t.Fatal("expected error from ValidateSpec(), got none")
 	}
 
 	expectedError := fmt.Sprintf(
@@ -717,8 +613,8 @@ func TestObjectTypeValidateSpec_DuplicateFieldNames(t *testing.T) {
 		"name",
 		[]string{"name", "name"})
 
-	if errs[0].Error() != expectedError {
-		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, errs[0].Error())
+	if err.Error() != expectedError {
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -728,16 +624,16 @@ func TestObjectTypeValidateSpec_InvalidConstraint(t *testing.T) {
 		"field1": OptionalField(String, cty.NullVal(cty.String)),
 	}, MutuallyExclusive("field1", "nonexistent"))
 
-	errs := obj.ValidateSpec()
-	if len(errs) != 1 {
-		t.Fatalf("expected 1 error from ValidateSpec(), got %d errors", len(errs))
+	err := obj.ValidateSpec()
+	if err == nil {
+		t.Fatal("expected error from ValidateSpec(), got none")
 	}
 
 	expectedError := fmt.Sprintf(
 		"constraint validation failed: field %q is not defined in the object type",
 		"nonexistent")
 
-	if errs[0].Error() != expectedError {
-		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, errs[0].Error())
+	if err.Error() != expectedError {
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }

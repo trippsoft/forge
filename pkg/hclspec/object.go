@@ -41,44 +41,48 @@ type objectType struct {
 	constraints ObjectConstraints
 }
 
-func Object(fields map[string]*ObjectField, constraints ...objectConstraint) *objectType {
+func Object(fields map[string]*ObjectField, constraints ...ObjectConstraint) *objectType {
 	return &objectType{
 		fields:      fields,
 		constraints: constraints,
 	}
 }
 
-func (o *ObjectField) validateSpec(name string) []error {
+func (o *ObjectField) validateSpec(name string) error {
 
-	e := []error{}
+	var err error
 	if o.t == nil {
-		e = append(e, fmt.Errorf("field %q has no type defined", name))
+		err = fmt.Errorf("field %q has no type defined", name)
 	}
 
 	if len(o.aliases) > 0 {
 		if slices.Contains(o.aliases, "") {
-			e = append(e, fmt.Errorf("field %q has an empty alias", name))
+			err = errors.Join(err, fmt.Errorf("field %q has an empty alias", name))
 		}
 	}
 
-	fieldErrs := o.t.ValidateSpec()
-	e = append(e, fieldErrs...)
+	e := o.t.ValidateSpec()
+	err = errors.Join(err, e)
 
 	if !o.defaultValue.IsWhollyKnown() {
-		e = append(e, fmt.Errorf("field %q has an unknown default value", name))
-		return e
+		err = errors.Join(err, fmt.Errorf("field %q has an unknown default value", name))
+		return err
 	}
 
 	if o.required && !o.defaultValue.IsNull() {
-		e = append(e, fmt.Errorf("field %q is required and has a default value", name))
+		err = errors.Join(err, fmt.Errorf("field %q is required and has a default value", name))
 	}
 
-	err := o.t.Validate(o.defaultValue)
-	if err != nil {
-		e = append(e, fmt.Errorf("field %q default value validation failed: %w", name, err))
+	if !o.defaultValue.Type().Equals(o.t.CtyType()) {
+		err = errors.Join(err, fmt.Errorf("field %q default value type mismatch: expected %q, got %q", name, o.t.CtyType().FriendlyName(), o.defaultValue.Type().FriendlyName()))
 	}
 
-	return e
+	e = o.t.Validate(o.defaultValue)
+	if e != nil {
+		err = errors.Join(err, fmt.Errorf("field %q default value validation failed: %w", name, e))
+	}
+
+	return err
 }
 
 // CtyType implements Type.
@@ -243,25 +247,22 @@ func (o *objectType) validateConstraints(values map[string]cty.Value) error {
 }
 
 // ValidateSpec implements Type.
-func (o *objectType) ValidateSpec() []error {
-
-	e := []error{}
-
+func (o *objectType) ValidateSpec() error {
+	var err error
 	if o.fields == nil {
-		e = append(e, errors.New("object type has no fields defined"))
-		return e
+		return errors.New("object type has no fields defined")
 	}
 
 	definedNames := map[string][]string{}
 
 	for name, field := range o.fields {
 		if field == nil {
-			e = append(e, fmt.Errorf("field %q has no definition", name))
+			err = errors.Join(err, fmt.Errorf("field %q has no definition", name))
 			continue
 		}
 
-		fieldErrors := field.validateSpec(name)
-		e = append(e, fieldErrors...)
+		e := field.validateSpec(name)
+		err = errors.Join(err, e)
 
 		definedNames[name] = append(definedNames[name], name)
 
@@ -272,24 +273,24 @@ func (o *objectType) ValidateSpec() []error {
 
 	for name, definitions := range definedNames {
 		if len(definitions) > 1 {
-			e = append(e, fmt.Errorf("field %q is defined multiple times (aliases: %v)", name, definitions))
+			err = errors.Join(err, fmt.Errorf("field %q is defined multiple times (aliases: %v)", name, definitions))
 		}
 	}
 
 	if o.constraints == nil {
-		return e // No constraints to validate
+		return err // No constraints to validate
 	}
 
 	for _, constraint := range o.constraints {
 		if constraint == nil {
-			e = append(e, errors.New("object type has a nil constraint"))
+			err = errors.Join(err, errors.New("object type has a nil constraint"))
 			continue
 		}
 
-		if err := constraint.ValidateSpec(o); err != nil {
-			e = append(e, fmt.Errorf("constraint validation failed: %w", err))
+		if e := constraint.ValidateSpec(o); e != nil {
+			err = errors.Join(err, fmt.Errorf("constraint validation failed: %w", e))
 		}
 	}
 
-	return e
+	return err
 }

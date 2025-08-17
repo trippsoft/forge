@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/trippsoft/forge/pkg/errorwrap"
 )
 
 const (
@@ -88,7 +90,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	preScriptComments, parsedLines, nonCommentFound, errors := parseScriptIntoLines(scriptContent, parserConfig)
+	preScriptComments, parsedLines, nonCommentFound, err := parseScriptIntoLines(scriptContent, parserConfig)
 
 	if len(preScriptComments) > 0 {
 		stringBuilder.WriteString("\n\n")
@@ -115,9 +117,9 @@ func main() {
 	if !nonCommentFound {
 		stringBuilder.WriteString("// No executable lines found in the script.\n")
 
-		if len(errors) > 0 {
+		if err != nil {
 			stringBuilder.WriteString("\n// Errors encountered during parsing:\n")
-			for _, parseErr := range errors {
+			for _, parseErr := range errorwrap.UnwrapErrors(err) {
 				stringBuilder.WriteString("//     " + parseErr.Error() + "\n")
 			}
 		}
@@ -132,9 +134,9 @@ func main() {
 
 	parseScript(stringBuilder, parsedLines)
 
-	if len(errors) > 0 {
+	if err != nil {
 		stringBuilder.WriteString("// Errors encountered during parsing:\n")
-		for _, parseErr := range errors {
+		for _, parseErr := range errorwrap.UnwrapErrors(err) {
 			stringBuilder.WriteString("//     " + parseErr.Error() + "\n")
 		}
 	}
@@ -184,9 +186,9 @@ func snakeCaseToCamelCase(input string) string {
 	return stringBuilder.String()
 }
 
-func parseScriptIntoLines(content []byte, config *parserConfig) ([]string, []parsedLine, bool, []error) {
+func parseScriptIntoLines(content []byte, config *parserConfig) ([]string, []parsedLine, bool, error) {
 
-	errors := []error{}
+	var err error
 	lines := strings.Split(string(content), "\n")
 	preScriptComments := []string{}
 	parsedLines := make([]parsedLine, 0, len(lines))
@@ -215,25 +217,26 @@ func parseScriptIntoLines(content []byte, config *parserConfig) ([]string, []par
 			continue
 		}
 
-		processedLine := processScriptLine(line, config, &errors)
+		var processedLine string
+		processedLine, err = processScriptLine(line, config)
 		parsedLines = append(parsedLines, parsedLine{line: processedLine})
 	}
 
 	nonCommentFound := markLastNonCommentLine(parsedLines)
 
-	return preScriptComments, parsedLines, nonCommentFound, errors
+	return preScriptComments, parsedLines, nonCommentFound, err
 }
 
-func processScriptLine(line string, config *parserConfig, errors *[]error) string {
+func processScriptLine(line string, config *parserConfig) (string, error) {
 
 	if strings.Contains(line, "`") {
-		*errors = append(*errors, fmt.Errorf("line contains backtick; will attempt to fix it, but it may break Go raw string literal: %s", line))
+		err := fmt.Errorf("line contains backtick; will attempt to fix it, but it may break Go raw string literal: %s", line)
 		line = handleBackticks(line, config)
-		return line
+		return line, err
 	}
 
 	// Handle line continuations and endings
-	return handleLineEnding(line, config)
+	return handleLineEnding(line, config), nil
 }
 
 func handleBackticks(line string, config *parserConfig) string {

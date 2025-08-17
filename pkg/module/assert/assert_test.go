@@ -22,12 +22,9 @@ func TestModuleInputSpec(t *testing.T) {
 		t.Fatal("Expected non-nil input spec")
 	}
 
-	errs := spec.ValidateSpec()
-	if len(errs) > 0 {
-		t.Errorf("expected no errors from ValidateSpec(), got %d errors", len(errs))
-		for _, err := range errs {
-			t.Errorf("expected no errors from ValidateSpec(), got: %v", err)
-		}
+	err := spec.ValidateSpec()
+	if err != nil {
+		t.Errorf("expected no errors from ValidateSpec(), got %v", err)
 	}
 }
 

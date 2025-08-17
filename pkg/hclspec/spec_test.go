@@ -349,7 +349,7 @@ func TestSpecValidateSpec_Pass(t *testing.T) {
 	tests := []struct {
 		name        string
 		fields      map[string]*ObjectField
-		constraints []objectConstraint
+		constraints []ObjectConstraint
 	}{
 		{
 			name: "valid spec",
@@ -365,7 +365,7 @@ func TestSpecValidateSpec_Pass(t *testing.T) {
 				"field1": {t: String, required: false, defaultValue: cty.NullVal(cty.String)},
 				"field2": {t: String, required: false, defaultValue: cty.NullVal(cty.String)},
 			},
-			constraints: []objectConstraint{MutuallyExclusive("field1", "field2")},
+			constraints: []ObjectConstraint{MutuallyExclusive("field1", "field2")},
 		},
 	}
 
@@ -373,14 +373,10 @@ func TestSpecValidateSpec_Pass(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			spec := NewSpec(Object(tt.fields, tt.constraints...))
-			errs := spec.ValidateSpec()
+			err := spec.ValidateSpec()
 
-			if len(errs) != 0 {
-				t.Errorf("expected no errors from ValidateSpec(), got %d errors", len(errs))
-
-				for _, err := range errs {
-					t.Errorf("expected no errors from ValidateSpec(), got error: %v", err)
-				}
+			if err != nil {
+				t.Errorf("expected no errors from ValidateSpec(), got error: %v", err)
 			}
 		})
 	}
@@ -391,13 +387,13 @@ func TestSpecValidateSpec_NilObject(t *testing.T) {
 	spec := NewSpec(nil)
 
 	expectedError := "object type is nil"
-	errs := spec.ValidateSpec()
-	if len(errs) != 1 {
-		t.Fatalf("expected 1 error from ValidateSpec(), got %d errors: %v", len(errs), errs)
+	err := spec.ValidateSpec()
+	if err == nil {
+		t.Fatal("expected error from ValidateSpec(), got none")
 	}
 
-	if errs[0].Error() != expectedError {
-		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, errs[0].Error())
+	if err.Error() != expectedError {
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -411,14 +407,14 @@ func TestSpecValidateSpec_FieldErrors(t *testing.T) {
 		},
 	}))
 
-	errs := spec.ValidateSpec()
-	if len(errs) != 1 {
-		t.Fatalf("expected 1 error from ValidateSpec(), got %d errors", len(errs))
+	err := spec.ValidateSpec()
+	if err == nil {
+		t.Fatal("expected 1 error from ValidateSpec(), got none")
 	}
 
 	expectedError := fmt.Sprintf("field %q is required and has a default value", "invalid")
-	if errs[0].Error() != expectedError {
-		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, errs[0].Error())
+	if err.Error() != expectedError {
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -428,9 +424,9 @@ func TestSpecValidateSpec_DuplicateFieldNames(t *testing.T) {
 		"name": {t: String, required: true, defaultValue: cty.NullVal(cty.String), aliases: []string{"name"}},
 	}))
 
-	errs := spec.ValidateSpec()
-	if len(errs) != 1 {
-		t.Fatalf("expected 1 error from ValidateSpec(), got %d errors", len(errs))
+	err := spec.ValidateSpec()
+	if err == nil {
+		t.Fatal("expected error from ValidateSpec(), got none")
 	}
 
 	expectedError := fmt.Sprintf(
@@ -438,8 +434,8 @@ func TestSpecValidateSpec_DuplicateFieldNames(t *testing.T) {
 		"name",
 		[]string{"name", "name"})
 
-	if errs[0].Error() != expectedError {
-		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, errs[0].Error())
+	if err.Error() != expectedError {
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -449,17 +445,17 @@ func TestSpecValidateSpec_InvalidConstraint(t *testing.T) {
 		"field1": {t: String, required: false, defaultValue: cty.NullVal(cty.String)},
 	}, MutuallyExclusive("field1", "nonexistent")))
 
-	errs := spec.ValidateSpec()
-	if len(errs) != 1 {
-		t.Fatalf("expected 1 error from ValidateSpec(), got %d errors", len(errs))
+	err := spec.ValidateSpec()
+	if err == nil {
+		t.Fatal("expected error from ValidateSpec(), got none")
 	}
 
 	expectedError := fmt.Sprintf(
 		"constraint validation failed: field %q is not defined in the object type",
 		"nonexistent")
 
-	if errs[0].Error() != expectedError {
-		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, errs[0].Error())
+	if err.Error() != expectedError {
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
