@@ -54,8 +54,7 @@ func (p *Process) Run(ctx *workflowContext) error {
 	message := fmt.Sprintf("\nPROCESS - %s\n%s", name, line)
 	ctx.ui.Print(message)
 
-	e := []error{}
-
+	var err error
 	if p.gatherInfo {
 		nameText = ui.Text("Gathering Information").WithStyle(ui.StyleBold)
 		name := ctx.ui.Format(nameText)
@@ -109,17 +108,17 @@ func (p *Process) Run(ctx *workflowContext) error {
 		}
 
 		for range hosts {
-			err := <-errChannel
-			e = append(e, err)
+			e := <-errChannel
+			err = errors.Join(err, e)
 		}
 	}
 
 	for _, step := range p.steps {
-		errs := step.Run(ctx)
-		e = append(e, errs...)
+		e := step.Run(ctx)
+		err = errors.Join(err, e)
 	}
 
-	return errors.Join(e...)
+	return err
 }
 
 func printDiags(ctx *workflowContext, diags util.Diags) {

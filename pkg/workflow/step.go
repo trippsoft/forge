@@ -4,6 +4,7 @@
 package workflow
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 
@@ -24,7 +25,7 @@ const (
 
 // Step abstracts a single Step or a procedure in a process.
 type Step interface {
-	Run(ctx *workflowContext) []error // Run executes the step with the given workflow context.
+	Run(ctx *workflowContext) error // Run executes the step with the given workflow context.
 }
 
 type StepCommonConfig struct {
@@ -176,7 +177,7 @@ func (s *SingleStep) Module() module.Module {
 }
 
 // Run implements Step.
-func (s *SingleStep) Run(ctx *workflowContext) []error {
+func (s *SingleStep) Run(ctx *workflowContext) error {
 
 	nameText := ui.Text(s.common.name).WithStyle(ui.StyleBold)
 	name := ctx.ui.Format(nameText)
@@ -187,7 +188,7 @@ func (s *SingleStep) Run(ctx *workflowContext) []error {
 
 	ctx.LoadHostVars()
 
-	e := []error{}
+	var err error
 	errChannel := make(chan error)
 
 	for _, host := range s.common.targets {
@@ -203,11 +204,11 @@ func (s *SingleStep) Run(ctx *workflowContext) []error {
 	}
 
 	for range s.common.targets {
-		err := <-errChannel
-		e = append(e, err)
+		e := <-errChannel
+		err = errors.Join(err, e)
 	}
 
-	return e
+	return err
 }
 
 type stepIteration struct {
