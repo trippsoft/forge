@@ -13,9 +13,7 @@ import (
 )
 
 var (
-	inputSpec = hclspec.NewSpec(hclspec.Object(map[string]*hclspec.ObjectField{
-		"command": hclspec.RequiredField(hclspec.String),
-	}))
+	inputSpec = hclspec.NewSpec(hclspec.Object(hclspec.RequiredField("command", hclspec.String)))
 
 	_ module.Module = (*Module)(nil)
 )

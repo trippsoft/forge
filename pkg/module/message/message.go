@@ -12,9 +12,7 @@ import (
 )
 
 var (
-	inputSpec = hclspec.NewSpec(hclspec.Object(map[string]*hclspec.ObjectField{
-		"message": hclspec.RequiredField(hclspec.String),
-	}))
+	inputSpec = hclspec.NewSpec(hclspec.Object(hclspec.RequiredField("message", hclspec.String)))
 
 	_ module.Module = (*Module)(nil)
 )

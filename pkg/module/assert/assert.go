@@ -13,16 +13,16 @@ import (
 )
 
 const (
-	defaultSuccessMessage = "Condition is true"
-	defaultFailureMessage = "Condition is false"
+	defaultSuccessMessage = ""
+	defaultFailureMessage = "Condition failed"
 )
 
 var (
-	inputSpec = hclspec.NewSpec(hclspec.Object(map[string]*hclspec.ObjectField{
-		"condition":       hclspec.RequiredField(hclspec.Bool),
-		"success_message": hclspec.OptionalField(hclspec.String, cty.StringVal(defaultSuccessMessage)),
-		"failure_message": hclspec.OptionalField(hclspec.String, cty.StringVal(defaultFailureMessage)),
-	}))
+	inputSpec = hclspec.NewSpec(hclspec.Object(
+		hclspec.RequiredField("condition", hclspec.Bool),
+		hclspec.OptionalField("success_message", hclspec.String).WithDefaultValue(cty.StringVal(defaultSuccessMessage)),
+		hclspec.OptionalField("failure_message", hclspec.String).WithDefaultValue(cty.StringVal(defaultFailureMessage)),
+	))
 
 	_ module.Module = (*Module)(nil)
 )
