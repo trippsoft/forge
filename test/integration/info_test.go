@@ -1,7 +1,7 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package test
+package integration
 
 import (
 	"strings"
@@ -12,10 +12,6 @@ import (
 )
 
 func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
-
 	setupVagrantEnvironment(t)
 
 	sshBuilder, err := transport.NewSSHBuilder()
@@ -33,6 +29,7 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create SSH transport: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	err = sshTransport.Connect()
@@ -48,21 +45,25 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 
 	osInfo := hostInfo.OSInfo()
 	if osInfo == nil {
-		t.Error("expected OS info to be populated")
+		t.Fatal("expected OS info to be populated")
 	} else {
 		families := osInfo.Families()
 		if !families.Contains("posix") {
 			t.Error("expected OS families to contain 'posix'")
 		}
+
 		if !families.Contains("linux") {
 			t.Error("expected OS families to contain 'linux'")
 		}
+
 		if !families.Contains("el") {
 			t.Error("expected OS families to contain 'el'")
 		}
+
 		if !families.Contains("rocky") {
 			t.Error("expected OS families to contain 'rocky'")
 		}
+
 		if families.Size() != 4 {
 			t.Errorf("expected OS families to have size 4, got %d", families.Size())
 		}
@@ -119,12 +120,15 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 		if !selinuxInfo.Supported() {
 			t.Error("expected SELinux to be supported on Rocky Linux")
 		}
+
 		if !selinuxInfo.Installed() {
 			t.Error("expected SELinux to be installed on Rocky Linux")
 		}
+
 		if selinuxInfo.Status() != info.SELinuxEnforcing {
 			t.Errorf("expected SELinux status to be 'enforcing', got '%s'", selinuxInfo.Status())
 		}
+
 		if selinuxInfo.SelinuxType() != info.SELinuxTypeTargeted {
 			t.Errorf("expected SELinux type to be 'targeted', got '%s'", selinuxInfo.SelinuxType())
 		}
@@ -137,6 +141,7 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 		if !appArmorInfo.Supported() {
 			t.Error("expected AppArmor to be supported on Rocky Linux")
 		}
+
 		if appArmorInfo.Enabled() {
 			t.Error("expected AppArmor to be disabled on Rocky Linux")
 		}
@@ -149,6 +154,7 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 		if !fipsInfo.Known() {
 			t.Error("expected FIPS info to be known on Rocky Linux")
 		}
+
 		if fipsInfo.Enabled() {
 			t.Error("expected FIPS to be disabled on Rocky Linux")
 		}
@@ -161,6 +167,7 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 		if packageManagerInfo.Name() != "dnf" {
 			t.Errorf("expected Package Manager name to be 'dnf', got '%s'", packageManagerInfo.Name())
 		}
+
 		if packageManagerInfo.Path() != "/usr/bin/dnf-3" {
 			t.Errorf("expected Package Manager path to be '/usr/bin/dnf-3', got '%s'", packageManagerInfo.Path())
 		}
@@ -182,18 +189,23 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 		if userInfo.Name() != "vagrant" {
 			t.Errorf("expected User name to be 'vagrant', got '%s'", userInfo.Name())
 		}
+
 		if userInfo.UserId() != "1000" {
 			t.Errorf("expected User ID to be '1000', got '%s'", userInfo.UserId())
 		}
+
 		if userInfo.GroupId() != "1000" {
 			t.Errorf("expected Group ID to be '1000', got '%s'", userInfo.GroupId())
 		}
+
 		if userInfo.HomeDir() != "/home/vagrant" {
 			t.Errorf("expected Home Directory to be '/home/vagrant', got '%s'", userInfo.HomeDir())
 		}
+
 		if userInfo.Shell() != "/bin/bash" {
 			t.Errorf("expected Shell to be '/bin/bash', got '%s'", userInfo.Shell())
 		}
+
 		if userInfo.Gecos() != "vagrant" {
 			t.Errorf("expected GECOS to be 'vagrant', got '%s'", userInfo.Gecos())
 		}
@@ -201,10 +213,6 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 }
 
 func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
-
 	setupVagrantEnvironment(t)
 
 	sshBuilder, err := transport.NewSSHBuilder()
@@ -219,9 +227,11 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 		PasswordAuth(windowsPassword).
 		DontUseKnownHosts().
 		Build()
+
 	if err != nil {
 		t.Fatalf("failed to create SSH transport: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	err = sshTransport.Connect()
@@ -243,9 +253,11 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 		if !families.Contains("windows") {
 			t.Error("expected OS families to contain 'windows'")
 		}
+
 		if !families.Contains("windows-server") {
 			t.Error("expected OS families to contain 'windows-server'")
 		}
+
 		if families.Size() != 2 {
 			t.Errorf("expected OS families to have size 2, got %d", families.Size())
 		}
@@ -320,6 +332,7 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 		if !fipsInfo.Known() {
 			t.Error("expected FIPS info to be known on Windows")
 		}
+
 		if fipsInfo.Enabled() {
 			t.Error("expected FIPS to be enabled on Windows")
 		}
@@ -332,6 +345,7 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 		if packageManagerInfo.Name() != "" {
 			t.Errorf("expected Package Manager name to be empty on Windows, got '%s'", packageManagerInfo.Name())
 		}
+
 		if packageManagerInfo.Path() != "" {
 			t.Errorf("expected Package Manager path to be empty on Windows, got '%s'", packageManagerInfo.Path())
 		}
@@ -353,18 +367,23 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 		if userInfo.Name() != "vagrant" {
 			t.Errorf("expected User name to be 'vagrant', got '%s'", userInfo.Name())
 		}
+
 		if !strings.HasPrefix(userInfo.UserId(), "S-1-5-21-") || !strings.HasSuffix(userInfo.UserId(), "-1000") {
 			t.Errorf("expected User ID to start with 'S-1-5-21-' and end with '-1000', got '%s'", userInfo.UserId())
 		}
+
 		if userInfo.GroupId() != "" {
 			t.Errorf("expected Group ID to be empty on Windows, got '%s'", userInfo.GroupId())
 		}
+
 		if userInfo.HomeDir() != "C:\\Users\\vagrant" {
 			t.Errorf("expected Home Directory to be 'C:\\Users\\vagrant', got '%s'", userInfo.HomeDir())
 		}
+
 		if userInfo.Shell() != "" {
 			t.Errorf("expected Shell to be empty on Windows, got '%s'", userInfo.Shell())
 		}
+
 		if userInfo.Gecos() != "" {
 			t.Errorf("expected GECOS to be empty on Windows, got '%s'", userInfo.Gecos())
 		}
@@ -372,10 +391,6 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 }
 
 func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
-
 	setupVagrantEnvironment(t)
 
 	sshBuilder, err := transport.NewSSHBuilder()
@@ -390,9 +405,11 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 		PasswordAuth(cmdPassword).
 		DontUseKnownHosts().
 		Build()
+
 	if err != nil {
 		t.Fatalf("failed to create SSH transport: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	err = sshTransport.Connect()
@@ -414,9 +431,11 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 		if !families.Contains("windows") {
 			t.Error("expected OS families to contain 'windows'")
 		}
+
 		if !families.Contains("windows-server") {
 			t.Error("expected OS families to contain 'windows-server'")
 		}
+
 		if families.Size() != 2 {
 			t.Errorf("expected OS families to have size 2, got %d", families.Size())
 		}
@@ -491,17 +510,24 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 		if !fipsInfo.Known() {
 			t.Error("expected FIPS info to be known on Windows")
 		}
+
 		if fipsInfo.Enabled() {
 			t.Error("expected FIPS to be enabled on Windows")
 		}
 	}
 
-	// packageManagerInfo := hostInfo.PackageManagerInfo()
-	// if packageManagerInfo == nil {
-	// 	t.Error("expected Package Manager info to be populated")
-	// } else {
-	// 	// Blank for now, Windows is not supported yet
-	// }
+	packageManagerInfo := hostInfo.PackageManagerInfo()
+	if packageManagerInfo == nil {
+		t.Error("expected Package Manager info to be populated")
+	} else {
+		if packageManagerInfo.Name() != "" {
+			t.Error("expected Package Manager name to be empty on Windows")
+		}
+
+		if packageManagerInfo.Path() != "" {
+			t.Error("expected Package Manager path to be empty on Windows")
+		}
+	}
 
 	serviceManagerInfo := hostInfo.ServiceManagerInfo()
 	if serviceManagerInfo == nil {
@@ -519,18 +545,23 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 		if userInfo.Name() != "vagrant" {
 			t.Errorf("expected User name to be 'vagrant', got '%s'", userInfo.Name())
 		}
+
 		if !strings.HasPrefix(userInfo.UserId(), "S-1-5-21-") || !strings.HasSuffix(userInfo.UserId(), "-1000") {
 			t.Errorf("expected User ID to start with 'S-1-5-21-' and end with '-1000', got '%s'", userInfo.UserId())
 		}
+
 		if userInfo.GroupId() != "" {
 			t.Errorf("expected Group ID to be empty on Windows, got '%s'", userInfo.GroupId())
 		}
+
 		if userInfo.HomeDir() != "C:\\Users\\vagrant" {
 			t.Errorf("expected Home Directory to be 'C:\\Users\\vagrant', got '%s'", userInfo.HomeDir())
 		}
+
 		if userInfo.Shell() != "" {
 			t.Errorf("expected Shell to be empty on Windows, got '%s'", userInfo.Shell())
 		}
+
 		if userInfo.Gecos() != "" {
 			t.Errorf("expected GECOS to be empty on Windows, got '%s'", userInfo.Gecos())
 		}

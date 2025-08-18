@@ -1,7 +1,7 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package test
+package integration
 
 import (
 	"os"
@@ -103,14 +103,17 @@ func setupVagrantEnvironment(t testing.TB) {
 	if err != nil {
 		t.Fatalf("Failed to read Linux private key: %v", err)
 	}
+
 	linuxPWPrivateKey, err = os.ReadFile(linuxPWPrivateKeyPath)
 	if err != nil {
 		t.Fatalf("Failed to read Linux PW private key: %v", err)
 	}
+
 	cmdPrivateKey, err = os.ReadFile(cmdPrivateKeyPath)
 	if err != nil {
 		t.Fatalf("Failed to read CMD private key: %v", err)
 	}
+
 	windowsPrivateKey, err = os.ReadFile(windowsPrivateKeyPath)
 	if err != nil {
 		t.Fatalf("Failed to read Windows private key: %v", err)

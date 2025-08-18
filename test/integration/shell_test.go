@@ -1,7 +1,7 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package test
+package integration
 
 import (
 	"context"
@@ -16,7 +16,6 @@ import (
 )
 
 func TestPluginRun_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -27,12 +26,12 @@ func TestPluginRun_Linux(t *testing.T) {
 		PublicKeyAuth(linuxPrivateKey).
 		DontUseKnownHosts().
 		Build()
+
 	if err != nil {
 		t.Fatalf("Failed to create transport: %v", err)
 	}
 
 	escalateConfig := inventory.NewEscalateConfig("")
-
 	host := inventory.NewHost("linux", sshTransport, escalateConfig, map[string]cty.Value{})
 
 	p := &shell.Module{}
@@ -52,7 +51,6 @@ func TestPluginRun_Linux(t *testing.T) {
 	}
 
 	result := p.Run(ctx, config)
-
 	if result.Err != nil {
 		t.Fatalf("Expected no error, got: %v", result.Err)
 	}
@@ -91,7 +89,6 @@ func TestPluginRun_Linux(t *testing.T) {
 }
 
 func TestPluginRun_Linux_SudoPassword(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -102,18 +99,17 @@ func TestPluginRun_Linux_SudoPassword(t *testing.T) {
 		PublicKeyAuth(linuxPWPrivateKey).
 		DontUseKnownHosts().
 		Build()
+
 	if err != nil {
 		t.Fatalf("Failed to create transport: %v", err)
 	}
 
 	escalateConfig := inventory.NewEscalateConfig(linuxPWPassword)
-
 	host := inventory.NewHost("linux", sshTransport, escalateConfig, map[string]cty.Value{})
 
 	p := &shell.Module{}
 
 	escalation := transport.NewEscalation(linuxPWPassword)
-
 	input := map[string]cty.Value{
 		"command": cty.StringVal("echo 'Hello, World!'"),
 	}
@@ -129,7 +125,6 @@ func TestPluginRun_Linux_SudoPassword(t *testing.T) {
 	}
 
 	result := p.Run(ctx, config)
-
 	if result.Err != nil {
 		t.Fatalf("Expected no error, got: %v", result.Err)
 	}
@@ -162,7 +157,6 @@ func TestPluginRun_Linux_SudoPassword(t *testing.T) {
 }
 
 func TestPluginRun_Linux_NoSudoPassword(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -173,18 +167,17 @@ func TestPluginRun_Linux_NoSudoPassword(t *testing.T) {
 		PublicKeyAuth(linuxPrivateKey).
 		DontUseKnownHosts().
 		Build()
+
 	if err != nil {
 		t.Fatalf("Failed to create transport: %v", err)
 	}
 
 	escalateConfig := inventory.NewEscalateConfig("")
-
 	host := inventory.NewHost("linux", sshTransport, escalateConfig, map[string]cty.Value{})
 
 	p := &shell.Module{}
 
 	escalation := transport.NewNoPasswordEscalation()
-
 	input := map[string]cty.Value{
 		"command": cty.StringVal("echo 'Hello, World!'"),
 	}
@@ -200,7 +193,6 @@ func TestPluginRun_Linux_NoSudoPassword(t *testing.T) {
 	}
 
 	result := p.Run(ctx, config)
-
 	if result.Err != nil {
 		t.Fatalf("Expected no error, got: %v", result.Err)
 	}
@@ -239,7 +231,6 @@ func TestPluginRun_Linux_NoSudoPassword(t *testing.T) {
 }
 
 func TestPluginRun_Windows_SSH_PowerShell(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -256,7 +247,6 @@ func TestPluginRun_Windows_SSH_PowerShell(t *testing.T) {
 	}
 
 	escalateConfig := inventory.NewEscalateConfig("")
-
 	host := inventory.NewHost("windows", sshTransport, escalateConfig, map[string]cty.Value{})
 
 	p := &shell.Module{}
@@ -276,7 +266,6 @@ func TestPluginRun_Windows_SSH_PowerShell(t *testing.T) {
 	}
 
 	result := p.Run(ctx, config)
-
 	if result.Err != nil {
 		t.Fatalf("Expected no error, got: %v", result.Err)
 	}

@@ -1,7 +1,7 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package test
+package integration
 
 import (
 	"bytes"
@@ -18,7 +18,6 @@ import (
 )
 
 func TestSSHTransportConnect_Linux_Password(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -42,11 +41,11 @@ func TestSSHTransportConnect_Linux_Password(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
-	defer sshTransport.Close()
+
+	sshTransport.Close()
 }
 
 func TestSSHTransportConnect_Linux_PrivateKey(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -62,6 +61,7 @@ func TestSSHTransportConnect_Linux_PrivateKey(t *testing.T) {
 		DontUseKnownHosts().
 		ConnectionTimeout(30 * time.Second).
 		Build()
+
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport with private key: %v", err)
 	}
@@ -70,11 +70,11 @@ func TestSSHTransportConnect_Linux_PrivateKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect with private key: %v", err)
 	}
-	defer sshTransport.Close()
+
+	sshTransport.Close()
 }
 
 func TestSSHTransportConnect_WinPowerShell_Password(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -90,6 +90,7 @@ func TestSSHTransportConnect_WinPowerShell_Password(t *testing.T) {
 		DontUseKnownHosts().
 		ConnectionTimeout(30 * time.Second).
 		Build()
+
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport: %v", err)
 	}
@@ -98,11 +99,11 @@ func TestSSHTransportConnect_WinPowerShell_Password(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
-	defer sshTransport.Close()
+
+	sshTransport.Close()
 }
 
 func TestSSHTransportConnect_WinPowerShell_PrivateKey(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -118,6 +119,7 @@ func TestSSHTransportConnect_WinPowerShell_PrivateKey(t *testing.T) {
 		DontUseKnownHosts().
 		ConnectionTimeout(30 * time.Second).
 		Build()
+
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport with private key: %v", err)
 	}
@@ -126,11 +128,11 @@ func TestSSHTransportConnect_WinPowerShell_PrivateKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect with private key: %v", err)
 	}
-	defer sshTransport.Close()
+
+	sshTransport.Close()
 }
 
 func TestSSHTransportConnect_WinCmd_Password(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -146,6 +148,7 @@ func TestSSHTransportConnect_WinCmd_Password(t *testing.T) {
 		DontUseKnownHosts().
 		ConnectionTimeout(30 * time.Second).
 		Build()
+
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport: %v", err)
 	}
@@ -154,11 +157,11 @@ func TestSSHTransportConnect_WinCmd_Password(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
-	defer sshTransport.Close()
+
+	sshTransport.Close()
 }
 
 func TestSSHTransportConnect_WinCmd_PrivateKey(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -174,6 +177,7 @@ func TestSSHTransportConnect_WinCmd_PrivateKey(t *testing.T) {
 		DontUseKnownHosts().
 		ConnectionTimeout(30 * time.Second).
 		Build()
+
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport with private key: %v", err)
 	}
@@ -182,19 +186,18 @@ func TestSSHTransportConnect_WinCmd_PrivateKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect with private key: %v", err)
 	}
-	defer sshTransport.Close()
+
+	sshTransport.Close()
 }
 
 func TestSSHTransportConnect_Failure(t *testing.T) {
-
 	builder, err := transport.NewSSHBuilder()
 	if err != nil {
 		t.Fatalf("NewSSHBuilder failed: %v", err)
 	}
 
-	// Try to connect to a non-existent host
 	sshTransport, err := builder.
-		Host("192.0.2.1"). // RFC5737 test address that should not be reachable
+		Host("192.0.2.1").
 		Port(22).
 		User("testuser").
 		PasswordAuth("testpass").
@@ -214,7 +217,6 @@ func TestSSHTransportConnect_Failure(t *testing.T) {
 }
 
 func TestSSHTransportKnownHosts_Strict(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	tmpKnownHosts := createTempKnownHostsFile(t)
@@ -233,6 +235,7 @@ func TestSSHTransportKnownHosts_Strict(t *testing.T) {
 		UseStrictKnownHosts(tmpKnownHosts).
 		ConnectionTimeout(30 * time.Second).
 		Build()
+
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport: %v", err)
 	}
@@ -241,16 +244,15 @@ func TestSSHTransportKnownHosts_Strict(t *testing.T) {
 	if err == nil {
 		t.Error("Expected connection to fail with strict known hosts checking and unknown host")
 		sshTransport.Close()
-	} else {
-		// Verify it's a known hosts related error
-		if !strings.Contains(err.Error(), "key is unknown") {
-			t.Errorf("Got expected error (though message could be more specific): %v", err)
-		}
+		return
+	}
+
+	if !strings.Contains(err.Error(), "key is unknown") {
+		t.Errorf("Got expected error (though message could be more specific): %v", err)
 	}
 }
 
 func TestSSHTransportKnownHosts_Strict_RejectNotMatchingKey(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	tmpKnownHosts := createTempKnownHostsFile(t)
@@ -285,6 +287,7 @@ func TestSSHTransportKnownHosts_Strict_RejectNotMatchingKey(t *testing.T) {
 		UseStrictKnownHosts(tmpKnownHosts).
 		ConnectionTimeout(30 * time.Second).
 		Build()
+
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport with wrong key: %v", err)
 	}
@@ -293,13 +296,15 @@ func TestSSHTransportKnownHosts_Strict_RejectNotMatchingKey(t *testing.T) {
 	if err == nil {
 		t.Error("Expected connection to fail with wrong key")
 		sshTransport.Close()
-	} else if !strings.Contains(err.Error(), "key mismatch") {
+		return
+	}
+
+	if !strings.Contains(err.Error(), "key mismatch") {
 		t.Errorf("Got unexpected error: %v", err)
 	}
 }
 
 func TestSSHTransportKnownHosts_AddUnknown(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	tmpKnownHosts := createTempKnownHostsFile(t)
@@ -318,6 +323,7 @@ func TestSSHTransportKnownHosts_AddUnknown(t *testing.T) {
 		UseKnownHosts(tmpKnownHosts). // Allow auto-adding unknown hosts
 		ConnectionTimeout(30 * time.Second).
 		Build()
+
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport: %v", err)
 	}
@@ -326,6 +332,7 @@ func TestSSHTransportKnownHosts_AddUnknown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected connection to succeed with auto-add known hosts: %v", err)
 	}
+
 	sshTransport.Close()
 
 	// Test connection again with strict host checking to verify known host was added
@@ -334,9 +341,10 @@ func TestSSHTransportKnownHosts_AddUnknown(t *testing.T) {
 		Port(linuxPort).
 		User(linuxUser).
 		PasswordAuth(linuxPassword).
-		UseStrictKnownHosts(tmpKnownHosts). // Strict checking now
+		UseStrictKnownHosts(tmpKnownHosts).
 		ConnectionTimeout(30 * time.Second).
 		Build()
+
 	if err != nil {
 		t.Fatalf("Failed to build second SSH transport: %v", err)
 	}
@@ -353,7 +361,6 @@ func TestSSHTransportKnownHosts_AddUnknown(t *testing.T) {
 }
 
 func TestSSHTransportKnownHosts_AddUnknown_RejectNotMatchingKey(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	tmpKnownHosts := createTempKnownHostsFile(t)
@@ -388,6 +395,7 @@ func TestSSHTransportKnownHosts_AddUnknown_RejectNotMatchingKey(t *testing.T) {
 		UseKnownHosts(tmpKnownHosts).
 		ConnectionTimeout(30 * time.Second).
 		Build()
+
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport with wrong key: %v", err)
 	}
@@ -396,7 +404,10 @@ func TestSSHTransportKnownHosts_AddUnknown_RejectNotMatchingKey(t *testing.T) {
 	if err == nil {
 		t.Error("Expected connection to fail with wrong key")
 		sshTransport.Close()
-	} else if !strings.Contains(err.Error(), "key mismatch") {
+		return
+	}
+
+	if !strings.Contains(err.Error(), "key mismatch") {
 		t.Errorf("Got unexpected error: %v", err)
 	}
 }
@@ -405,7 +416,6 @@ func TestSSHTransportKnownHosts_AddUnknown_NonExistentFile(t *testing.T) {
 	setupVagrantEnvironment(t)
 
 	nonExistentPath := "/tmp/non_existent_known_hosts"
-
 	cleanupTempFile(t, nonExistentPath)
 
 	builder, err := transport.NewSSHBuilder()
@@ -421,6 +431,7 @@ func TestSSHTransportKnownHosts_AddUnknown_NonExistentFile(t *testing.T) {
 		UseKnownHosts(nonExistentPath).
 		ConnectionTimeout(30 * time.Second).
 		Build()
+
 	if err != nil {
 		t.Fatalf("Failed to build SSH transport: %v", err)
 	}
@@ -439,7 +450,6 @@ func TestSSHTransportKnownHosts_AddUnknown_NonExistentFile(t *testing.T) {
 }
 
 func TestSSHTransportCommand_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -464,9 +474,13 @@ func TestSSHTransportCommand_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	cmd, err := sshTransport.NewCommand("echo 'Hello from Linux'", nil)
+	if err != nil {
+		t.Fatalf("Failed to create command: %v", err)
+	}
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
@@ -484,7 +498,6 @@ func TestSSHTransportCommand_Linux(t *testing.T) {
 }
 
 func TestSSHTransportEscalatedCommand_Linux_SudoNoPassword(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -509,10 +522,10 @@ func TestSSHTransportEscalatedCommand_Linux_SudoNoPassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	escalateConfig := transport.NewNoPasswordEscalation()
-
 	cmd, err := sshTransport.NewCommand("echo 'Hello from Linux'", escalateConfig)
 	if err != nil {
 		t.Fatalf("Failed to create escalated command: %v", err)
@@ -534,7 +547,6 @@ func TestSSHTransportEscalatedCommand_Linux_SudoNoPassword(t *testing.T) {
 }
 
 func TestSSHTransportEscalatedCommand_Linux_SudoPassword(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -559,10 +571,10 @@ func TestSSHTransportEscalatedCommand_Linux_SudoPassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	escalateConfig := transport.NewEscalation(linuxPWPassword)
-
 	cmd, err := sshTransport.NewCommand("echo 'Hello from Linux'", escalateConfig)
 	if err != nil {
 		t.Fatalf("Failed to create escalated command: %v", err)
@@ -584,7 +596,6 @@ func TestSSHTransportEscalatedCommand_Linux_SudoPassword(t *testing.T) {
 }
 
 func TestSSHTransportCommand_WinPowerShell(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -609,6 +620,7 @@ func TestSSHTransportCommand_WinPowerShell(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	cmd, err := sshTransport.NewCommand(`echo "Hello from Windows"`, nil)
@@ -632,7 +644,6 @@ func TestSSHTransportCommand_WinPowerShell(t *testing.T) {
 }
 
 func TestSSHTransportCommand_WinCmd(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -657,6 +668,7 @@ func TestSSHTransportCommand_WinCmd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	cmd, err := sshTransport.NewCommand("echo Hello from CMD", nil)
@@ -680,7 +692,6 @@ func TestSSHTransportCommand_WinCmd(t *testing.T) {
 }
 
 func TestSSHTransportPowerShell_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -705,6 +716,7 @@ func TestSSHTransportPowerShell_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	cmd, err := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'", nil)
@@ -718,14 +730,15 @@ func TestSSHTransportPowerShell_Linux(t *testing.T) {
 
 	expectedErr := "PowerShell is not available on the remote system"
 	if err == nil {
-		t.Error("Expected PowerShell command to fail on Linux, but it succeeded")
-	} else if !strings.Contains(err.Error(), expectedErr) {
+		t.Fatal("Expected PowerShell command to fail on Linux, but it succeeded")
+	}
+
+	if !strings.Contains(err.Error(), expectedErr) {
 		t.Errorf("Expected error to contain '%s', got: %s", expectedErr, err.Error())
 	}
 }
 
 func TestSSHTransportPowerShell_WinPowerShell(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -750,6 +763,7 @@ func TestSSHTransportPowerShell_WinPowerShell(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	cmd, err := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'", nil)
@@ -769,7 +783,6 @@ func TestSSHTransportPowerShell_WinPowerShell(t *testing.T) {
 }
 
 func TestSSHTransportPowerShell_WinCmd(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -794,6 +807,7 @@ func TestSSHTransportPowerShell_WinCmd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	cmd, err := sshTransport.NewPowerShellCommand("Write-Host 'Hello from PowerShell'", nil)
@@ -813,7 +827,6 @@ func TestSSHTransportPowerShell_WinCmd(t *testing.T) {
 }
 
 func TestSSHTransportStat_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -838,12 +851,14 @@ func TestSSHTransportStat_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_stat_*")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
+
 	defer sshTransport.Remove(tmpFile.Name())
 
 	fileInfo, err := sshTransport.Stat(tmpFile.Name())
@@ -857,7 +872,6 @@ func TestSSHTransportStat_Linux(t *testing.T) {
 }
 
 func TestSSHTransportStat_Windows(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -882,12 +896,14 @@ func TestSSHTransportStat_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_stat_*")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
+
 	defer sshTransport.Remove(tmpFile.Name())
 
 	fileInfo, err := sshTransport.Stat(tmpFile.Name())
@@ -901,7 +917,6 @@ func TestSSHTransportStat_Windows(t *testing.T) {
 }
 
 func TestSSHTransportCreate_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -926,12 +941,14 @@ func TestSSHTransportCreate_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_create_*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
+
 	defer sshTransport.RemoveAll(tmpDir)
 
 	file, err := sshTransport.Create(tmpDir + "/testfile.txt")
@@ -975,7 +992,6 @@ func TestSSHTransportCreate_Linux(t *testing.T) {
 }
 
 func TestSSHTransportCreate_Windows(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1000,12 +1016,14 @@ func TestSSHTransportCreate_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_create_*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
+
 	defer sshTransport.RemoveAll(tmpDir)
 
 	file, err := sshTransport.Create(tmpDir + "\\testfile.txt")
@@ -1043,13 +1061,12 @@ func TestSSHTransportCreate_Windows(t *testing.T) {
 		t.Fatalf("Read failed: %v", err)
 	}
 
-	if string(buffer.String()) != "Hello from SSH Create" {
+	if buffer.String() != "Hello from SSH Create" {
 		t.Errorf("Expected file content to be 'Hello from SSH Create', got: %s", string(buffer.String()))
 	}
 }
 
 func TestSSHTransportOpen_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1074,6 +1091,7 @@ func TestSSHTransportOpen_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_open_*")
@@ -1119,7 +1137,6 @@ func TestSSHTransportOpen_Linux(t *testing.T) {
 }
 
 func TestSSHTransportOpen_Windows(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1144,6 +1161,7 @@ func TestSSHTransportOpen_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_open_*")
@@ -1178,8 +1196,8 @@ func TestSSHTransportOpen_Windows(t *testing.T) {
 		t.Fatalf("Read failed: %v", err)
 	}
 
-	if string(buffer.String()) != "" { // Expecting empty content since we just created the file
-		t.Errorf("Expected file content to be empty, got: %s", string(buffer.String()))
+	if buffer.String() != "" { // Expecting empty content since we just created the file
+		t.Errorf("Expected file content to be empty, got: %s", buffer.String())
 	}
 
 	err = file.Close()
@@ -1189,7 +1207,6 @@ func TestSSHTransportOpen_Windows(t *testing.T) {
 }
 
 func TestSSHTransportMkdir_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1214,6 +1231,7 @@ func TestSSHTransportMkdir_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_mkdir_*")
@@ -1244,7 +1262,6 @@ func TestSSHTransportMkdir_Linux(t *testing.T) {
 }
 
 func TestSSHTransportMkdir_Windows(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1269,6 +1286,7 @@ func TestSSHTransportMkdir_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_mkdir_*")
@@ -1299,7 +1317,6 @@ func TestSSHTransportMkdir_Windows(t *testing.T) {
 }
 
 func TestSSHTransportRemove_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1324,6 +1341,7 @@ func TestSSHTransportRemove_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_remove_*")
@@ -1359,7 +1377,6 @@ func TestSSHTransportRemove_Linux(t *testing.T) {
 }
 
 func TestSSHTransportRemove_Windows(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1384,6 +1401,7 @@ func TestSSHTransportRemove_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_remove_*")
@@ -1419,7 +1437,6 @@ func TestSSHTransportRemove_Windows(t *testing.T) {
 }
 
 func TestSSHTransportRemoveAll_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1444,6 +1461,7 @@ func TestSSHTransportRemoveAll_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_removeall_*")
@@ -1477,7 +1495,6 @@ func TestSSHTransportRemoveAll_Linux(t *testing.T) {
 }
 
 func TestSSHTransportRemoveAll_Windows(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1502,6 +1519,7 @@ func TestSSHTransportRemoveAll_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_removeall_*")
@@ -1535,7 +1553,6 @@ func TestSSHTransportRemoveAll_Windows(t *testing.T) {
 }
 
 func TestSSHTransportJoin_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1560,6 +1577,7 @@ func TestSSHTransportJoin_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	path := sshTransport.Join("/tmp", "testfile.txt")
@@ -1571,7 +1589,6 @@ func TestSSHTransportJoin_Linux(t *testing.T) {
 }
 
 func TestSSHTransportJoin_Windows(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1596,6 +1613,7 @@ func TestSSHTransportJoin_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	path := sshTransport.Join("C:\\temp", "testfile.txt")
@@ -1607,7 +1625,6 @@ func TestSSHTransportJoin_Windows(t *testing.T) {
 }
 
 func TestSSHTransportTempDir_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1632,6 +1649,7 @@ func TestSSHTransportTempDir_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpDir, err := sshTransport.TempDir()
@@ -1645,7 +1663,6 @@ func TestSSHTransportTempDir_Linux(t *testing.T) {
 }
 
 func TestSSHTransportTempDir_Windows(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1670,6 +1687,7 @@ func TestSSHTransportTempDir_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpDir, err := sshTransport.TempDir()
@@ -1683,7 +1701,6 @@ func TestSSHTransportTempDir_Windows(t *testing.T) {
 }
 
 func TestSSHTransportCreateTemp_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1708,12 +1725,14 @@ func TestSSHTransportCreateTemp_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_create_temp_*")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
+
 	defer sshTransport.Remove(tmpFile.Name())
 
 	if !strings.HasPrefix(tmpFile.Name(), "/tmp/test_ssh_create_temp_") {
@@ -1727,7 +1746,6 @@ func TestSSHTransportCreateTemp_Linux(t *testing.T) {
 }
 
 func TestSSHTransportCreateTemp_Windows(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1752,12 +1770,14 @@ func TestSSHTransportCreateTemp_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_create_temp_*")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
+
 	defer sshTransport.Remove(tmpFile.Name())
 
 	if !strings.HasPrefix(tmpFile.Name(), "C:\\Users\\vagrant\\AppData\\Local\\Temp\\test_ssh_create_temp_") {
@@ -1771,7 +1791,6 @@ func TestSSHTransportCreateTemp_Windows(t *testing.T) {
 }
 
 func TestSSHTransportMkdirTemp_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1796,12 +1815,14 @@ func TestSSHTransportMkdirTemp_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_mkdir_temp_*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
+
 	defer sshTransport.RemoveAll(tmpDir)
 
 	if !strings.HasPrefix(tmpDir, "/tmp/test_ssh_mkdir_temp_") {
@@ -1810,7 +1831,6 @@ func TestSSHTransportMkdirTemp_Linux(t *testing.T) {
 }
 
 func TestSSHTransportMkdirTemp_Windows(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1835,12 +1855,14 @@ func TestSSHTransportMkdirTemp_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpDir, err := sshTransport.MkdirTemp("", "test_ssh_mkdir_temp_*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
+
 	defer sshTransport.RemoveAll(tmpDir)
 
 	if !strings.HasPrefix(tmpDir, "C:\\Users\\vagrant\\AppData\\Local\\Temp\\test_ssh_mkdir_temp_") {
@@ -1849,7 +1871,6 @@ func TestSSHTransportMkdirTemp_Windows(t *testing.T) {
 }
 
 func TestSSHTransportSymlink_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1874,6 +1895,7 @@ func TestSSHTransportSymlink_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	// Create a temporary file for testing
@@ -1881,6 +1903,7 @@ func TestSSHTransportSymlink_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
+
 	defer sshTransport.Remove(tmpFile.Name())
 
 	// Create a symlink to the temporary file
@@ -1889,6 +1912,7 @@ func TestSSHTransportSymlink_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create symlink: %v", err)
 	}
+
 	defer sshTransport.Remove(symlinkPath)
 
 	// Verify the symlink points to the correct target
@@ -1903,7 +1927,6 @@ func TestSSHTransportSymlink_Linux(t *testing.T) {
 }
 
 func TestSSHTransportSymlink_Windows(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1928,6 +1951,7 @@ func TestSSHTransportSymlink_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	// Create a temporary file for testing
@@ -1935,6 +1959,7 @@ func TestSSHTransportSymlink_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
+
 	defer sshTransport.Remove(tmpFile.Name())
 
 	// Create a symlink to the temporary file
@@ -1943,6 +1968,7 @@ func TestSSHTransportSymlink_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create symlink: %v", err)
 	}
+
 	defer sshTransport.Remove(symlinkPath)
 
 	// Verify the symlink points to the correct target
@@ -1957,7 +1983,6 @@ func TestSSHTransportSymlink_Windows(t *testing.T) {
 }
 
 func TestSSHTransportReadLink_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -1982,12 +2007,14 @@ func TestSSHTransportReadLink_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_readlink_*.txt")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
+
 	defer sshTransport.Remove(tmpFile.Name())
 
 	symlinkPath := tmpFile.Name() + "_symlink"
@@ -1995,6 +2022,7 @@ func TestSSHTransportReadLink_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create symlink: %v", err)
 	}
+
 	defer sshTransport.Remove(symlinkPath)
 
 	target, err := sshTransport.ReadLink(symlinkPath)
@@ -2008,7 +2036,6 @@ func TestSSHTransportReadLink_Linux(t *testing.T) {
 }
 
 func TestSSHTransportReadLink_Windows(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -2033,12 +2060,14 @@ func TestSSHTransportReadLink_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	tmpFile, err := sshTransport.CreateTemp("", "test_ssh_readlink_*.txt")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
+
 	defer sshTransport.Remove(tmpFile.Name())
 
 	symlinkPath := tmpFile.Name() + "_symlink"
@@ -2046,6 +2075,7 @@ func TestSSHTransportReadLink_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create symlink: %v", err)
 	}
+
 	defer sshTransport.Remove(symlinkPath)
 
 	target, err := sshTransport.ReadLink(symlinkPath)
@@ -2059,7 +2089,6 @@ func TestSSHTransportReadLink_Windows(t *testing.T) {
 }
 
 func TestSSHTransportRealPath_Linux(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -2084,6 +2113,7 @@ func TestSSHTransportRealPath_Linux(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	path, err := sshTransport.RealPath("sh")
@@ -2097,7 +2127,6 @@ func TestSSHTransportRealPath_Linux(t *testing.T) {
 }
 
 func TestSSHTransportRealPath_Linux_NotFound(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -2122,6 +2151,7 @@ func TestSSHTransportRealPath_Linux_NotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	_, err = sshTransport.RealPath("nonexistent_command")
@@ -2135,7 +2165,6 @@ func TestSSHTransportRealPath_Linux_NotFound(t *testing.T) {
 }
 
 func TestSSHTransportRealPath_Windows(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -2160,6 +2189,7 @@ func TestSSHTransportRealPath_Windows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	path, err := sshTransport.RealPath("cmd.exe")
@@ -2173,7 +2203,6 @@ func TestSSHTransportRealPath_Windows(t *testing.T) {
 }
 
 func TestSSHTransportRealPath_Windows_NotFound(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -2198,6 +2227,7 @@ func TestSSHTransportRealPath_Windows_NotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	_, err = sshTransport.RealPath("nonexistent_command")
@@ -2211,7 +2241,6 @@ func TestSSHTransportRealPath_Windows_NotFound(t *testing.T) {
 }
 
 func TestSSHTransportRealPath_Cmd(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -2236,6 +2265,7 @@ func TestSSHTransportRealPath_Cmd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	path, err := sshTransport.RealPath("cmd.exe")
@@ -2249,7 +2279,6 @@ func TestSSHTransportRealPath_Cmd(t *testing.T) {
 }
 
 func TestSSHTransportRealPath_Cmd_NotFound(t *testing.T) {
-
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -2274,6 +2303,7 @@ func TestSSHTransportRealPath_Cmd_NotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
+
 	defer sshTransport.Close()
 
 	_, err = sshTransport.RealPath("nonexistent_command")
@@ -2289,7 +2319,6 @@ func TestSSHTransportRealPath_Cmd_NotFound(t *testing.T) {
 // Helper functions for known hosts testing
 
 func createTempKnownHostsFile(t *testing.T) string {
-
 	t.Helper()
 
 	tmpFile, err := os.CreateTemp("", "test_known_hosts_empty_*")
