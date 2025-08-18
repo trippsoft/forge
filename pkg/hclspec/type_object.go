@@ -9,7 +9,7 @@ import (
 	"slices"
 
 	"github.com/trippsoft/forge/pkg/errorwrap"
-	"github.com/trippsoft/forge/pkg/util"
+	"github.com/trippsoft/forge/pkg/hclutil"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -661,7 +661,7 @@ func (c *fieldEqualsCondition) Description() string {
 		return ""
 	}
 
-	return fmt.Sprintf("field %q is equal to %s", c.field, util.FormatCtyValueToString(c.value, 0, 0))
+	return fmt.Sprintf("field %q is equal to %s", c.field, hclutil.FormatCtyValueToString(c.value))
 }
 
 // ValidateSpec implements ObjectCondition.

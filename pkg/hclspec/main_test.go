@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/trippsoft/forge/pkg/errorwrap"
-	"github.com/trippsoft/forge/pkg/util"
+	"github.com/trippsoft/forge/pkg/hclutil"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -29,8 +29,8 @@ func verifySuccessfulConversion(t *testing.T, ty Type, input, expected cty.Value
 	if actual.Equals(expected) != cty.True {
 		t.Errorf(
 			"expected Convert() to produce value %s, got %s",
-			util.FormatCtyValueToString(expected, 0, 0),
-			util.FormatCtyValueToString(actual, 0, 0))
+			hclutil.FormatCtyValueToString(expected),
+			hclutil.FormatCtyValueToString(actual))
 	}
 }
 

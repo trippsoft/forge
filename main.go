@@ -9,13 +9,13 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
+	"github.com/trippsoft/forge/pkg/hclutil"
 	"github.com/trippsoft/forge/pkg/inventory"
 	"github.com/trippsoft/forge/pkg/module"
 	"github.com/trippsoft/forge/pkg/module/assert"
 	"github.com/trippsoft/forge/pkg/module/message"
 	"github.com/trippsoft/forge/pkg/module/shell"
 	"github.com/trippsoft/forge/pkg/ui"
-	"github.com/trippsoft/forge/pkg/util"
 	"github.com/trippsoft/forge/pkg/workflow"
 )
 
@@ -222,7 +222,7 @@ func printInventoryVars(i *inventory.Inventory) {
 
 		for key, value := range host.Vars() {
 			varText := ui.Text(key).WithStyle(ui.StyleBold)
-			valueText := ui.Text(util.FormatCtyValueToString(value, 4, 4)).WithStyle(ui.StyleItalic)
+			valueText := ui.Text(hclutil.FormatCtyValueToIndentedString(value, 4, 4)).WithStyle(ui.StyleItalic)
 
 			message := fmt.Sprintf("    %s: %s\n", UI.Format(varText), UI.Format(valueText))
 			UI.Print(message)

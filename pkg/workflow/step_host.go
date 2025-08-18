@@ -10,10 +10,10 @@ import (
 	"unicode/utf8"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/trippsoft/forge/pkg/hclutil"
 	"github.com/trippsoft/forge/pkg/module"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/trippsoft/forge/pkg/ui"
-	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -62,7 +62,7 @@ func (s *SingleStep) runOnHost(ctx *hostWorkflowContext) error {
 	condition := true // Default to true, in case a condition is not defined.
 	if s.common.condition != nil {
 		var diags hcl.Diagnostics
-		condition, diags = util.ConvertHCLAttributeToBool(s.common.condition, ctx.evalContext)
+		condition, diags = hclutil.ConvertHCLAttributeToBool(s.common.condition, ctx.evalContext)
 		if diags.HasErrors() {
 			result := module.NewFailure(diags, diags.Error())
 			s.handleHostResult(ctx, result)
@@ -144,7 +144,7 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 		var diags hcl.Diagnostics
 
 		if s.common != nil && s.common.loop != nil && s.common.loop.label != nil {
-			iteration.label, diags = util.ConvertHCLAttributeToString(s.common.loop.label, ctx.evalContext)
+			iteration.label, diags = hclutil.ConvertHCLAttributeToString(s.common.loop.label, ctx.evalContext)
 			if diags.HasErrors() {
 				output := module.NewFailure(diags, diags.Error())
 
@@ -157,7 +157,7 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 		}
 
 		if s.common != nil && s.common.loop != nil && s.common.loop.condition != nil {
-			condition, diags = util.ConvertHCLAttributeToBool(s.common.loop.condition, ctx.evalContext)
+			condition, diags = hclutil.ConvertHCLAttributeToBool(s.common.loop.condition, ctx.evalContext)
 		}
 
 		if !condition {
@@ -177,7 +177,7 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 	timeout := module.DefaultTimeout
 	if s.common != nil && s.common.execTimeout != nil {
 		var diags hcl.Diagnostics
-		timeout, diags = util.ConvertHCLAttributeToDuration(s.common.execTimeout, ctx.evalContext)
+		timeout, diags = hclutil.ConvertHCLAttributeToDuration(s.common.execTimeout, ctx.evalContext)
 		if diags.HasErrors() {
 			result := module.NewFailure(diags, diags.Error())
 
@@ -188,7 +188,7 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 	whatIf := false
 	if s.common != nil && s.common.whatIf != nil {
 		var diags hcl.Diagnostics
-		whatIf, diags = util.ConvertHCLAttributeToBool(s.common.whatIf, ctx.evalContext)
+		whatIf, diags = hclutil.ConvertHCLAttributeToBool(s.common.whatIf, ctx.evalContext)
 		if diags.HasErrors() {
 			result := module.NewFailure(diags, diags.Error())
 
@@ -253,7 +253,7 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 
 	if s.output.failedCondition != nil {
 		var diags hcl.Diagnostics
-		result.Failed, diags = util.ConvertHCLAttributeToBool(s.output.failedCondition, ctx.evalContext)
+		result.Failed, diags = hclutil.ConvertHCLAttributeToBool(s.output.failedCondition, ctx.evalContext)
 		if diags.HasErrors() {
 			result.Failed = true
 			result.Err = errors.Join(result.Err, diags)
@@ -262,7 +262,7 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 
 	if s.output.changedCondition != nil {
 		var diags hcl.Diagnostics
-		result.Changed, diags = util.ConvertHCLAttributeToBool(s.output.changedCondition, ctx.evalContext)
+		result.Changed, diags = hclutil.ConvertHCLAttributeToBool(s.output.changedCondition, ctx.evalContext)
 		if diags.HasErrors() {
 			result.Changed = false
 			result.Failed = true
@@ -273,7 +273,7 @@ func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepI
 	continueOnFail := false
 	if s.output.continueOnFail != nil {
 		var diags hcl.Diagnostics
-		continueOnFail, diags = util.ConvertHCLAttributeToBool(s.output.continueOnFail, ctx.evalContext)
+		continueOnFail, diags = hclutil.ConvertHCLAttributeToBool(s.output.continueOnFail, ctx.evalContext)
 		if diags.HasErrors() {
 			continueOnFail = false
 			result.Failed = true
@@ -336,7 +336,7 @@ func (s *SingleStep) getEscalation(ctx *hostWorkflowContext) (transport.Escalati
 		return nil, nil // No escalation configured
 	}
 
-	escalate, diags := util.ConvertHCLAttributeToBool(s.escalation.escalate, ctx.evalContext)
+	escalate, diags := hclutil.ConvertHCLAttributeToBool(s.escalation.escalate, ctx.evalContext)
 	if diags.HasErrors() {
 		return nil, diags
 	}
@@ -349,7 +349,7 @@ func (s *SingleStep) getEscalation(ctx *hostWorkflowContext) (transport.Escalati
 		return transport.NewEscalation(ctx.host.EscalateConfig().Pass()), nil
 	}
 
-	impersonateUser, diags := util.ConvertHCLAttributeToString(s.escalation.impersonateUser, ctx.evalContext)
+	impersonateUser, diags := hclutil.ConvertHCLAttributeToString(s.escalation.impersonateUser, ctx.evalContext)
 	if diags.HasErrors() {
 		return nil, diags
 	}

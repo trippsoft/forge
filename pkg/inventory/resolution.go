@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/trippsoft/forge/pkg/hclfunction"
+	"github.com/trippsoft/forge/pkg/hclutil"
 	"github.com/trippsoft/forge/pkg/log"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/trippsoft/forge/pkg/util"
@@ -645,7 +646,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 	}
 
 	if attr, exists := transportSSH["host"]; exists && attr != nil {
-		host, moreDiags = util.ConvertHCLAttributeToString(attr, evalCtx)
+		host, moreDiags = hclutil.ConvertHCLAttributeToString(attr, evalCtx)
 		diags = append(diags, moreDiags...)
 		if moreDiags.HasErrors() {
 			return nil, diags // Return early if there are errors in converting the host
@@ -662,7 +663,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 	}
 
 	if attr, exists := transportSSH["port"]; exists && attr != nil {
-		port, moreDiags = util.ConvertHCLAttributeToUint16(attr, evalCtx)
+		port, moreDiags = hclutil.ConvertHCLAttributeToUint16(attr, evalCtx)
 		diags = append(diags, moreDiags...)
 		if moreDiags.HasErrors() {
 			return nil, diags // Return early if there are errors in converting the port
@@ -670,7 +671,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 	}
 
 	if attr, exists := transportSSH["user"]; exists && attr != nil {
-		user, moreDiags = util.ConvertHCLAttributeToString(attr, evalCtx)
+		user, moreDiags = hclutil.ConvertHCLAttributeToString(attr, evalCtx)
 		diags = append(diags, moreDiags...)
 		if moreDiags.HasErrors() {
 			return nil, diags // Return early if there are errors in converting the user
@@ -687,7 +688,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 	}
 
 	if attr, exists := transportSSH["private_key_path"]; exists && attr != nil {
-		privateKeyPath, moreDiags = util.ConvertHCLAttributeToString(attr, evalCtx)
+		privateKeyPath, moreDiags = hclutil.ConvertHCLAttributeToString(attr, evalCtx)
 		diags = append(diags, moreDiags...)
 		if moreDiags.HasErrors() {
 			return nil, diags // Return early if there are errors in converting the private key path
@@ -695,7 +696,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 	}
 
 	if attr, exists := transportSSH["private_key_pass"]; exists && attr != nil {
-		privateKeyPass, moreDiags = util.ConvertHCLAttributeToString(attr, evalCtx)
+		privateKeyPass, moreDiags = hclutil.ConvertHCLAttributeToString(attr, evalCtx)
 		diags = append(diags, moreDiags...)
 		if moreDiags.HasErrors() {
 			return nil, diags // Return early if there are errors in converting the private key pass
@@ -703,7 +704,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 	}
 
 	if attr, exists := transportSSH["password"]; exists && attr != nil {
-		password, moreDiags = util.ConvertHCLAttributeToString(attr, evalCtx)
+		password, moreDiags = hclutil.ConvertHCLAttributeToString(attr, evalCtx)
 		diags = append(diags, moreDiags...)
 		if moreDiags.HasErrors() {
 			return nil, diags // Return early if there are errors in converting the password
@@ -711,7 +712,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 	}
 
 	if attr, exists := transportSSH["use_known_hosts"]; exists && attr != nil {
-		useKnownHosts, moreDiags = util.ConvertHCLAttributeToBool(attr, evalCtx)
+		useKnownHosts, moreDiags = hclutil.ConvertHCLAttributeToBool(attr, evalCtx)
 		diags = append(diags, moreDiags...)
 		if moreDiags.HasErrors() {
 			return nil, diags // Return early if there are errors in converting the use_known_hosts
@@ -719,7 +720,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 	}
 
 	if attr, exists := transportSSH["known_hosts_path"]; exists && attr != nil {
-		knownHostsPath, moreDiags = util.ConvertHCLAttributeToString(attr, evalCtx)
+		knownHostsPath, moreDiags = hclutil.ConvertHCLAttributeToString(attr, evalCtx)
 		diags = append(diags, moreDiags...)
 		if moreDiags.HasErrors() {
 			return nil, diags // Return early if there are errors in converting the known hosts path
@@ -727,7 +728,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 	}
 
 	if attr, exists := transportSSH["add_unknown_hosts"]; exists && attr != nil {
-		addUnknownHosts, moreDiags = util.ConvertHCLAttributeToBool(attr, evalCtx)
+		addUnknownHosts, moreDiags = hclutil.ConvertHCLAttributeToBool(attr, evalCtx)
 		diags = append(diags, moreDiags...)
 		if moreDiags.HasErrors() {
 			return nil, diags // Return early if there are errors in converting the add_unknown_hosts
@@ -735,7 +736,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 	}
 
 	if attr, exists := transportSSH["connection_timeout"]; exists && attr != nil {
-		connectionTimeout, moreDiags = util.ConvertHCLAttributeToDuration(attr, evalCtx)
+		connectionTimeout, moreDiags = hclutil.ConvertHCLAttributeToDuration(attr, evalCtx)
 		diags = append(diags, moreDiags...)
 		if moreDiags.HasErrors() {
 			return nil, diags // Return early if there are errors in converting the connection_timeout

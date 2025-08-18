@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/trippsoft/forge/pkg/hclutil"
 	"github.com/trippsoft/forge/pkg/log"
-	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -188,7 +188,7 @@ func TestSensitiveStringConvert_Nil(t *testing.T) {
 	}
 
 	if !converted.Equals(cty.NilVal).True() {
-		t.Errorf("expected nil value from Convert(), got %s", util.FormatCtyValueToString(converted, 0, 0))
+		t.Errorf("expected nil value from Convert(), got %s", hclutil.FormatCtyValueToString(converted))
 	}
 
 	if err.Error() != expectedError {

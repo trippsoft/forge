@@ -8,8 +8,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/trippsoft/forge/pkg/hclutil"
 	"github.com/trippsoft/forge/pkg/transport"
-	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -119,7 +119,7 @@ func parseHCLBodyToIntermediate(body hcl.Body) (*intermediateInventory, hcl.Diag
 	diags := hcl.Diagnostics{}
 
 	content, moreDiags := body.Content(inventoryBodySchema)
-	util.ModifyUnexpectedElementDiags(moreDiags, "in an inventory file")
+	hclutil.ModifyUnexpectedElementDiags(moreDiags, "in an inventory file")
 	diags = diags.Extend(moreDiags)
 
 	if moreDiags.HasErrors() {
@@ -234,7 +234,7 @@ func parseVarsBlockToIntermediate(block *hcl.Block) (map[string]*hcl.Attribute, 
 	diags := hcl.Diagnostics{}
 
 	attributes, moreDiags := block.Body.JustAttributes()
-	util.ModifyUnexpectedElementDiags(moreDiags, "in a vars block")
+	hclutil.ModifyUnexpectedElementDiags(moreDiags, "in a vars block")
 	diags = diags.Extend(moreDiags)
 
 	if moreDiags.HasErrors() {
@@ -340,7 +340,7 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 	case string(transport.TransportTypeNone):
 		var moreDiags hcl.Diagnostics
 		body, moreDiags = block.Body.Content(transportNoneSchema)
-		util.ModifyUnexpectedElementDiags(moreDiags, "in a transport \"none\" block")
+		hclutil.ModifyUnexpectedElementDiags(moreDiags, "in a transport \"none\" block")
 		diags = diags.Extend(moreDiags)
 
 		if moreDiags.HasErrors() {
@@ -350,7 +350,7 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 	case string(transport.TransportTypeSSH):
 		var moreDiags hcl.Diagnostics
 		body, moreDiags = block.Body.Content(transportSSHSchema)
-		util.ModifyUnexpectedElementDiags(moreDiags, "in a transport \"ssh\" block")
+		hclutil.ModifyUnexpectedElementDiags(moreDiags, "in a transport \"ssh\" block")
 		diags = diags.Extend(moreDiags)
 
 		if moreDiags.HasErrors() {
@@ -438,7 +438,7 @@ func parseEscalateBlockToIntermediate(block *hcl.Block) (*intermediateEscalate, 
 	diags := hcl.Diagnostics{}
 
 	body, moreDiags := block.Body.Content(escalateBlockSchema)
-	util.ModifyUnexpectedElementDiags(moreDiags, "in an escalate block")
+	hclutil.ModifyUnexpectedElementDiags(moreDiags, "in an escalate block")
 	diags = diags.Extend(moreDiags)
 
 	if moreDiags.HasErrors() {
@@ -523,7 +523,7 @@ func parseGroupBlockToIntermediate(block *hcl.Block) (*intermediateGroup, hcl.Di
 	}
 
 	content, moreDiags := block.Body.Content(groupBlockSchema)
-	util.ModifyUnexpectedElementDiags(moreDiags, "in a group block")
+	hclutil.ModifyUnexpectedElementDiags(moreDiags, "in a group block")
 	diags = diags.Extend(moreDiags)
 
 	if moreDiags.HasErrors() {
@@ -727,7 +727,7 @@ func parseHostBlockToIntermediate(block *hcl.Block) (*intermediateHost, hcl.Diag
 	}
 
 	content, moreDiags := block.Body.Content(hostBlockSchema)
-	util.ModifyUnexpectedElementDiags(moreDiags, "in a host block")
+	hclutil.ModifyUnexpectedElementDiags(moreDiags, "in a host block")
 	diags = diags.Extend(moreDiags)
 
 	if moreDiags.HasErrors() {

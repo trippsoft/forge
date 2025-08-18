@@ -1,7 +1,7 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package util
+package hclutil
 
 import (
 	"testing"
@@ -775,7 +775,7 @@ func TestModifyUnexpectedElementDiags(t *testing.T) {
 	}
 }
 
-func TestFormatCtyValueToString(t *testing.T) {
+func TestFormatCtyValueToIndentedString(t *testing.T) {
 	tests := []struct {
 		name           string
 		value          cty.Value
@@ -857,7 +857,75 @@ func TestFormatCtyValueToString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := FormatCtyValueToString(tt.value, tt.startingIndent, tt.indentSize)
+			actual := FormatCtyValueToIndentedString(tt.value, tt.startingIndent, tt.indentSize)
+			if actual != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, actual)
+			}
+		})
+	}
+}
+
+func TestFormatCtyValueToString(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    cty.Value
+		expected string
+	}{
+		{
+			name:     "null value",
+			value:    cty.NullVal(cty.String),
+			expected: "null",
+		},
+		{
+			name:     "unknown value",
+			value:    cty.UnknownVal(cty.String),
+			expected: "null",
+		},
+		{
+			name:     "string value",
+			value:    cty.StringVal("test"),
+			expected: "\"test\"",
+		},
+		{
+			name:     "integer value",
+			value:    cty.NumberIntVal(42),
+			expected: "42",
+		},
+		{
+			name:     "float value",
+			value:    cty.NumberFloatVal(3.14),
+			expected: "3.14",
+		},
+		{
+			name:     "boolean value",
+			value:    cty.BoolVal(true),
+			expected: "true",
+		},
+		{
+			name:     "list of strings value",
+			value:    cty.ListVal([]cty.Value{cty.StringVal("test1"), cty.StringVal("test2")}),
+			expected: "[\"test1\", \"test2\"]",
+		},
+		{
+			name:     "tuple value",
+			value:    cty.TupleVal([]cty.Value{cty.StringVal("test1"), cty.NumberIntVal(42)}),
+			expected: "[\"test1\", 42]",
+		},
+		{
+			name:     "map of strings value",
+			value:    cty.MapVal(map[string]cty.Value{"key1": cty.StringVal("value1"), "key2": cty.StringVal("value2")}),
+			expected: "{\"key1\": \"value1\", \"key2\": \"value2\"}",
+		},
+		{
+			name:     "object value",
+			value:    cty.ObjectVal(map[string]cty.Value{"key1": cty.StringVal("value1"), "key2": cty.NumberIntVal(42)}),
+			expected: "{\"key1\": \"value1\", \"key2\": 42}",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := FormatCtyValueToString(tt.value)
 			if actual != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, actual)
 			}

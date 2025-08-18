@@ -1,7 +1,7 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package util
+package hclutil
 
 import (
 	"fmt"
@@ -169,19 +169,82 @@ func ModifyUnexpectedElementDiags(diags hcl.Diagnostics, location string) hcl.Di
 	return diags
 }
 
-func FormatCtyValueToString(value cty.Value, currentIndent int, indentSize int) string {
+func FormatCtyValueToString(value cty.Value) string {
 	if value.IsNull() || !value.IsWhollyKnown() {
 		return "null"
 	}
 
 	switch {
-	case value.Type() == cty.String:
+	case value.IsNull() || !value.IsWhollyKnown():
+		return "null"
+	case value.Type().Equals(cty.String):
 		return fmt.Sprintf("%q", value.AsString())
-	case value.Type() == cty.Bool:
+	case value.Type().Equals(cty.Bool):
 		return fmt.Sprintf("%t", value.True())
-	case value.Type() == cty.Number:
+	case value.Type().Equals(cty.Number):
 		converted, _ := convert.Convert(value, cty.String)
 		return converted.AsString()
+	case value.Type().IsListType() || value.Type().IsSetType() || value.Type().IsTupleType():
+		length := value.LengthInt()
+		if length == 0 {
+			return "[]"
+		}
+
+		stringBuilder := &strings.Builder{}
+		it := value.ElementIterator()
+		stringBuilder.WriteString("[")
+		i := 0
+		for it.Next() {
+			_, elemValue := it.Element()
+			stringBuilder.WriteString(FormatCtyValueToString(elemValue))
+			if i < length-1 {
+				stringBuilder.WriteString(", ")
+			}
+
+			i++
+		}
+
+		stringBuilder.WriteString("]")
+
+		return stringBuilder.String()
+
+	case value.Type().IsMapType() || value.Type().IsObjectType():
+		length := value.LengthInt()
+		if length == 0 {
+			return "{}"
+		}
+
+		stringBuilder := &strings.Builder{}
+		it := value.ElementIterator()
+		stringBuilder.WriteString("{")
+		i := 0
+		for it.Next() {
+			key, elemValue := it.Element()
+			fmt.Fprintf(stringBuilder, "%q: %s", key.AsString(), FormatCtyValueToString(elemValue))
+			if i < length-1 {
+				stringBuilder.WriteString(", ")
+			}
+
+			i++
+		}
+
+		stringBuilder.WriteString("}")
+
+		return stringBuilder.String()
+
+	default:
+		return "unsupported type"
+	}
+}
+
+func FormatCtyValueToIndentedString(value cty.Value, currentIndent int, indentSize int) string {
+	if value.IsNull() || !value.IsWhollyKnown() {
+		return "null"
+	}
+
+	switch {
+	case value.IsNull() || !value.IsWhollyKnown() || value.Type().IsPrimitiveType():
+		return FormatCtyValueToString(value)
 	case value.Type().IsListType() || value.Type().IsSetType() || value.Type().IsTupleType():
 		length := value.LengthInt()
 		if length == 0 {
@@ -195,7 +258,7 @@ func FormatCtyValueToString(value cty.Value, currentIndent int, indentSize int) 
 		for it.Next() {
 			stringBuilder.WriteString(strings.Repeat(" ", currentIndent+indentSize))
 			_, elemValue := it.Element()
-			stringBuilder.WriteString(FormatCtyValueToString(elemValue, currentIndent+indentSize, indentSize))
+			stringBuilder.WriteString(FormatCtyValueToIndentedString(elemValue, currentIndent+indentSize, indentSize))
 			if i < length-1 {
 				stringBuilder.WriteString(",\n")
 			}
@@ -222,7 +285,7 @@ func FormatCtyValueToString(value cty.Value, currentIndent int, indentSize int) 
 		for it.Next() {
 			stringBuilder.WriteString(strings.Repeat(" ", currentIndent+indentSize))
 			key, elemValue := it.Element()
-			fmt.Fprintf(stringBuilder, "%q: %s", key.AsString(), FormatCtyValueToString(elemValue, currentIndent+indentSize, indentSize))
+			fmt.Fprintf(stringBuilder, "%q: %s", key.AsString(), FormatCtyValueToIndentedString(elemValue, currentIndent+indentSize, indentSize))
 
 			if i < length-1 {
 				stringBuilder.WriteString(",\n")

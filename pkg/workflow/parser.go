@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/trippsoft/forge/pkg/hclutil"
 	"github.com/trippsoft/forge/pkg/inventory"
 	"github.com/trippsoft/forge/pkg/module"
 	"github.com/trippsoft/forge/pkg/util"
@@ -41,7 +42,7 @@ func (p *parser) ParseWorkflowFile(path string, content []byte) (*Workflow, hcl.
 	}
 
 	bodyContent, moreDiags := file.Body.Content(workflowFileSchema)
-	util.ModifyUnexpectedElementDiags(moreDiags, "in a workflow file")
+	hclutil.ModifyUnexpectedElementDiags(moreDiags, "in a workflow file")
 	diags = diags.Extend(moreDiags)
 	if diags.HasErrors() {
 		return nil, diags
@@ -99,7 +100,7 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 	diags := hcl.Diagnostics{}
 
 	content, moreDiags := block.Body.Content(processBlockSchema)
-	util.ModifyUnexpectedElementDiags(moreDiags, "in a process block")
+	hclutil.ModifyUnexpectedElementDiags(moreDiags, "in a process block")
 	diags = diags.Extend(moreDiags)
 	if moreDiags.HasErrors() {
 		return nil, diags
@@ -166,7 +167,7 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 	for name, attr := range content.Attributes {
 		switch name {
 		case "gather_info":
-			gatherInfo, moreDiags := util.ConvertHCLAttributeToBool(attr, nil)
+			gatherInfo, moreDiags := hclutil.ConvertHCLAttributeToBool(attr, nil)
 			diags = diags.Extend(moreDiags)
 			if !moreDiags.HasErrors() {
 				intermediate.gatherInfo = gatherInfo
@@ -220,7 +221,7 @@ func (p *parser) parseStepBlock(block *hcl.Block, intermediate *intermediateProc
 	}
 
 	content, moreDiags := block.Body.Content(stepBlockSchema)
-	util.ModifyUnexpectedElementDiags(moreDiags, "in a step block")
+	hclutil.ModifyUnexpectedElementDiags(moreDiags, "in a step block")
 	diags = diags.Extend(moreDiags)
 	if moreDiags.HasErrors() {
 		return nil, diags
@@ -333,7 +334,7 @@ func (p *parser) parseStepBlock(block *hcl.Block, intermediate *intermediateProc
 			continue
 		}
 
-		moduleName, moreDiags := util.ConvertHCLAttributeToString(attr, nil)
+		moduleName, moreDiags := hclutil.ConvertHCLAttributeToString(attr, nil)
 		diags = diags.Extend(moreDiags)
 		if moreDiags.HasErrors() {
 			continue
@@ -423,7 +424,7 @@ func (p *parser) parseCommonElements(content *hcl.BodyContent) (*StepCommonConfi
 	for name, attr := range content.Attributes {
 		switch name {
 		case "name":
-			name, moreDiags := util.ConvertHCLAttributeToString(attr, nil)
+			name, moreDiags := hclutil.ConvertHCLAttributeToString(attr, nil)
 			diags = diags.Extend(moreDiags)
 			if moreDiags.HasErrors() {
 				continue
@@ -590,7 +591,7 @@ func parseEscalateBlock(block *hcl.Block) (*StepEscalationConfig, hcl.Diagnostic
 	}
 
 	content, moreDiags := block.Body.Content(escalateBlockSchema)
-	util.ModifyUnexpectedElementDiags(moreDiags, "in an escalate block")
+	hclutil.ModifyUnexpectedElementDiags(moreDiags, "in an escalate block")
 	diags = diags.Extend(moreDiags)
 	if moreDiags.HasErrors() {
 		return nil, diags
@@ -638,7 +639,7 @@ func parseLoopBlock(block *hcl.Block) (*StepLoopConfig, hcl.Diagnostics) {
 	}
 
 	content, moreDiags := block.Body.Content(loopBlockSchema)
-	util.ModifyUnexpectedElementDiags(moreDiags, "in a loop block")
+	hclutil.ModifyUnexpectedElementDiags(moreDiags, "in a loop block")
 	diags = diags.Extend(moreDiags)
 	if diags.HasErrors() {
 		return nil, diags

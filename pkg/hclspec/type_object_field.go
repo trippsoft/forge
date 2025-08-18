@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/trippsoft/forge/pkg/errorwrap"
-	"github.com/trippsoft/forge/pkg/util"
+	"github.com/trippsoft/forge/pkg/hclutil"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -234,7 +234,7 @@ func (a *allowedValuesConstraint) Validate(value cty.Value) error {
 
 	return fmt.Errorf(
 		"value %v is not in allowed values: %s",
-		util.FormatCtyValueToString(value, 0, 0),
+		hclutil.FormatCtyValueToString(value),
 		a.formatAllowedValues(),
 	)
 }
@@ -286,7 +286,7 @@ func (a *allowedValuesConstraint) formatAllowedValues() string {
 
 	allowedValues := make([]string, 0, len(a.values))
 	for _, v := range a.values {
-		allowedValues = append(allowedValues, util.FormatCtyValueToString(v, 0, 0))
+		allowedValues = append(allowedValues, hclutil.FormatCtyValueToString(v))
 	}
 
 	return strings.Join(allowedValues, ", ")
