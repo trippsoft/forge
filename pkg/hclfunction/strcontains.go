@@ -26,7 +26,6 @@ var (
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			value := args[0].AsString()
 			substring := args[1].AsString()
-
 			if strings.Contains(value, substring) {
 				return cty.True, nil
 			}

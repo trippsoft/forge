@@ -32,7 +32,6 @@ func (s *Module) Validate(config *module.RunConfig) error {
 
 // Run implements module.Module.
 func (s *Module) Run(ctx context.Context, config *module.RunConfig) *module.Result {
-
 	if config.WhatIf {
 		return module.NewSuccess(true, map[string]cty.Value{
 			"stdout": cty.NullVal(cty.String),

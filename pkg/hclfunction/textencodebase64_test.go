@@ -71,7 +71,6 @@ func getTextEncodeBase64TestCases() []struct {
 }
 
 func getExpectedBase64Value(t *testing.T, input string, encoding string) cty.Value {
-
 	e, err := ianaindex.IANA.Encoding(encoding)
 	if err != nil {
 		t.Fatalf("failed to get encoding %q: %v", encoding, err)
@@ -82,18 +81,16 @@ func getExpectedBase64Value(t *testing.T, input string, encoding string) cty.Val
 	if err != nil {
 		t.Fatalf("failed to encode input %q as %q: %v", input, encoding, err)
 	}
+
 	base64Encoded := base64.StdEncoding.EncodeToString(encoded)
 
 	return cty.StringVal(base64Encoded)
 }
 
 func TestTextEncodeBase64(t *testing.T) {
-
 	tests := getTextEncodeBase64TestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			expected := getExpectedBase64Value(t, tt.input, tt.encoding)
 
 			input := cty.StringVal(tt.input)
@@ -110,7 +107,6 @@ func TestTextEncodeBase64(t *testing.T) {
 }
 
 func TestTextEncodeBase64_InvalidEncoding(t *testing.T) {
-
 	// Test with an invalid encoding
 	encoding := cty.StringVal("INVALID_ENCODING")
 	input := cty.StringVal("test")
@@ -127,12 +123,9 @@ func TestTextEncodeBase64_InvalidEncoding(t *testing.T) {
 }
 
 func TestTextEncodeBase64Func(t *testing.T) {
-
 	tests := getTextEncodeBase64TestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			expected := getExpectedBase64Value(t, tt.input, tt.encoding)
 
 			input := cty.StringVal(tt.input)
@@ -149,7 +142,6 @@ func TestTextEncodeBase64Func(t *testing.T) {
 }
 
 func TestTextEncodeBase64Func_InvalidEncoding(t *testing.T) {
-
 	// Test with an invalid encoding
 	encoding := cty.StringVal("INVALID_ENCODING")
 	input := cty.StringVal("test")

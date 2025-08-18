@@ -55,13 +55,12 @@ func TestObjectTypeCtyType(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			actual := tt.object.CtyType()
-
 			if !actual.IsObjectType() {
-				t.Fatalf("expected object type, got %q", actual.FriendlyName())
+				t.Fatalf(`expected "object" type from CtyType(), got %q`, actual.FriendlyName())
 			}
 
 			if !actual.Equals(tt.expected) {
-				t.Errorf("expected %q, got %q", tt.expected.FriendlyName(), actual.FriendlyName())
+				t.Errorf("expected %q type from CtyType(), got %q", tt.expected.FriendlyName(), actual.FriendlyName())
 			}
 		})
 	}
@@ -69,11 +68,11 @@ func TestObjectTypeCtyType(t *testing.T) {
 
 func TestObjectTypeCtyType_Nil(t *testing.T) {
 	var object *objectType
-	expected := cty.NilType
 
 	actual := object.CtyType()
+	expected := cty.NilType
 	if !actual.Equals(expected) {
-		t.Errorf("expected %q, got %q", expected.FriendlyName(), actual.FriendlyName())
+		t.Errorf("expected nil type from CtyType(), got %q", actual.FriendlyName())
 	}
 }
 
@@ -321,7 +320,9 @@ func TestObjectTypeConvert_InvalidType(t *testing.T) {
 			expectedError := fmt.Sprintf(
 				"cannot convert %q to %q",
 				tt.input.Type().FriendlyName(),
-				object.CtyType().FriendlyName())
+				object.CtyType().FriendlyName(),
+			)
+
 			verifyFailedConversion(t, object, tt.input, expectedError)
 		})
 	}
@@ -335,11 +336,7 @@ func TestObjectTypeConvert_InvalidAttributes(t *testing.T) {
 		"invalid": cty.StringVal("not allowed"),
 	})
 
-	expectedError := fmt.Sprintf(
-		"invalid indexes found: %v",
-		[]string{"invalid"},
-	)
-
+	expectedError := `invalid indexes found: "invalid"`
 	verifyFailedConversion(t, object, input, expectedError)
 }
 
@@ -351,10 +348,10 @@ func TestObjectTypeConvert_FieldConversionError(t *testing.T) {
 	})
 
 	expectedError := fmt.Sprintf(
-		"cannot convert field %q: cannot convert %q to %q: a number is required",
-		"age",
+		`cannot convert field "age": cannot convert %q to %q: a number is required`,
 		cty.String.FriendlyName(),
-		cty.Number.FriendlyName())
+		cty.Number.FriendlyName(),
+	)
 
 	verifyFailedConversion(t, object, input, expectedError)
 }
@@ -367,7 +364,7 @@ func TestObjectTypeConvert_MultipleAliasesDefined(t *testing.T) {
 		"fullname": cty.StringVal("John Doe"),
 	})
 
-	expectedError := fmt.Sprintf("field %q is defined multiple times as %v", "name", []string{"name", "fullname"})
+	expectedError := `field "name" is defined multiple times as "name", "fullname"`
 	verifyFailedConversion(t, object, input, expectedError)
 }
 
@@ -379,7 +376,8 @@ func TestObjectTypeConvert_ConversionError(t *testing.T) {
 	expectedError := fmt.Sprintf(
 		"cannot convert %q to %q",
 		input.Type().FriendlyName(),
-		object.CtyType().FriendlyName())
+		object.CtyType().FriendlyName(),
+	)
 
 	verifyFailedConversion(t, object, input, expectedError)
 }
@@ -392,7 +390,7 @@ func TestObjectTypeConvert_InvalidIndexesInMap(t *testing.T) {
 		"invalid": cty.StringVal("not allowed"),
 	})
 
-	expectedError := fmt.Sprintf("invalid indexes found: %v", []string{"invalid"})
+	expectedError := `invalid indexes found: "invalid"`
 	verifyFailedConversion(t, object, input, expectedError)
 }
 
@@ -404,29 +402,29 @@ func TestObjectTypeConvert_AliasConversionError(t *testing.T) {
 	})
 
 	expectedError := fmt.Sprintf(
-		"cannot convert field %q (alias %q): cannot convert %q to %q: a number is required",
-		"age",
-		"alias",
+		`cannot convert field "age" (alias "alias"): cannot convert %q to %q: a number is required`,
 		cty.String.FriendlyName(),
-		cty.Number.FriendlyName())
+		cty.Number.FriendlyName(),
+	)
 
 	verifyFailedConversion(t, object, input, expectedError)
 }
 
 func TestObjectTypeConvert_Nil(t *testing.T) {
 	var object *objectType
+
+	expectedError := "object type is nil"
 	converted, err := object.Convert(cty.StringVal("test"))
 	if err == nil {
-		t.Fatal("expected error, got nil")
+		t.Fatalf("expected error %q from Convert(), got none", expectedError)
 	}
 
 	if converted.Equals(cty.NilVal) != cty.True {
-		t.Fatalf("expected nil, got %q", util.FormatCtyValueToString(converted, 0, 0))
+		t.Fatalf("expected nil value from Convert(), got %s", util.FormatCtyValueToString(converted, 0, 0))
 	}
 
-	expectedError := "object type is nil"
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from Convert(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -617,12 +615,12 @@ func TestObjectTypeValidate_UnknownValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			expectedError := "cannot convert unknown value"
 			err := tt.object.Validate(tt.input)
 			if err == nil {
-				t.Fatalf("expected error from Validate(), got none")
+				t.Fatalf("expected error %q from Validate(), got none", expectedError)
 			}
 
-			expectedError := "cannot convert unknown value"
 			if err.Error() != expectedError {
 				t.Errorf("expected error %q from Validate(), got %q", expectedError, err.Error())
 			}
@@ -661,7 +659,7 @@ func TestObjectTypeValidate_NotMapOrObject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.object.Validate(tt.input)
 			if err == nil {
-				t.Fatalf("expected error from Validate(), got none")
+				t.Fatalf("expected error %q from Validate(), got none", tt.expectedError)
 			}
 
 			if err.Error() != tt.expectedError {
@@ -681,7 +679,7 @@ func TestObjectTypeValidate_MissingRequiredField(t *testing.T) {
 		"age": cty.NumberIntVal(30),
 	})
 
-	expectedError := fmt.Sprintf("missing required field %q", "name")
+	expectedError := `missing required field "name"`
 	verifyFailedValidation(t, object, input, expectedError)
 }
 
@@ -692,11 +690,7 @@ func TestObjectTypeValidate_FieldValidationFailure(t *testing.T) {
 		"duration": cty.StringVal("invalid-duration"),
 	})
 
-	expectedError := fmt.Sprintf(
-		"field %q validation failed: time: invalid duration %q",
-		"duration",
-		"invalid-duration")
-
+	expectedError := `field "duration" validation failed: time: invalid duration "invalid-duration"`
 	verifyFailedValidation(t, object, input, expectedError)
 }
 
@@ -717,12 +711,13 @@ func TestObjectTypeValidate_ConstraintFailure(t *testing.T) {
 
 func TestObjectTypeValidate_Nil(t *testing.T) {
 	var object *objectType
-	err := object.Validate(cty.NilVal)
-	if err == nil {
-		t.Fatal("expected error from Validate(), got none")
-	}
 
 	expectedError := "object type is nil"
+	err := object.Validate(cty.NilVal)
+	if err == nil {
+		t.Fatalf("expected error %q from Validate(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
 		t.Errorf("expected error %q from Validate(), got %q", expectedError, err.Error())
 	}
@@ -753,7 +748,7 @@ func TestObjectTypeValidateSpec_Pass(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.obj.ValidateSpec()
 			if err != nil {
-				t.Errorf("expected no errors from ValidateSpec(), got error: %v", err)
+				t.Errorf("expected no error from ValidateSpec(), got %q", err.Error())
 			}
 		})
 	}
@@ -764,12 +759,12 @@ func TestObjectTypeValidateSpec_FieldErrors(t *testing.T) {
 		RequiredField("invalid", String).WithDefaultValue(cty.StringVal("default")), // Required field with default
 	)
 
+	expectedError := `field "invalid" is required and has a default value`
 	err := obj.ValidateSpec()
 	if err == nil {
-		t.Fatal("expected error from ValidateSpec(), got none")
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
 	}
 
-	expectedError := fmt.Sprintf("field %q is required and has a default value", "invalid")
 	if err.Error() != expectedError {
 		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
@@ -778,12 +773,12 @@ func TestObjectTypeValidateSpec_FieldErrors(t *testing.T) {
 func TestObjectTypeValidateSpec_DuplicateFieldName(t *testing.T) {
 	object := Object(RequiredField("name", String), RequiredField("name", String))
 
+	expectedError := `field "name" is defined multiple times`
 	err := object.ValidateSpec()
 	if err == nil {
-		t.Fatal("expected error from ValidateSpec(), got none")
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
 	}
 
-	expectedError := `field "name" is defined multiple times`
 	if err.Error() != expectedError {
 		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
@@ -792,15 +787,11 @@ func TestObjectTypeValidateSpec_DuplicateFieldName(t *testing.T) {
 func TestObjectTypeValidateSpec_DuplicateAliases(t *testing.T) {
 	obj := Object(RequiredField("name", String).WithAliases("name"))
 
+	expectedError := `field "name" is defined multiple times (aliases: "name", "name")`
 	err := obj.ValidateSpec()
 	if err == nil {
-		t.Fatal("expected error from ValidateSpec(), got none")
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
 	}
-
-	expectedError := fmt.Sprintf(
-		"field %q is defined multiple times (aliases: %v)",
-		"name",
-		[]string{"name", "name"})
 
 	if err.Error() != expectedError {
 		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
@@ -810,31 +801,27 @@ func TestObjectTypeValidateSpec_DuplicateAliases(t *testing.T) {
 func TestObjectTypeValidateSpec_NilField(t *testing.T) {
 	object := Object(RequiredField("name", String), OptionalField("age", Number), nil)
 
+	expectedError := "nil field definition found"
 	err := object.ValidateSpec()
 	if err == nil {
-		t.Fatal("expected error from ValidateSpec(), got none")
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
 	}
 
-	expectedError := "nil field definition found"
 	if err.Error() != expectedError {
 		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
 func TestObjectTypeValidateSpec_InvalidConstraint(t *testing.T) {
-
-	obj := Object(
+	object := Object(
 		OptionalField("field1", String),
 	).WithConstraints(MutuallyExclusive("field1", "nonexistent"))
 
-	err := obj.ValidateSpec()
+	expectedError := `constraint validation failed: field "nonexistent" is not defined in the object type`
+	err := object.ValidateSpec()
 	if err == nil {
-		t.Fatal("expected error from ValidateSpec(), got none")
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
 	}
-
-	expectedError := fmt.Sprintf(
-		"constraint validation failed: field %q is not defined in the object type",
-		"nonexistent")
 
 	if err.Error() != expectedError {
 		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
@@ -843,12 +830,13 @@ func TestObjectTypeValidateSpec_InvalidConstraint(t *testing.T) {
 
 func TestObjectTypeValidateSpec_Nil(t *testing.T) {
 	var object *objectType
-	err := object.ValidateSpec()
-	if err == nil {
-		t.Fatal("expected error from ValidateSpec(), got none")
-	}
 
 	expectedError := "object type is nil"
+	err := object.ValidateSpec()
+	if err == nil {
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
 		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}

@@ -178,7 +178,6 @@ func (s *SingleStep) Module() module.Module {
 
 // Run implements Step.
 func (s *SingleStep) Run(ctx *workflowContext) error {
-
 	nameText := ui.Text(s.common.name).WithStyle(ui.StyleBold)
 	name := ctx.ui.Format(nameText)
 	line := ctx.ui.FormatLine('=', nil)
@@ -193,7 +192,6 @@ func (s *SingleStep) Run(ctx *workflowContext) error {
 
 	for _, host := range s.common.targets {
 		go func(h *inventory.Host) {
-
 			if ctx.IsFailed(h) {
 				errChannel <- nil
 				return
@@ -236,7 +234,9 @@ func (s *singleIterator) Next() bool {
 	if s.completed {
 		return false
 	}
+
 	s.completed = true
+
 	return true
 }
 
@@ -255,17 +255,16 @@ func (m *multiIterator) Type() stepIteratorType {
 }
 
 func (m *multiIterator) Next() bool {
-
 	if m.index >= len(m.iterations) {
 		return false
 	}
 
 	m.index++
+
 	return true
 }
 
 func (m *multiIterator) Value() *stepIteration {
-
 	if m.index == 0 || m.index > len(m.iterations) {
 		return nil
 	}

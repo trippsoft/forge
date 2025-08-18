@@ -23,7 +23,6 @@ var (
 		},
 		Type: func(args []cty.Value) (cty.Type, error) {
 			argType := args[0].Type()
-
 			if argType == cty.String ||
 				argType == cty.DynamicPseudoType ||
 				argType.IsTupleType() ||

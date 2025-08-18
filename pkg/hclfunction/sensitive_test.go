@@ -46,12 +46,9 @@ func getSensitiveTestCases() []struct {
 }
 
 func TestSensitiveFunc(t *testing.T) {
-
 	tests := getSensitiveTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			// Store original secrets and clear for test
 			originalSecrets := log.SecretFilter.Secrets()
 			log.SecretFilter.Clear()
@@ -65,8 +62,8 @@ func TestSensitiveFunc(t *testing.T) {
 			}()
 
 			expected := tt.input
-			actual, err := SensitiveFunc.Call([]cty.Value{tt.input})
 
+			actual, err := SensitiveFunc.Call([]cty.Value{tt.input})
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
@@ -86,12 +83,9 @@ func TestSensitiveFunc(t *testing.T) {
 }
 
 func TestSensitive(t *testing.T) {
-
 	tests := getSensitiveTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			// Store original secrets and clear for test
 			originalSecrets := log.SecretFilter.Secrets()
 			log.SecretFilter.Clear()

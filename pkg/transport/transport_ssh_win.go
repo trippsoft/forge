@@ -34,7 +34,6 @@ func (s *sshWindowsInfo) pathListSeparator() rune {
 
 // tempDir implements sshPlatformInfo.
 func (s *sshWindowsInfo) tempDir() (string, error) {
-
 	if s.cachedTempDir != "" {
 		return s.cachedTempDir, nil // Return cached temp dir if available
 	}
@@ -55,7 +54,6 @@ func (s *sshWindowsInfo) tempDir() (string, error) {
 	}
 
 	stdout = strings.TrimRight(stdout, string(s.pathSeparator()))
-
 	s.cachedTempDir = stdout
 
 	return s.cachedTempDir, nil
@@ -63,7 +61,6 @@ func (s *sshWindowsInfo) tempDir() (string, error) {
 
 // pathPrefixes implements sshPlatformInfo.
 func (s *sshWindowsInfo) pathPrefixes() ([]string, error) {
-
 	if s.cachedPathPrefixes != nil {
 		return s.cachedPathPrefixes, nil // Already populated
 	}
@@ -79,9 +76,7 @@ func (s *sshWindowsInfo) pathPrefixes() ([]string, error) {
 	}
 
 	pathOutput := strings.TrimRight(strings.TrimSpace(stdout), string(s.pathListSeparator()))
-
 	s.cachedPathPrefixes = strings.Split(pathOutput, string(s.pathListSeparator()))
-
 	for i, prefix := range s.cachedPathPrefixes {
 		if !strings.HasSuffix(prefix, string(s.pathSeparator())) {
 			s.cachedPathPrefixes[i] = prefix + string(s.pathSeparator()) // Ensure each prefix ends with a separator
@@ -93,7 +88,6 @@ func (s *sshWindowsInfo) pathPrefixes() ([]string, error) {
 
 // newCommand implements sshPlatformInfo.
 func (s *sshWindowsInfo) newCommand(command string, escalateConfig Escalation) (Cmd, error) {
-
 	if escalateConfig == nil {
 		return &sshCmd{
 			transport: s.transport,

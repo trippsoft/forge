@@ -26,7 +26,6 @@ type Set[T comparable] struct {
 // Duplicate items are ignored, ensuring all items in the set are unique.
 // The type T must be comparable, meaning it can be used as a key in a map.
 func NewSet[T comparable](items ...T) *Set[T] {
-
 	itemsMap := make(map[T]struct{}, len(items))
 	for _, item := range items {
 		itemsMap[item] = struct{}{}
@@ -51,7 +50,6 @@ func (s *Set[T]) Remove(item T) {
 
 // Contains checks if the set contains the specified item.
 func (s *Set[T]) Contains(item T) bool {
-
 	_, exists := s.items[item]
 	return exists
 }
@@ -65,9 +63,7 @@ func (s *Set[T]) Size() int {
 // The order of items in the slice is not guaranteed to be consistent.
 // If the set is empty, it returns an empty slice.
 func (s *Set[T]) Items() []T {
-
 	items := make([]T, 0, len(s.items))
-
 	for item := range s.items {
 		items = append(items, item)
 	}
@@ -90,7 +86,6 @@ func (s *Set[T]) IsEmpty() bool {
 // If no sets are provided, it returns an empty set.
 func Union[T comparable](sets ...*Set[T]) *Set[T] {
 	unionSet := NewSet[T]()
-
 	for _, set := range sets {
 		for item := range set.items {
 			unionSet.Add(item)
@@ -104,13 +99,11 @@ func Union[T comparable](sets ...*Set[T]) *Set[T] {
 // It contains only the items that are present in all sets.
 // If no sets are provided, it returns an empty set.
 func Intersection[T comparable](sets ...*Set[T]) *Set[T] {
-
 	if len(sets) == 0 {
 		return NewSet[T]()
 	}
 
 	intersectionSet := NewSet(sets[0].Items()...)
-
 	for _, set := range sets[1:] {
 		for item := range intersectionSet.items {
 			if !set.Contains(item) {
@@ -126,7 +119,6 @@ func Intersection[T comparable](sets ...*Set[T]) *Set[T] {
 // It effectively computes the set difference: set1 - set2.
 func Difference[T comparable](set1, set2 *Set[T]) *Set[T] {
 	differenceSet := NewSet[T]()
-
 	for item := range set1.items {
 		if !set2.Contains(item) {
 			differenceSet.Add(item)

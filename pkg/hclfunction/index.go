@@ -29,7 +29,6 @@ var (
 			return rb.NotNull()
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-
 			list := args[0]
 			value := args[1]
 

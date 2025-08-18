@@ -50,10 +50,7 @@ func TestSetCtyType(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			actual := tt.set.CtyType()
 			if !actual.Equals(tt.expected) {
-				t.Errorf(
-					"expected CtyType() to be %q, got %q",
-					tt.expected.FriendlyName(),
-					actual.FriendlyName())
+				t.Errorf("expected %q from CtyType(), got %q", tt.expected.FriendlyName(), actual.FriendlyName())
 			}
 		})
 	}
@@ -62,7 +59,7 @@ func TestSetCtyType(t *testing.T) {
 func TestSetCtyType_Nil(t *testing.T) {
 	var nilSet *setType
 	if !nilSet.CtyType().Equals(cty.NilType) {
-		t.Errorf("expected CtyType() to be nil, got %q", nilSet.CtyType().FriendlyName())
+		t.Errorf("expected nil type from CtyType(), got %q", nilSet.CtyType().FriendlyName())
 	}
 }
 
@@ -216,7 +213,6 @@ func TestSetConvert_SensitiveString(t *testing.T) {
 	verifySuccessfulConversion(t, set, input, input)
 
 	secrets := log.SecretFilter.Secrets()
-
 	if !slices.Contains(secrets, str) {
 		t.Errorf("expected %q to be filtered", str)
 	}
@@ -322,14 +318,12 @@ func TestSetConvert_UnknownValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			expectedError := "cannot convert unknown value"
-			verifyFailedConversion(t, tt.set, tt.input, expectedError)
+			verifyFailedConversion(t, tt.set, tt.input, "cannot convert unknown value")
 		})
 	}
 }
 
 func TestSetConvert_InvalidValues(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		set             Type
@@ -391,7 +385,6 @@ func TestSetConvert_InvalidValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			var expectedError string
 			if tt.conversionError == "" {
 				expectedError = fmt.Sprintf(
@@ -413,13 +406,19 @@ func TestSetConvert_InvalidValues(t *testing.T) {
 
 func TestSetConvert_Nil(t *testing.T) {
 	var nilSet *setType
+
+	expectedError := "set type is nil"
 	converted, err := nilSet.Convert(cty.SetValEmpty(cty.String))
 	if err == nil {
-		t.Fatalf("expected error from Convert(), got nil")
+		t.Fatalf("expected error %q from Convert(), got none", expectedError)
 	}
 
 	if converted.Equals(cty.NilVal) != cty.True {
-		t.Fatalf("expected conversion to nil, got %q", util.FormatCtyValueToString(converted, 0, 0))
+		t.Fatalf("expected nil value from Convert(), got %s", util.FormatCtyValueToString(converted, 0, 0))
+	}
+
+	if expectedError != err.Error() {
+		t.Errorf("expected error %q from Convert(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -571,14 +570,15 @@ func TestSetValidate_InvalidElement(t *testing.T) {
 
 func TestSetValidate_Nil(t *testing.T) {
 	var nilSet *setType
-	err := nilSet.Validate(cty.SetValEmpty(cty.String))
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
 
 	expectedError := "set type is nil"
+	err := nilSet.Validate(cty.SetValEmpty(cty.String))
+	if err == nil {
+		t.Errorf("expected error %q from Validate(), got nil", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from Validate(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -611,7 +611,7 @@ func TestSetValidateSpec_Pass(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.set.ValidateSpec()
 			if err != nil {
-				t.Errorf("expected no error, got %q", err)
+				t.Errorf("expected no error from ValidateSpec(), got %q", err)
 			}
 		})
 	}
@@ -619,26 +619,28 @@ func TestSetValidateSpec_Pass(t *testing.T) {
 
 func TestSetValidateSpec_InvalidObject(t *testing.T) {
 	set := Set(Object(RequiredField("foo", String)).WithConstraints(MutuallyExclusive("nonexistant")))
-	err := set.ValidateSpec()
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
 
 	expectedError := `constraint validation failed: field "nonexistant" is not defined in the object type`
+	err := set.ValidateSpec()
+	if err == nil {
+		t.Errorf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
 func TestSetValidateSpec_Nil(t *testing.T) {
 	var nilSet *setType
-	err := nilSet.ValidateSpec()
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
 
 	expectedError := "set type is nil"
+	err := nilSet.ValidateSpec()
+	if err == nil {
+		t.Errorf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }

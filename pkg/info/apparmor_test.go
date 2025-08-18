@@ -11,14 +11,12 @@ import (
 )
 
 func TestAppArmorInfo_PopulateAppArmorInfo_NoOS(t *testing.T) {
-
 	osInfo := newOSInfo()
-
 	transport := transport.NewMockTransport()
 
 	info := newAppArmorInfo()
-	diags := info.populateAppArmorInfo(osInfo, transport)
 
+	diags := info.populateAppArmorInfo(osInfo, transport)
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
@@ -52,7 +50,6 @@ func TestAppArmorInfo_PopulateAppArmorInfo_NoOS(t *testing.T) {
 }
 
 func TestAppArmorInfo_PopulateAppArmorInfo_Linux(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		output          string
@@ -77,7 +74,6 @@ func TestAppArmorInfo_PopulateAppArmorInfo_Linux(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			osInfo := newOSInfo()
 			osInfo.families.Add("linux")
 			osInfo.id = "ubuntu"
@@ -88,8 +84,8 @@ func TestAppArmorInfo_PopulateAppArmorInfo_Linux(t *testing.T) {
 			}
 
 			info := newAppArmorInfo()
-			diags := info.populateAppArmorInfo(osInfo, mockTransport)
 
+			diags := info.populateAppArmorInfo(osInfo, mockTransport)
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
@@ -110,7 +106,6 @@ func TestAppArmorInfo_PopulateAppArmorInfo_Linux(t *testing.T) {
 }
 
 func TestAppArmorInfo_PopulateAppArmorInfo_Linux_Error(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.families.Add("linux")
 	osInfo.id = "ubuntu"
@@ -121,8 +116,8 @@ func TestAppArmorInfo_PopulateAppArmorInfo_Linux_Error(t *testing.T) {
 	}
 
 	info := newAppArmorInfo()
-	diags := info.populateAppArmorInfo(osInfo, mockTransport)
 
+	diags := info.populateAppArmorInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Error("expected errors, got none")
 	}
@@ -156,7 +151,6 @@ func TestAppArmorInfo_PopulateAppArmorInfo_Linux_Error(t *testing.T) {
 }
 
 func TestAppArmorInfo_PopulateAppArmorInfo_Windows(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.families.Add("windows")
 	osInfo.id = "windows-server"
@@ -164,8 +158,8 @@ func TestAppArmorInfo_PopulateAppArmorInfo_Windows(t *testing.T) {
 	transport := transport.NewMockTransport()
 
 	info := newAppArmorInfo()
-	diags := info.populateAppArmorInfo(osInfo, transport)
 
+	diags := info.populateAppArmorInfo(osInfo, transport)
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
@@ -189,7 +183,6 @@ func TestAppArmorInfo_ToMapOfCtyValues_Supported(t *testing.T) {
 	appArmorInfo.enabled = true
 
 	values := appArmorInfo.toMapOfCtyValues()
-
 	if _, exists := values["apparmor_enabled"]; !exists {
 		t.Error("expected 'apparmor_enabled' key to be present in values map")
 	}
@@ -205,7 +198,6 @@ func TestAppArmorInfo_ToMapOfCtyValues_SupportedButDisabled(t *testing.T) {
 	appArmorInfo.enabled = false
 
 	values := appArmorInfo.toMapOfCtyValues()
-
 	if _, exists := values["apparmor_enabled"]; !exists {
 		t.Error("expected 'apparmor_enabled' key to be present in values map")
 	}
@@ -221,7 +213,6 @@ func TestAppArmorInfo_ToMapOfCtyValues_NotSupported(t *testing.T) {
 	appArmorInfo.enabled = false
 
 	values := appArmorInfo.toMapOfCtyValues()
-
 	if value, exists := values["apparmor_enabled"]; exists {
 		if !value.IsNull() {
 			t.Error("expected 'apparmor_enabled' to be null for unsupported AppArmor")

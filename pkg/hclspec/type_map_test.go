@@ -53,6 +53,7 @@ func TestMapCtyType(t *testing.T) {
 
 func TestMapCtyType_Nil(t *testing.T) {
 	var nilMap *mapType
+
 	expected := cty.NilType
 	actual := nilMap.CtyType()
 	if !actual.Equals(expected) {
@@ -61,7 +62,6 @@ func TestMapCtyType_Nil(t *testing.T) {
 }
 
 func TestMapConvert_Success(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		mapType  Type
@@ -211,20 +211,19 @@ func TestMapConvert_Success(t *testing.T) {
 
 func TestMapConvert_SensitiveString(t *testing.T) {
 	log.SecretFilter.Clear()
+
 	str := "hello"
 	mapType := Map(SensitiveString)
 	input := cty.MapVal(map[string]cty.Value{"key": cty.StringVal(str)})
 	verifySuccessfulConversion(t, mapType, input, input)
 
 	secrets := log.SecretFilter.Secrets()
-
 	if !slices.Contains(secrets, str) {
 		t.Errorf("expected %q to be filtered", str)
 	}
 }
 
 func TestMapConvert_UnknownValue(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		mapType Type
@@ -331,7 +330,6 @@ func TestMapConvert_UnknownValue(t *testing.T) {
 }
 
 func TestMapConvert_InvalidValues(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		list            Type
@@ -431,23 +429,23 @@ func TestMapConvert_InvalidValues(t *testing.T) {
 
 func TestMapConvert_Nil(t *testing.T) {
 	var nilMap *mapType
+
+	expectedError := "map type is nil"
 	converted, err := nilMap.Convert(cty.MapValEmpty(cty.String))
 	if err == nil {
-		t.Fatalf("expected error from Convert(), got none")
+		t.Fatalf("expected error %q from Convert(), got none", expectedError)
 	}
 
 	if converted.Equals(cty.NilVal) != cty.True {
-		t.Errorf("expected converted value to be nil, got %q", util.FormatCtyValueToString(converted, 0, 0))
+		t.Errorf("expected nil value from Convert(), got %s", util.FormatCtyValueToString(converted, 0, 0))
 	}
 
-	expectedError := "map type is nil"
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from Convert(), got %q", expectedError, err.Error())
 	}
 }
 
 func TestMapValidate_Pass(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		mapType Type
@@ -557,7 +555,6 @@ func TestMapValidate_Pass(t *testing.T) {
 }
 
 func TestMapValidate_InvalidElement(t *testing.T) {
-
 	tests := []struct {
 		name          string
 		list          Type
@@ -584,14 +581,15 @@ func TestMapValidate_InvalidElement(t *testing.T) {
 
 func TestMapValidate_Nil(t *testing.T) {
 	var nilMap *mapType
-	err := nilMap.Validate(cty.MapValEmpty(cty.String))
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
 
 	expectedError := "map type is nil"
+	err := nilMap.Validate(cty.MapValEmpty(cty.String))
+	if err == nil {
+		t.Errorf("expected error %q from Validate(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from Validate(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -624,7 +622,7 @@ func TestMapValidateSpec_Pass(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.mapType.ValidateSpec()
 			if err != nil {
-				t.Errorf("expected no error, got %q", err)
+				t.Errorf("expected no error from ValidateSpec(), got %q", err)
 			}
 		})
 	}
@@ -632,26 +630,28 @@ func TestMapValidateSpec_Pass(t *testing.T) {
 
 func TestMapValidateSpec_InvalidObject(t *testing.T) {
 	mapType := Map(Object(RequiredField("foo", String)).WithConstraints(MutuallyExclusive("nonexistant")))
-	err := mapType.ValidateSpec()
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
 
 	expectedError := `constraint validation failed: field "nonexistant" is not defined in the object type`
+	err := mapType.ValidateSpec()
+	if err == nil {
+		t.Errorf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
 func TestMapValidateSpec_Nil(t *testing.T) {
 	var nilMap *mapType
-	err := nilMap.ValidateSpec()
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
 
 	expectedError := "map type is nil"
+	err := nilMap.ValidateSpec()
+	if err == nil {
+		t.Errorf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }

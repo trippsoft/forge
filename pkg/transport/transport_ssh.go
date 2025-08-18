@@ -30,7 +30,6 @@ const (
 )
 
 func DefaultKnownHostsPath() (string, error) {
-
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user home directory: %w", err)
@@ -60,7 +59,6 @@ type SSHTransportBuilder struct {
 }
 
 func NewSSHBuilder() (*SSHTransportBuilder, error) {
-
 	knownHostsPath, err := DefaultKnownHostsPath()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get default known hosts path: %w", err)
@@ -84,13 +82,11 @@ func (b *SSHTransportBuilder) Port(port uint16) *SSHTransportBuilder {
 }
 
 func (b *SSHTransportBuilder) User(user string) *SSHTransportBuilder {
-
 	b.user = user
 	return b
 }
 
 func (b *SSHTransportBuilder) NoPublicKeyAuth() *SSHTransportBuilder {
-
 	b.publicKeyAuth = false
 	b.privateKey = nil
 	b.privateKeyPass = ""
@@ -98,7 +94,6 @@ func (b *SSHTransportBuilder) NoPublicKeyAuth() *SSHTransportBuilder {
 }
 
 func (b *SSHTransportBuilder) PublicKeyAuth(privateKey []byte) *SSHTransportBuilder {
-
 	b.publicKeyAuth = true
 	b.privateKey = privateKey
 	b.privateKeyPass = ""
@@ -106,7 +101,6 @@ func (b *SSHTransportBuilder) PublicKeyAuth(privateKey []byte) *SSHTransportBuil
 }
 
 func (b *SSHTransportBuilder) PublicKeyAuthWithPass(privateKey []byte, privateKeyPass string) *SSHTransportBuilder {
-
 	b.publicKeyAuth = true
 	b.privateKey = privateKey
 	b.privateKeyPass = privateKeyPass
@@ -114,7 +108,6 @@ func (b *SSHTransportBuilder) PublicKeyAuthWithPass(privateKey []byte, privateKe
 }
 
 func (b *SSHTransportBuilder) PasswordAuth(password string) *SSHTransportBuilder {
-
 	b.passwordAuth = true
 	b.password = password
 	return b
@@ -126,7 +119,6 @@ func (b *SSHTransportBuilder) DontUseKnownHosts() *SSHTransportBuilder {
 }
 
 func (b *SSHTransportBuilder) UseKnownHosts(knownHostsPath string) *SSHTransportBuilder {
-
 	b.useKnownHostsFile = true
 	b.knownHostsPath = knownHostsPath
 	b.addUnknownHostsToFile = true
@@ -134,7 +126,6 @@ func (b *SSHTransportBuilder) UseKnownHosts(knownHostsPath string) *SSHTransport
 }
 
 func (b *SSHTransportBuilder) UseStrictKnownHosts(knownHostsPath string) *SSHTransportBuilder {
-
 	b.useKnownHostsFile = true
 	b.knownHostsPath = knownHostsPath
 	b.addUnknownHostsToFile = false
@@ -142,13 +133,11 @@ func (b *SSHTransportBuilder) UseStrictKnownHosts(knownHostsPath string) *SSHTra
 }
 
 func (b *SSHTransportBuilder) ConnectionTimeout(timeout time.Duration) *SSHTransportBuilder {
-
 	b.connectionTimeout = timeout
 	return b
 }
 
 func (b *SSHTransportBuilder) Build() (Transport, error) {
-
 	if b.host == "" {
 		return nil, fmt.Errorf("host cannot be empty")
 	}
@@ -178,12 +167,9 @@ func (b *SSHTransportBuilder) Build() (Transport, error) {
 	}
 
 	authMethods := make([]ssh.AuthMethod, 0, 2)
-
 	if b.publicKeyAuth {
-
 		var signer ssh.Signer
 		var err error
-
 		if b.privateKeyPass != "" {
 			signer, err = ssh.ParsePrivateKeyWithPassphrase(b.privateKey, []byte(b.privateKeyPass))
 			if err != nil {
@@ -211,6 +197,7 @@ func (b *SSHTransportBuilder) Build() (Transport, error) {
 		} else {
 			hostKeyCallback, err = knownhosts.New(b.knownHostsPath)
 		}
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to create host key adding callback: %w", err)
 		}
@@ -241,15 +228,14 @@ type sshCmd struct {
 
 // OutputWithError implements Cmd.
 func (s *sshCmd) OutputWithError(ctx context.Context) (string, string, error) {
-
 	err := s.createSession(ctx)
 	if err != nil {
 		return "", "", err
 	}
+
 	defer s.session.Close()
 
 	var outBuf, errBuf bytes.Buffer
-
 	s.session.Stdout = &outBuf
 	s.session.Stderr = &errBuf
 
@@ -277,15 +263,14 @@ func (s *sshCmd) OutputWithError(ctx context.Context) (string, string, error) {
 
 // Output implements Cmd.
 func (s *sshCmd) Output(ctx context.Context) (string, error) {
-
 	err := s.createSession(ctx)
 	if err != nil {
 		return "", err
 	}
+
 	defer s.session.Close()
 
 	var outBuf bytes.Buffer
-
 	s.session.Stdout = &outBuf
 
 	errChannel := make(chan error)
@@ -311,11 +296,11 @@ func (s *sshCmd) Output(ctx context.Context) (string, error) {
 
 // Run implements Cmd.
 func (s *sshCmd) Run(ctx context.Context) error {
-
 	err := s.createSession(ctx)
 	if err != nil {
 		return err
 	}
+
 	defer s.session.Close()
 
 	errChannel := make(chan error)
@@ -339,7 +324,6 @@ func (s *sshCmd) Run(ctx context.Context) error {
 }
 
 func (s *sshCmd) createSession(ctx context.Context) error {
-
 	if s.completed {
 		return errors.New("command already completed")
 	}
@@ -398,20 +382,17 @@ func (s *sshTransport) Type() TransportType {
 
 // Connect implements Transport.
 func (s *sshTransport) Connect() error {
-
 	if s.client != nil {
 		return nil // Already connected
 	}
 
 	address := fmt.Sprintf("%s:%d", s.host, s.port)
-
 	client, err := ssh.Dial("tcp", address, s.config)
 	if err != nil {
 		return fmt.Errorf("failed to connect to SSH server at %s: %w", address, err)
 	}
 
 	s.client = client
-
 	session, err := s.client.NewSession()
 	if err != nil {
 		s.client.Close()
@@ -421,15 +402,14 @@ func (s *sshTransport) Connect() error {
 
 	// Check if PowerShell is available on the remote system
 	powershellCheckCmd := "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"Write-Host 'PowerShell is available'\""
-
 	psErr := session.Run(powershellCheckCmd)
 	session.Close()
 	if psErr != nil {
-
 		session, unameErr := s.client.NewSession()
 		if unameErr != nil {
 			return fmt.Errorf("failed to create SSH session for uname check: %w", unameErr)
 		}
+
 		defer session.Close()
 
 		unameErr = session.Run("uname -s")
@@ -447,7 +427,6 @@ func (s *sshTransport) Connect() error {
 
 // Close implements Transport.
 func (s *sshTransport) Close() error {
-
 	if s.sftpClient != nil {
 		_ = s.sftpClient.Close() // Close the SFTP client if it exists
 	}
@@ -467,7 +446,6 @@ func (s *sshTransport) Close() error {
 
 // NewCommand implements Transport.
 func (s *sshTransport) NewCommand(command string, escalateConfig Escalation) (Cmd, error) {
-
 	err := s.Connect() // Connect to ensure that the platform detection is done
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect: %w", err)
@@ -478,7 +456,6 @@ func (s *sshTransport) NewCommand(command string, escalateConfig Escalation) (Cm
 
 // NewPowerShellCommand implements Transport.
 func (s *sshTransport) NewPowerShellCommand(command string, escalateConfig Escalation) (Cmd, error) {
-
 	err := s.Connect() // Connect to ensure that the platform detection is done
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect: %w", err)
@@ -500,14 +477,12 @@ func (s *sshTransport) NewPowerShellCommand(command string, escalateConfig Escal
 
 // Stat implements Transport.
 func (s *sshTransport) Stat(path string) (os.FileInfo, error) {
-
 	err := s.connectSFTP() // Ensure we are connected to SFTP
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to SFTP client: %w", err)
 	}
 
 	fileInfo, err := s.sftpClient.Stat(path)
-
 	if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOENT) {
 		return nil, nil // Return nil if the file does not exist
 	}
@@ -521,14 +496,12 @@ func (s *sshTransport) Stat(path string) (os.FileInfo, error) {
 
 // Create implements Transport.
 func (s *sshTransport) Create(path string) (File, error) {
-
 	err := s.connectSFTP() // Ensure we are connected to SFTP
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to SFTP client: %w", err)
 	}
 
 	file, err := s.sftpClient.Create(path)
-
 	if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOENT) {
 		return nil, nil // Return nil if the file does not exist
 	}
@@ -542,14 +515,12 @@ func (s *sshTransport) Create(path string) (File, error) {
 
 // Open implements Transport.
 func (s *sshTransport) Open(path string) (File, error) {
-
 	err := s.connectSFTP() // Ensure we are connected to SFTP
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to SFTP client: %w", err)
 	}
 
 	file, err := s.sftpClient.Open(path)
-
 	if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOENT) {
 		return nil, nil // Return nil if the file does not exist
 	}
@@ -563,7 +534,6 @@ func (s *sshTransport) Open(path string) (File, error) {
 
 // Mkdir implements Transport.
 func (s *sshTransport) Mkdir(path string) error {
-
 	err := s.connectSFTP() // Ensure we are connected to SFTP
 	if err != nil {
 		return fmt.Errorf("failed to connect to SFTP client: %w", err)
@@ -579,7 +549,6 @@ func (s *sshTransport) Mkdir(path string) error {
 
 // MkdirAll implements Transport.
 func (s *sshTransport) MkdirAll(path string) error {
-
 	err := s.connectSFTP() // Ensure we are connected to SFTP
 	if err != nil {
 		return fmt.Errorf("failed to connect to SFTP client: %w", err)
@@ -595,7 +564,6 @@ func (s *sshTransport) MkdirAll(path string) error {
 
 // Remove implements Transport.
 func (s *sshTransport) Remove(path string) error {
-
 	err := s.connectSFTP() // Ensure we are connected to SFTP
 	if err != nil {
 		return fmt.Errorf("failed to connect to SFTP client: %w", err)
@@ -606,7 +574,6 @@ func (s *sshTransport) Remove(path string) error {
 
 // RemoveAll implements Transport.
 func (s *sshTransport) RemoveAll(path string) error {
-
 	err := s.connectSFTP() // Ensure we are connected to SFTP
 	if err != nil {
 		return fmt.Errorf("failed to connect to SFTP client: %w", err)
@@ -617,13 +584,11 @@ func (s *sshTransport) RemoveAll(path string) error {
 
 // Join implements Transport.
 func (s *sshTransport) Join(elem ...string) string {
-
 	if len(elem) == 0 {
 		return ""
 	}
 
 	stringBuilder := &strings.Builder{}
-
 	for i, e := range elem {
 		if i > 0 {
 			stringBuilder.WriteRune(s.platform.pathSeparator())
@@ -646,7 +611,6 @@ func (s *sshTransport) TempDir() (string, error) {
 
 // CreateTemp implements Transport.
 func (s *sshTransport) CreateTemp(dir, pattern string) (File, error) {
-
 	err := s.connectSFTP() // Ensure we are connected to SFTP
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to SFTP client: %w", err)
@@ -686,7 +650,6 @@ func (s *sshTransport) CreateTemp(dir, pattern string) (File, error) {
 
 // MkdirTemp implements Transport.
 func (s *sshTransport) MkdirTemp(dir, pattern string) (string, error) {
-
 	err := s.connectSFTP() // Ensure we are connected to SFTP
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to SFTP client: %w", err)
@@ -733,7 +696,6 @@ func (s *sshTransport) MkdirTemp(dir, pattern string) (string, error) {
 
 // Symlink implements Transport.
 func (s *sshTransport) Symlink(target, path string) error {
-
 	err := s.connectSFTP() // Ensure we are connected to SFTP
 	if err != nil {
 		return fmt.Errorf("failed to connect to SFTP client: %w", err)
@@ -744,7 +706,6 @@ func (s *sshTransport) Symlink(target, path string) error {
 
 // ReadLink implements Transport.
 func (s *sshTransport) ReadLink(path string) (string, error) {
-
 	err := s.connectSFTP() // Ensure we are connected to SFTP
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to SFTP client: %w", err)
@@ -765,7 +726,6 @@ func (s *sshTransport) ReadLink(path string) (string, error) {
 
 // RealPath implements Transport.
 func (s *sshTransport) RealPath(path string) (string, error) {
-
 	err := s.connectSFTP() // Ensure we are connected to SFTP
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to SFTP client: %w", err)
@@ -799,7 +759,6 @@ func (s *sshTransport) RealPath(path string) (string, error) {
 }
 
 func (s *sshTransport) connectSFTP() error {
-
 	if s.sftpClient != nil {
 		return nil // Already connected
 	}
@@ -822,7 +781,6 @@ func (s *sshTransport) connectSFTP() error {
 }
 
 func newHostKeyAddingCallback(path string) (ssh.HostKeyCallback, error) {
-
 	_, err := os.Stat(path)
 	if err != nil && (errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOENT)) {
 		file, err := os.Create(path)
@@ -838,7 +796,6 @@ func newHostKeyAddingCallback(path string) (ssh.HostKeyCallback, error) {
 	}
 
 	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-
 		err = checkingCallback(hostname, remote, key)
 		if err == nil {
 			return nil // Host key is already known
@@ -853,6 +810,7 @@ func newHostKeyAddingCallback(path string) (ssh.HostKeyCallback, error) {
 		if err != nil {
 			return fmt.Errorf("failed to open known hosts file %s: %w", path, err)
 		}
+
 		defer file.Close()
 
 		remoteNormalized := knownhosts.Normalize(remote.String())

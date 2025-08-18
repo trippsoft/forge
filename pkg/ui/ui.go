@@ -49,7 +49,6 @@ type ui struct {
 
 // StdUI returns a new UI that writes to the standard output and error.
 func StdUI() UI {
-
 	color := false
 	if runtime.GOOS != "windows" {
 		color = true
@@ -83,7 +82,6 @@ func (u *ui) Error(message string) {
 
 // Format implements UI.
 func (u *ui) Format(text *uiText) string {
-
 	leftMargin := ""
 	leftPadding := ""
 	rightPadding := ""
@@ -106,10 +104,8 @@ func (u *ui) Format(text *uiText) string {
 	}
 
 	message := fmt.Sprintf("%s%s%s", leftPadding, text.message, rightPadding)
-
 	if u.color {
 		terminalArgs := string(text.backgroundColor)
-
 		if terminalArgs == "" {
 			terminalArgs = string(text.foregroundColor)
 		} else if text.foregroundColor != "" {
@@ -136,7 +132,6 @@ func (u *ui) Format(text *uiText) string {
 
 // FormatColumns implements UI.
 func (u *ui) FormatColumns(text ...*uiText) string {
-
 	if len(text) == 0 {
 		return "\n"
 	}
@@ -152,7 +147,6 @@ func (u *ui) FormatColumns(text ...*uiText) string {
 
 	spacing := (u.consoleWidth() - totalRuneCount) / (len(text) - 1)
 	remainder := (u.consoleWidth() - totalRuneCount) % (len(text) - 1)
-
 	message := ""
 	if spacing <= 0 {
 		for _, t := range text {
@@ -169,7 +163,6 @@ func (u *ui) FormatColumns(text ...*uiText) string {
 		}
 
 		message = fmt.Sprintf("%s%s", message, strings.Repeat(" ", spacing))
-
 		if i < remainder {
 			message = fmt.Sprintf("%s ", message) // Add an extra space for the remainder.
 		}
@@ -192,11 +185,11 @@ func (u *ui) FormatLine(character rune, format *textFormat) string {
 	message := strings.Repeat(string(character), runeCount)
 	text := &uiText{message: message, textFormat: format}
 	message = u.Format(text)
+
 	return fmt.Sprintf("%s\n", message)
 }
 
 func (u *ui) writeText(writer io.Writer, message string) {
-
 	if writer == nil {
 		return
 	}
@@ -227,7 +220,6 @@ func (u *ui) consoleWidth() int {
 }
 
 func getRuneCount(text *uiText) int {
-
 	messageRuneCount := utf8.RuneCountInString(text.message)
 
 	messageRuneCount += text.leftPadding

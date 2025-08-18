@@ -46,7 +46,6 @@ func (p *Process) Steps() []Step {
 
 // Run executes the process with the given workflow context.
 func (p *Process) Run(ctx *workflowContext) error {
-
 	nameText := ui.Text(p.name).WithStyle(ui.StyleBold)
 	name := ctx.ui.Format(nameText)
 	line := ctx.ui.FormatLine('*', nil)
@@ -68,7 +67,6 @@ func (p *Process) Run(ctx *workflowContext) error {
 		hosts := ctx.inventory.Hosts()
 		for _, host := range hosts {
 			go func(host *inventory.Host) {
-
 				t := host.Transport()
 
 				var resultCode stepResultCode
@@ -76,7 +74,6 @@ func (p *Process) Run(ctx *workflowContext) error {
 				var err error
 				if t.Type() != transport.TransportTypeNone {
 					diags = host.Info().Populate(host.Transport())
-
 					if diags.HasErrors() {
 						resultCode = stepResultFailure
 						err = diags
@@ -122,13 +119,11 @@ func (p *Process) Run(ctx *workflowContext) error {
 }
 
 func printDiags(ctx *workflowContext, diags util.Diags) {
-
 	if len(diags) == 0 {
 		return
 	}
 
 	for _, diag := range diags {
-
 		severityMessage := ""
 		if diag.Severity == util.DiagError {
 			severityText := ui.Text("ERROR").WithForegroundColor(ui.ForegroundRed).WithStyle(ui.StyleBold)

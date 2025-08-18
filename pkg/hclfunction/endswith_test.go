@@ -79,9 +79,7 @@ func getEndsWithTestCases() []struct {
 }
 
 func TestEndsWith(t *testing.T) {
-
 	tests := getEndsWithTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
@@ -96,9 +94,7 @@ func TestEndsWith(t *testing.T) {
 }
 
 func TestEndsWithFunc(t *testing.T) {
-
 	tests := getEndsWithTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			actual, err := EndsWithFunc.Call([]cty.Value{tt.value, tt.suffix})

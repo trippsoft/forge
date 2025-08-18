@@ -35,7 +35,6 @@ func (a *AppArmorInfo) Enabled() bool {
 }
 
 func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, t transport.Transport) util.Diags {
-
 	if osInfo == nil || osInfo.id == "" {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagWarning,
@@ -63,15 +62,18 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, t transport.Transpor
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return util.Diags{&util.Diag{
-			Severity: util.DiagError,
-			Summary:  "Failed to execute AppArmor discovery script",
-			Detail:   fmt.Sprintf("Error executing command: %v", err),
-		}, &util.Diag{
-			Severity: util.DiagDebug,
-			Summary:  "Discovery command stderr",
-			Detail:   fmt.Sprintf("stderr: %s", stderr),
-		}}
+		return util.Diags{
+			&util.Diag{
+				Severity: util.DiagError,
+				Summary:  "Failed to execute AppArmor discovery script",
+				Detail:   fmt.Sprintf("Error executing command: %v", err),
+			},
+			&util.Diag{
+				Severity: util.DiagDebug,
+				Summary:  "Discovery command stderr",
+				Detail:   fmt.Sprintf("stderr: %s", stderr),
+			},
+		}
 	}
 
 	if stdout == "" {
@@ -84,7 +86,6 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, t transport.Transpor
 }
 
 func (a *AppArmorInfo) toMapOfCtyValues() map[string]cty.Value {
-
 	if !a.supported {
 		return map[string]cty.Value{
 			"apparmor_enabled": cty.NullVal(cty.Bool),
@@ -99,7 +100,6 @@ func (a *AppArmorInfo) toMapOfCtyValues() map[string]cty.Value {
 // String returns a string representation of the AppArmor information.
 // This is useful for logging or debugging purposes.
 func (a *AppArmorInfo) String() string {
-
 	if !a.supported {
 		return "apparmor_enabled: not supported"
 	}

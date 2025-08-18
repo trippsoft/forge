@@ -78,9 +78,7 @@ func getAnyTrueTestCases() []struct {
 }
 
 func TestAnyTrue(t *testing.T) {
-
 	tests := getAnyTrueTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			actual, err := AnyTrue(tt.input)
@@ -94,9 +92,7 @@ func TestAnyTrue(t *testing.T) {
 }
 
 func TestAnyTrueFunc(t *testing.T) {
-
 	tests := getAnyTrueTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 

@@ -12,7 +12,6 @@ import (
 )
 
 func TestOSInfo_PopulateOSInfo_Darwin(t *testing.T) {
-
 	tests := []struct {
 		name                 string
 		output               string
@@ -183,7 +182,6 @@ func TestOSInfo_PopulateOSInfo_Darwin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			mockTransport := transport.NewMockTransport()
 			mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 				Stdout: "Darwin",
@@ -193,8 +191,8 @@ func TestOSInfo_PopulateOSInfo_Darwin(t *testing.T) {
 			}
 
 			info := newOSInfo()
-			diags := info.populateOSInfo(mockTransport)
 
+			diags := info.populateOSInfo(mockTransport)
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
@@ -273,7 +271,6 @@ func TestOSInfo_PopulateOSInfo_Darwin(t *testing.T) {
 }
 
 func TestOSInfo_PopulateOSInfo_Darwin_Error(t *testing.T) {
-
 	mockTransport := transport.NewMockTransport()
 	mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 		Stdout: "Darwin",
@@ -283,8 +280,8 @@ func TestOSInfo_PopulateOSInfo_Darwin_Error(t *testing.T) {
 	}
 
 	info := newOSInfo()
-	diags := info.populateOSInfo(mockTransport)
 
+	diags := info.populateOSInfo(mockTransport)
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")
 	}
@@ -377,7 +374,6 @@ func TestOSInfo_PopulateOSInfo_Darwin_Error(t *testing.T) {
 }
 
 func TestOSInfo_PopulateOSInfo_Darwin_NotJSON(t *testing.T) {
-
 	mockTransport := transport.NewMockTransport()
 	mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 		Stdout: "Darwin",
@@ -387,8 +383,8 @@ func TestOSInfo_PopulateOSInfo_Darwin_NotJSON(t *testing.T) {
 	}
 
 	info := newOSInfo()
-	diags := info.populateOSInfo(mockTransport)
 
+	diags := info.populateOSInfo(mockTransport)
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")
 	}
@@ -481,7 +477,6 @@ func TestOSInfo_PopulateOSInfo_Darwin_NotJSON(t *testing.T) {
 }
 
 func TestOSInfo_PopulateOSInfo_Darwin_UnknownArchitecture(t *testing.T) {
-
 	mockTransport := transport.NewMockTransport()
 	mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 		Stdout: "Darwin",
@@ -497,7 +492,6 @@ func TestOSInfo_PopulateOSInfo_Darwin_UnknownArchitecture(t *testing.T) {
 	info := newOSInfo()
 
 	diags := info.populateOSInfo(mockTransport)
-
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
@@ -572,7 +566,6 @@ func TestOSInfo_PopulateOSInfo_Darwin_UnknownVersion(t *testing.T) {
 	info := newOSInfo()
 
 	diags := info.populateOSInfo(mockTransport)
-
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
@@ -653,7 +646,6 @@ func TestOSInfo_PopulateOSInfo_Darwin_UnknownVersion(t *testing.T) {
 }
 
 func TestOSInfo_PopulateOSInfo_Linux(t *testing.T) {
-
 	tests := []struct {
 		name                 string
 		output               string
@@ -1794,7 +1786,6 @@ func TestOSInfo_PopulateOSInfo_Linux(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			mockTransport := transport.NewMockTransport()
 			mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 				Stdout: "Linux",
@@ -1804,8 +1795,8 @@ func TestOSInfo_PopulateOSInfo_Linux(t *testing.T) {
 			}
 
 			info := newOSInfo()
-			diags := info.populateOSInfo(mockTransport)
 
+			diags := info.populateOSInfo(mockTransport)
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
@@ -1872,7 +1863,6 @@ func TestOSInfo_PopulateOSInfo_Linux(t *testing.T) {
 }
 
 func TestOSInfo_PopulateOSInfo_Linux_Error(t *testing.T) {
-
 	mockTransport := transport.NewMockTransport()
 	mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 		Stdout: "Linux",
@@ -1882,8 +1872,8 @@ func TestOSInfo_PopulateOSInfo_Linux_Error(t *testing.T) {
 	}
 
 	info := newOSInfo()
-	diags := info.populateOSInfo(mockTransport)
 
+	diags := info.populateOSInfo(mockTransport)
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")
 	}
@@ -1965,7 +1955,6 @@ func TestOSInfo_PopulateOSInfo_Linux_Error(t *testing.T) {
 }
 
 func TestOSInfo_PopulateOSInfo_Linux_NotJSON(t *testing.T) {
-
 	mockTransport := transport.NewMockTransport()
 	mockTransport.CommandResults["uname -s"] = &transport.MockCmd{
 		Stdout: "Linux",
@@ -1975,8 +1964,8 @@ func TestOSInfo_PopulateOSInfo_Linux_NotJSON(t *testing.T) {
 	}
 
 	info := newOSInfo()
-	diags := info.populateOSInfo(mockTransport)
 
+	diags := info.populateOSInfo(mockTransport)
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")
 	}
@@ -2164,8 +2153,8 @@ func TestOSInfo_PopulateOSInfo_Windows_Architecture(t *testing.T) {
 			}
 
 			info := newOSInfo()
-			diags := info.populateOSInfo(mockTransport)
 
+			diags := info.populateOSInfo(mockTransport)
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
@@ -2216,7 +2205,6 @@ func TestOSInfo_PopulateOSInfo_Windows_Architecture(t *testing.T) {
 }
 
 func TestOSInfo_PopulateOSInfo_Windows_Architecture_Unknown(t *testing.T) {
-
 	mockTransport := transport.NewWinMockTransport()
 	mockTransport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &transport.MockCmd{
 		Stdout: "5.1.19041.1237",
@@ -2232,8 +2220,8 @@ func TestOSInfo_PopulateOSInfo_Windows_Architecture_Unknown(t *testing.T) {
 	}
 
 	info := newOSInfo()
-	diags := info.populateOSInfo(mockTransport)
 
+	diags := info.populateOSInfo(mockTransport)
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags)
 	}
@@ -2299,7 +2287,6 @@ func TestOSInfo_PopulateOSInfo_Windows_Architecture_Unknown(t *testing.T) {
 }
 
 func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
-
 	tests := []struct {
 		name                 string
 		output               string
@@ -2927,9 +2914,6 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
-			info := newOSInfo()
-
 			mockTransport := transport.NewWinMockTransport()
 			mockTransport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &transport.MockCmd{
 				Stdout: "5.1.19041.1237",
@@ -2938,8 +2922,9 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 				Stdout: tt.output,
 			}
 
-			diags := info.populateOSInfo(mockTransport)
+			info := newOSInfo()
 
+			diags := info.populateOSInfo(mockTransport)
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
@@ -2993,9 +2978,6 @@ func TestOSInfo_PopulateOSInfo_Windows(t *testing.T) {
 }
 
 func TestOSInfo_PopulateOSInfo_Windows_Error(t *testing.T) {
-
-	info := newOSInfo()
-
 	mockTransport := transport.NewWinMockTransport()
 	mockTransport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &transport.MockCmd{
 		Stdout: "5.1.19041.1237",
@@ -3004,8 +2986,9 @@ func TestOSInfo_PopulateOSInfo_Windows_Error(t *testing.T) {
 		Err: os.ErrPermission,
 	}
 
-	diags := info.populateOSInfo(mockTransport)
+	info := newOSInfo()
 
+	diags := info.populateOSInfo(mockTransport)
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")
 	}
@@ -3064,9 +3047,6 @@ func TestOSInfo_PopulateOSInfo_Windows_Error(t *testing.T) {
 }
 
 func TestOSInfo_PopulateOSInfo_Windows_NotJSON(t *testing.T) {
-
-	info := newOSInfo()
-
 	mockTransport := transport.NewWinMockTransport()
 	mockTransport.PowerShellResults["Write-Host $PSVersionTable.PSVersion"] = &transport.MockCmd{
 		Stdout: "5.1.19041.1237",
@@ -3075,8 +3055,9 @@ func TestOSInfo_PopulateOSInfo_Windows_NotJSON(t *testing.T) {
 		Stdout: "This is not JSON output",
 	}
 
-	diags := info.populateOSInfo(mockTransport)
+	info := newOSInfo()
 
+	diags := info.populateOSInfo(mockTransport)
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")
 	}
@@ -3135,7 +3116,6 @@ func TestOSInfo_PopulateOSInfo_Windows_NotJSON(t *testing.T) {
 }
 
 func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
-
 	info := newOSInfo()
 	info.families.Add("linux")
 	info.families.Add("debian")
@@ -3154,13 +3134,11 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 	info.procArchBits = 64
 
 	values := info.toMapOfCtyValues()
-
 	if values["os_families"].Type() != cty.Set(cty.String) {
 		t.Errorf("expected os_families to be a set of strings, got: %s", values["os_families"].Type().GoString())
 	}
 
 	families := values["os_families"].AsValueSlice()
-
 	if len(families) != 3 {
 		t.Errorf("expected 3 families, got: %d", len(families))
 	}
@@ -3178,6 +3156,7 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 	if values["os_kernel"].Type() != cty.String {
 		t.Errorf("expected os_kernel to be a string, got: %s", values["os_kernel"].Type().GoString())
 	}
+
 	if values["os_kernel"].AsString() != "linux" {
 		t.Errorf("expected os_kernel to be 'linux', got: %s", values["os_kernel"].AsString())
 	}
@@ -3185,6 +3164,7 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 	if values["os_id"].Type() != cty.String {
 		t.Errorf("expected os_id to be a string, got: %s", values["os_id"].Type().GoString())
 	}
+
 	if values["os_id"].AsString() != "ubuntu" {
 		t.Errorf("expected os_id to be 'ubuntu', got: %s", values["os_id"].AsString())
 	}
@@ -3192,6 +3172,7 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 	if values["os_friendly_name"].Type() != cty.String {
 		t.Errorf("expected os_friendly_name to be a string, got: %s", values["os_friendly_name"].Type().GoString())
 	}
+
 	if values["os_friendly_name"].AsString() != "Ubuntu 22.04.3 LTS" {
 		t.Errorf("expected os_friendly_name to be 'Ubuntu 22.04.3 LTS', got: %s", values["os_friendly_name"].AsString())
 	}
@@ -3199,6 +3180,7 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 	if values["os_release"].Type() != cty.String {
 		t.Errorf("expected os_release to be a string, got: %s", values["os_release"].Type().GoString())
 	}
+
 	if values["os_release"].AsString() != "jammy" {
 		t.Errorf("expected os_release to be 'jammy', got: %s", values["os_release"].AsString())
 	}
@@ -3206,6 +3188,7 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 	if values["os_major_version"].Type() != cty.String {
 		t.Errorf("expected os_major_version to be a string, got: %s", values["os_major_version"].Type().GoString())
 	}
+
 	if values["os_major_version"].AsString() != "22" {
 		t.Errorf("expected os_major_version to be '22', got: %s", values["os_major_version"].AsString())
 	}
@@ -3213,6 +3196,7 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 	if values["os_version"].Type() != cty.String {
 		t.Errorf("expected os_version to be a string, got: %s", values["os_version"].Type().GoString())
 	}
+
 	if values["os_version"].AsString() != "22.04" {
 		t.Errorf("expected os_version to be '22.04', got: %s", values["os_version"].AsString())
 	}
@@ -3220,6 +3204,7 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 	if values["os_edition"].Type() != cty.String {
 		t.Errorf("expected os_edition to be a string, got: %s", values["os_edition"].Type().GoString())
 	}
+
 	if values["os_edition"].AsString() != "LTS" {
 		t.Errorf("expected os_edition to be 'LTS', got: %s", values["os_edition"].AsString())
 	}
@@ -3227,6 +3212,7 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 	if values["os_edition_id"].Type() != cty.String {
 		t.Errorf("expected os_edition_id to be a string, got: %s", values["os_edition_id"].Type().GoString())
 	}
+
 	if values["os_edition_id"].AsString() != "lts" {
 		t.Errorf("expected os_edition_id to be 'lts', got: %s", values["os_edition_id"].AsString())
 	}
@@ -3234,6 +3220,7 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 	if values["os_architecture"].Type() != cty.String {
 		t.Errorf("expected os_architecture to be a string, got: %s", values["os_architecture"].Type().GoString())
 	}
+
 	if values["os_architecture"].AsString() != "amd64" {
 		t.Errorf("expected os_architecture to be 'amd64', got: %s", values["os_architecture"].AsString())
 	}
@@ -3241,6 +3228,7 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 	if values["processor_architecture"].Type() != cty.String {
 		t.Errorf("expected processor_architecture to be a string, got: %s", values["processor_architecture"].Type().GoString())
 	}
+
 	if values["processor_architecture"].AsString() != "amd64" {
 		t.Errorf("expected processor_architecture to be 'amd64', got: %s", values["processor_architecture"].AsString())
 	}
@@ -3248,6 +3236,7 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 	if values["os_architecture_bits"].Type() != cty.Number {
 		t.Errorf("expected os_architecture_bits to be a number, got: %s", values["os_architecture_bits"].Type().GoString())
 	}
+
 	value, _ := values["os_architecture_bits"].AsBigFloat().Int64()
 	if value != 64 {
 		t.Errorf("expected os_architecture_bits to be 64, got: %s", values["os_architecture_bits"].AsString())
@@ -3256,6 +3245,7 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 	if values["processor_architecture_bits"].Type() != cty.Number {
 		t.Errorf("expected processor_architecture_bits to be a number, got: %s", values["processor_architecture_bits"].Type().GoString())
 	}
+
 	value, _ = values["processor_architecture_bits"].AsBigFloat().Int64()
 	if value != 64 {
 		t.Errorf("expected processor_architecture_bits to be 64, got: %s", values["processor_architecture_bits"].AsString())
@@ -3263,7 +3253,6 @@ func TestOSInfo_ToMapOfCtyValues(t *testing.T) {
 }
 
 func TestOSInfo_ToMapOfCtyValues_EmptyValues(t *testing.T) {
-
 	info := newOSInfo()
 
 	values := info.toMapOfCtyValues()

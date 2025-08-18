@@ -54,14 +54,12 @@ func TestPrint(t *testing.T) {
 			var outBuf, errBuf bytes.Buffer
 			ui := MockUI(&outBuf, &errBuf, tt.color)
 
-			// Setup secret filter
 			log.SecretFilter.Clear()
 			for _, secret := range tt.secrets {
 				log.SecretFilter.AddSecret(secret)
 			}
 
 			ui.Print(tt.message)
-
 			if outBuf.String() != tt.expected {
 				t.Errorf("Expected output: %q, got: %q", tt.expected, outBuf.String())
 			}
@@ -98,14 +96,12 @@ func TestError(t *testing.T) {
 			var outBuf, errBuf bytes.Buffer
 			ui := MockUI(&outBuf, &errBuf, tt.color)
 
-			// Setup secret filter
 			log.SecretFilter.Clear()
 			for _, secret := range tt.secrets {
 				log.SecretFilter.AddSecret(secret)
 			}
 
 			ui.Error(tt.message)
-
 			if errBuf.String() != tt.expected {
 				t.Errorf("Expected error output: %q, got: %q", tt.expected, errBuf.String())
 			}
@@ -236,7 +232,6 @@ func TestFormat(t *testing.T) {
 			ui := MockUI(&outBuf, &errBuf, tt.color)
 
 			result := ui.Format(tt.text)
-
 			if result != tt.expected {
 				t.Errorf("Expected: %q, got: %q", tt.expected, result)
 			}
@@ -313,7 +308,6 @@ func TestFormatColumns(t *testing.T) {
 			ui := MockUI(&outBuf, &errBuf, tt.color)
 
 			result := ui.FormatColumns(tt.texts...)
-
 			if result != tt.expected {
 				t.Errorf("Expected: %q, got: %q", tt.expected, result)
 			}
@@ -430,14 +424,12 @@ func TestText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup secret filter
 			log.SecretFilter.Clear()
 			for _, secret := range tt.secrets {
 				log.SecretFilter.AddSecret(secret)
 			}
 
 			result := Text(tt.message)
-
 			if result.message != tt.expected {
 				t.Errorf("Expected message: %q, got: %q", tt.expected, result.message)
 			}
@@ -447,7 +439,6 @@ func TestText(t *testing.T) {
 
 func TestTextFormat(t *testing.T) {
 	format := TextFormat()
-
 	if format == nil {
 		t.Error("Expected non-nil textFormat")
 	}
@@ -513,11 +504,8 @@ func TestTextFormatClone(t *testing.T) {
 		WithLeftPadding(5)
 
 	cloned := original.Clone()
-
-	// Modify original
 	original.WithForegroundColor(ForegroundRed).WithStyle(StyleBold)
 
-	// Check that clone is independent
 	if cloned.foregroundColor != ForegroundBlack {
 		t.Errorf("Clone should not be affected by changes to original")
 	}
@@ -557,7 +545,6 @@ func TestUITextChaining(t *testing.T) {
 func TestUITextWithFormat(t *testing.T) {
 	format := TextFormat().WithForegroundColor(ForegroundMagenta).WithStyle(StyleBlink)
 	text := Text("Formatted").WithFormat(format)
-
 	if text.foregroundColor != ForegroundMagenta {
 		t.Errorf("Expected foreground color %s, got %s", ForegroundMagenta, text.foregroundColor)
 	}
@@ -566,7 +553,6 @@ func TestUITextWithFormat(t *testing.T) {
 		t.Errorf("Expected styles [Blink], got %v", text.styles)
 	}
 
-	// Test with nil format
 	text2 := Text("Default").WithFormat(nil)
 	if text2.textFormat == nil {
 		t.Error("Expected non-nil textFormat when nil format provided")

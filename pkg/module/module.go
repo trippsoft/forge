@@ -29,6 +29,7 @@ type RunConfig struct {
 }
 
 // Module defines the interface for a module in the system.
+//
 // This is being implemented behind an interface to allow for remote modules eventually.
 type Module interface {
 	// InputSpec returns the specification for the module's input.
@@ -54,16 +55,18 @@ func NewLocal(module Module) Module {
 	}
 }
 
+// InputSpec implements Module.
 func (l *Local) InputSpec() *hclspec.Spec {
 	return l.module.InputSpec()
 }
 
+// Validate implements Module.
 func (l *Local) Validate(config *RunConfig) error {
 	return l.module.Validate(config)
 }
 
+// Run implements Module.
 func (l *Local) Run(ctx context.Context, config *RunConfig) *Result {
-
 	outputChannel := make(chan *Result)
 	go func(ctx context.Context) {
 		outputChannel <- l.module.Run(ctx, config)
@@ -95,7 +98,6 @@ func (m *MockModule) InputSpec() *hclspec.Spec {
 }
 
 func (m *MockModule) Validate(config *RunConfig) error {
-
 	if m.validateFunc == nil {
 		return nil
 	}
@@ -108,6 +110,7 @@ func (m *MockModule) Run(ctx context.Context, config *RunConfig) *Result {
 }
 
 // Result holds the result of a module execution.
+//
 // It includes whether the module made any changes, any error encountered, and the output data.
 type Result struct {
 	Failed         bool                 // Indicates if the module execution failed.
@@ -121,6 +124,7 @@ type Result struct {
 	Message        string               // Informational message, if any.
 }
 
+// NewSuccess creates a new success result.
 func NewSuccess(changed bool, output map[string]cty.Value) *Result {
 	return &Result{
 		Changed: changed,
@@ -128,12 +132,14 @@ func NewSuccess(changed bool, output map[string]cty.Value) *Result {
 	}
 }
 
+// NewSkipped creates a new skipped result.
 func NewSkipped() *Result {
 	return &Result{
 		Skipped: true,
 	}
 }
 
+// NewFailure creates a new failure result.
 func NewFailure(err error, errDetail string) *Result {
 	return &Result{
 		Err:       err,
@@ -143,11 +149,13 @@ func NewFailure(err error, errDetail string) *Result {
 }
 
 // Registry manages a collection of modules.
+//
 // It allows for registering new modules and looking them up by name.
 type Registry struct {
 	modules map[string]Module
 }
 
+// NewRegistry creates a new module registry.
 func NewRegistry() *Registry {
 	return &Registry{
 		modules: make(map[string]Module),
@@ -156,7 +164,6 @@ func NewRegistry() *Registry {
 
 // Register adds a new module to the registry.
 func (r *Registry) Register(name string, module Module) error {
-
 	if r.modules == nil {
 		r.modules = make(map[string]Module)
 	}
@@ -172,13 +179,14 @@ func (r *Registry) Register(name string, module Module) error {
 // Lookup retrieves a module by its name from the registry.
 func (r *Registry) Lookup(name string) (Module, bool) {
 	module, exists := r.modules[name]
+
 	return module, exists
 }
 
 // Modules returns a copy of the registered modules in the registry.
+//
 // This is used mostly for testing purposes to avoid modifying the original map.
 func (r *Registry) Modules() map[string]Module {
-
 	if r.modules == nil {
 		return make(map[string]Module)
 	}

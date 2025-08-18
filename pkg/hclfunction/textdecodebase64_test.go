@@ -87,14 +87,10 @@ func getTextDecodeBase64TestCases() []struct {
 }
 
 func TestTextDecodeBase64(t *testing.T) {
-
 	tests := getTextDecodeBase64TestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			actual, err := TextDecodeBase64(cty.StringVal(tt.input), cty.StringVal(tt.encoding))
-
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
@@ -105,7 +101,6 @@ func TestTextDecodeBase64(t *testing.T) {
 }
 
 func TestTextDecodeBase64_InvalidBase64(t *testing.T) {
-
 	input := cty.StringVal("SGVsbG8h@=") // Invalid base64
 	encoding := cty.StringVal("UTF-8")
 
@@ -121,7 +116,6 @@ func TestTextDecodeBase64_InvalidBase64(t *testing.T) {
 }
 
 func TestTextDecodeBase64_InvalidEncoding(t *testing.T) {
-
 	input := cty.StringVal(base64.StdEncoding.EncodeToString([]byte("test")))
 	encoding := cty.StringVal("INVALID_ENCODING")
 
@@ -137,7 +131,6 @@ func TestTextDecodeBase64_InvalidEncoding(t *testing.T) {
 }
 
 func TestTextDecodeBase64_NoPadding(t *testing.T) {
-
 	input := cty.StringVal("SGVsbG8") // Base64 without padding
 	encoding := cty.StringVal("UTF-8")
 
@@ -153,7 +146,6 @@ func TestTextDecodeBase64_NoPadding(t *testing.T) {
 }
 
 func TestTextDecodeBase64_TextCannotBeEncoded(t *testing.T) {
-
 	input := cty.StringVal(base64.StdEncoding.EncodeToString([]byte{0xFF, 0xFE, 0x00, 0x48})) // Invalid UTF-8 sequence
 	encoding := cty.StringVal("UTF-8")
 
@@ -169,14 +161,10 @@ func TestTextDecodeBase64_TextCannotBeEncoded(t *testing.T) {
 }
 
 func TestTextDecodeBase64Func(t *testing.T) {
-
 	tests := getTextDecodeBase64TestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			actual, err := TextDecodeBase64Func.Call([]cty.Value{cty.StringVal(tt.input), cty.StringVal(tt.encoding)})
-
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
@@ -187,7 +175,6 @@ func TestTextDecodeBase64Func(t *testing.T) {
 }
 
 func TestTextDecodeBase64Func_InvalidBase64(t *testing.T) {
-
 	_, err := TextDecodeBase64Func.Call([]cty.Value{cty.StringVal("SGVsbG8h@="), cty.StringVal("UTF-8")})
 	if err == nil {
 		t.Fatalf("expected error, got none")
@@ -200,7 +187,6 @@ func TestTextDecodeBase64Func_InvalidBase64(t *testing.T) {
 }
 
 func TestTextDecodeBase64Func_InvalidEncoding(t *testing.T) {
-
 	input := cty.StringVal(base64.StdEncoding.EncodeToString([]byte("test")))
 	encoding := cty.StringVal("INVALID_ENCODING")
 
@@ -216,7 +202,6 @@ func TestTextDecodeBase64Func_InvalidEncoding(t *testing.T) {
 }
 
 func TestTextDecodeBase64Func_NoPadding(t *testing.T) {
-
 	input := cty.StringVal("SGVsbG8") // Base64 without padding
 	encoding := cty.StringVal("UTF-8")
 
@@ -232,7 +217,6 @@ func TestTextDecodeBase64Func_NoPadding(t *testing.T) {
 }
 
 func TestTextDecodeBase64Func_TextCannotBeEncoded(t *testing.T) {
-
 	input := cty.StringVal(base64.StdEncoding.EncodeToString([]byte{0xFF, 0xFE, 0x00, 0x48})) // Invalid UTF-8 sequence
 	encoding := cty.StringVal("UTF-8")
 

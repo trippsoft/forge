@@ -34,7 +34,6 @@ func (p *PackageManagerInfo) Path() string {
 }
 
 func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transport.Transport) util.Diags {
-
 	if osInfo == nil || osInfo.ID() == "" {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagWarning,
@@ -58,15 +57,18 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transp
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return util.Diags{&util.Diag{
-			Severity: util.DiagError,
-			Summary:  "Failed to check package manager status",
-			Detail:   fmt.Sprintf("Error checking package manager status: %v", err),
-		}, &util.Diag{
-			Severity: util.DiagDebug,
-			Summary:  "Discovery command stderr",
-			Detail:   fmt.Sprintf("stderr: %s", stderr),
-		}}
+		return util.Diags{
+			&util.Diag{
+				Severity: util.DiagError,
+				Summary:  "Failed to check package manager status",
+				Detail:   fmt.Sprintf("Error checking package manager status: %v", err),
+			},
+			&util.Diag{
+				Severity: util.DiagDebug,
+				Summary:  "Discovery command stderr",
+				Detail:   fmt.Sprintf("stderr: %s", stderr),
+			},
+		}
 	}
 
 	discoveredData := make(map[string]string)
@@ -87,7 +89,6 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transp
 	if osInfo.Families().Contains("archlinux") {
 		moreDiags := p.populateArchLinuxPackageManagerInfo(discoveredData)
 		diags = diags.AppendAll(moreDiags)
-
 		if p.name != "" {
 			return diags
 		}
@@ -96,7 +97,6 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transp
 	if osInfo.Families().Contains("debian") || osInfo.Families().Contains("altlinux") {
 		moreDiags := p.populateDebianPackageManagerInfo(discoveredData)
 		diags = diags.AppendAll(moreDiags)
-
 		if p.name != "" {
 			return diags
 		}
@@ -105,7 +105,6 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transp
 	if osInfo.Families().Contains("el") {
 		moreDiags := p.populateEnterpriseLinuxPackageManagerInfo(discoveredData)
 		diags = diags.AppendAll(moreDiags)
-
 		if p.name != "" {
 			return diags
 		}
@@ -114,7 +113,6 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transp
 	if osInfo.Families().Contains("gentoo") {
 		moreDiags := p.populateGentooPackageManagerInfo(discoveredData)
 		diags = diags.AppendAll(moreDiags)
-
 		if p.name != "" {
 			return diags
 		}
@@ -123,7 +121,6 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transp
 	if osInfo.Families().Contains("suse") {
 		moreDiags := p.populateSusePackageManagerInfo(discoveredData)
 		diags = diags.AppendAll(moreDiags)
-
 		if p.name != "" {
 			return diags
 		}
@@ -136,7 +133,6 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transp
 }
 
 func (p *PackageManagerInfo) populateDarwinPackageManagerInfo(data map[string]string) util.Diags {
-
 	optHomebrewBinBrewExists, _ := data["opt_homebrew_bin_brew_exists"]
 	if optHomebrewBinBrewExists == "1" {
 		p.name = "homebrew"
@@ -166,7 +162,6 @@ func (p *PackageManagerInfo) populateDarwinPackageManagerInfo(data map[string]st
 }
 
 func (p *PackageManagerInfo) populateArchLinuxPackageManagerInfo(data map[string]string) util.Diags {
-
 	usrBinPacmanExists, _ := data["usr_bin_pacman_exists"]
 	if usrBinPacmanExists == "1" {
 		p.name = "pacman"
@@ -182,10 +177,8 @@ func (p *PackageManagerInfo) populateArchLinuxPackageManagerInfo(data map[string
 }
 
 func (p *PackageManagerInfo) populateDebianPackageManagerInfo(data map[string]string) util.Diags {
-
 	usrBinAptGetExists, _ := data["usr_bin_apt_get_exists"]
 	if usrBinAptGetExists == "1" {
-
 		aptProvidedByRpmPackage := data["apt_provided_by_rpm_package"]
 		if aptProvidedByRpmPackage != "" {
 			p.name = "apt-rpm"
@@ -206,7 +199,6 @@ func (p *PackageManagerInfo) populateDebianPackageManagerInfo(data map[string]st
 }
 
 func (p *PackageManagerInfo) populateEnterpriseLinuxPackageManagerInfo(data map[string]string) util.Diags {
-
 	usrBinDnf5Exists, _ := data["usr_bin_dnf5_exists"]
 	if usrBinDnf5Exists == "1" {
 		p.name = "dnf5"
@@ -243,7 +235,6 @@ func (p *PackageManagerInfo) populateEnterpriseLinuxPackageManagerInfo(data map[
 }
 
 func (p *PackageManagerInfo) populateGentooPackageManagerInfo(data map[string]string) util.Diags {
-
 	usrBinEmergeExists, _ := data["usr_bin_emerge_exists"]
 	if usrBinEmergeExists == "1" {
 		p.name = "portage"
@@ -259,7 +250,6 @@ func (p *PackageManagerInfo) populateGentooPackageManagerInfo(data map[string]st
 }
 
 func (p *PackageManagerInfo) populateSusePackageManagerInfo(data map[string]string) util.Diags {
-
 	usrBinZypperExists, _ := data["usr_bin_zypper_exists"]
 	if usrBinZypperExists == "1" {
 		p.name = "zypper"
@@ -275,7 +265,6 @@ func (p *PackageManagerInfo) populateSusePackageManagerInfo(data map[string]stri
 }
 
 func (p *PackageManagerInfo) populateOtherPackageManagerInfo(data map[string]string) util.Diags {
-
 	qopenSysPkgsBinYumExists, _ := data["qopensys_pkgs_bin_yum_exists"]
 	if qopenSysPkgsBinYumExists == "1" {
 		p.name = "yum"
@@ -479,9 +468,7 @@ func (p *PackageManagerInfo) populateOtherPackageManagerInfo(data map[string]str
 }
 
 func (p *PackageManagerInfo) toMapOfCtyValues() map[string]cty.Value {
-
 	values := make(map[string]cty.Value)
-
 	if p.name != "" {
 		values["package_manager_name"] = cty.StringVal(p.name)
 	} else {
@@ -500,19 +487,17 @@ func (p *PackageManagerInfo) toMapOfCtyValues() map[string]cty.Value {
 // String returns a string representation of the package manager information.
 // This is useful for logging or debugging purposes.
 func (p *PackageManagerInfo) String() string {
-
 	stringBuilder := &strings.Builder{}
-
 	stringBuilder.WriteString("package_manager_name: ")
 	if p.name != "" {
 		stringBuilder.WriteString(p.name)
 	} else {
 		stringBuilder.WriteString("unknown")
 	}
+
 	stringBuilder.WriteString("\n")
 
 	stringBuilder.WriteString("package_manager_path: ")
-
 	if p.path != "" {
 		stringBuilder.WriteString(p.path)
 	} else {

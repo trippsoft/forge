@@ -187,7 +187,6 @@ func snakeCaseToCamelCase(input string) string {
 }
 
 func parseScriptIntoLines(content []byte, config *parserConfig) ([]string, []parsedLine, bool, error) {
-
 	var err error
 	lines := strings.Split(string(content), "\n")
 	preScriptComments := []string{}
@@ -228,7 +227,6 @@ func parseScriptIntoLines(content []byte, config *parserConfig) ([]string, []par
 }
 
 func processScriptLine(line string, config *parserConfig) (string, error) {
-
 	if strings.Contains(line, "`") {
 		err := fmt.Errorf("line contains backtick; will attempt to fix it, but it may break Go raw string literal: %s", line)
 		line = handleBackticks(line, config)
@@ -240,7 +238,6 @@ func processScriptLine(line string, config *parserConfig) (string, error) {
 }
 
 func handleBackticks(line string, config *parserConfig) string {
-
 	line = backtickRegex.ReplaceAllString(line, "` + \"${1}\" + `")
 
 	if strings.HasPrefix(line, "` + \"`") {
@@ -275,7 +272,6 @@ func markLastNonCommentLine(parsedLines []parsedLine) bool {
 }
 
 func cleanLastLine(line string) string {
-
 	// Handle complex backtick endings
 	if strings.HasSuffix(line, "`\" + ` ;`") {
 		return strings.TrimSuffix(line, " + ` ;`")
@@ -316,9 +312,7 @@ func handleLineEnding(line string, config *parserConfig) string {
 }
 
 func parseScript(stringBuilder *strings.Builder, parsedLines []parsedLine) {
-
 	for _, pl := range parsedLines {
-
 		stringBuilder.WriteString("    ")
 
 		if pl.isComment {

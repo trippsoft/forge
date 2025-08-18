@@ -28,24 +28,21 @@ type sshSudoCmd struct {
 
 // OutputWithError implements Cmd.
 func (s *sshSudoCmd) OutputWithError(ctx context.Context) (string, string, error) {
-
 	err := s.createSession(ctx)
 	if err != nil {
 		return "", "", err
 	}
+
 	defer s.session.Close()
 
 	var outBuf, errBuf bytes.Buffer
-
 	stderrReader, err := s.session.StderrPipe()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create stderr pipe: %w", err)
 	}
 
 	stdinWriter, err := s.session.StdinPipe()
-
 	teeReader := io.TeeReader(stderrReader, &errBuf)
-
 	s.session.Stdout = &outBuf
 
 	commandErrChannel := make(chan error)
@@ -91,22 +88,20 @@ func (s *sshSudoCmd) OutputWithError(ctx context.Context) (string, string, error
 
 // Output implements Cmd.
 func (s *sshSudoCmd) Output(ctx context.Context) (string, error) {
-
 	err := s.createSession(ctx)
 	if err != nil {
 		return "", err
 	}
+
 	defer s.session.Close()
 
 	var outBuf bytes.Buffer
-
 	stderrReader, err := s.session.StderrPipe()
 	if err != nil {
 		return "", fmt.Errorf("failed to create stderr pipe: %w", err)
 	}
 
 	stdinWriter, err := s.session.StdinPipe()
-
 	s.session.Stdout = &outBuf
 
 	commandErrChannel := make(chan error)
@@ -151,11 +146,11 @@ func (s *sshSudoCmd) Output(ctx context.Context) (string, error) {
 
 // Run implements Cmd.
 func (s *sshSudoCmd) Run(ctx context.Context) error {
-
 	err := s.createSession(ctx)
 	if err != nil {
 		return err
 	}
+
 	defer s.session.Close()
 
 	stderrReader, err := s.session.StderrPipe()
@@ -205,7 +200,6 @@ func (s *sshSudoCmd) Run(ctx context.Context) error {
 }
 
 func (s *sshSudoCmd) createSession(ctx context.Context) error {
-
 	if s.completed {
 		return errors.New("command already completed")
 	}
@@ -256,7 +250,6 @@ func (s *sshPosixInfo) tempDir() (string, error) {
 
 // pathPrefixes implements sshPlatformInfo.
 func (s *sshPosixInfo) pathPrefixes() ([]string, error) {
-
 	if s.cachedPathPrefixes != nil {
 		return s.cachedPathPrefixes, nil // Already populated
 	}
@@ -272,9 +265,7 @@ func (s *sshPosixInfo) pathPrefixes() ([]string, error) {
 	}
 
 	pathOutput := strings.TrimRight(stdout, string(s.pathListSeparator()))
-
 	s.cachedPathPrefixes = strings.Split(pathOutput, string(s.pathListSeparator()))
-
 	for i, prefix := range s.cachedPathPrefixes {
 		if !strings.HasSuffix(prefix, string(s.pathSeparator())) {
 			s.cachedPathPrefixes[i] = prefix + string(s.pathSeparator()) // Ensure each prefix ends with a separator
@@ -286,7 +277,6 @@ func (s *sshPosixInfo) pathPrefixes() ([]string, error) {
 
 // newCommand implements sshPlatformInfo.
 func (s *sshPosixInfo) newCommand(command string, escalateConfig Escalation) (Cmd, error) {
-
 	if escalateConfig == nil {
 		return &sshCmd{
 			transport: s.transport,

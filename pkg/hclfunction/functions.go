@@ -20,7 +20,6 @@ import (
 )
 
 func HCLFunctions() map[string]function.Function {
-
 	workingDir, _ := os.Getwd()
 
 	return map[string]function.Function{

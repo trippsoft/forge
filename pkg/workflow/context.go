@@ -30,9 +30,7 @@ func WorkflowContext(ui ui.UI, i *inventory.Inventory) *workflowContext {
 }
 
 func (ctx *workflowContext) LoadHostVars() {
-
 	ctx.hostVars = make(map[string]cty.Value)
-
 	for _, host := range ctx.inventory.Hosts() {
 		vars := host.Vars()
 		if len(vars) > 0 {
@@ -65,7 +63,6 @@ func HostWorkflowContext(ctx *workflowContext, host *inventory.Host) *hostWorkfl
 }
 
 func (ctx *hostWorkflowContext) LoadEvalContext() error {
-
 	evalCtx := &hcl.EvalContext{
 		Variables: map[string]cty.Value{
 			"hostvars": cty.ObjectVal(ctx.hostVars),

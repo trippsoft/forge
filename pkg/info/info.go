@@ -63,7 +63,6 @@ func (i *HostInfo) UserInfo() *UserInfo {
 }
 
 func (i *HostInfo) Populate(transport transport.Transport) util.Diags {
-
 	if transport == nil {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagError,

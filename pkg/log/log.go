@@ -36,7 +36,6 @@ func init() {
 
 func Init(w io.Writer) {
 	flags := log.Lmsgprefix
-
 	if Verbosity >= LevelDebug {
 		flags |= log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile
 	} else if AddTimestamp {
@@ -51,7 +50,6 @@ func Init(w io.Writer) {
 }
 
 func Trace(v ...any) {
-
 	if Verbosity < LevelTrace {
 		return
 	}
@@ -60,7 +58,6 @@ func Trace(v ...any) {
 }
 
 func Tracef(format string, v ...any) {
-
 	if Verbosity < LevelTrace {
 		return
 	}
@@ -69,7 +66,6 @@ func Tracef(format string, v ...any) {
 }
 
 func Debug(v ...any) {
-
 	if Verbosity < LevelDebug {
 		return
 	}
@@ -78,7 +74,6 @@ func Debug(v ...any) {
 }
 
 func Debugf(format string, v ...any) {
-
 	if Verbosity < LevelDebug {
 		return
 	}
@@ -87,7 +82,6 @@ func Debugf(format string, v ...any) {
 }
 
 func Info(v ...any) {
-
 	if Verbosity < LevelInfo {
 		return
 	}
@@ -96,7 +90,6 @@ func Info(v ...any) {
 }
 
 func Infof(format string, v ...any) {
-
 	if Verbosity < LevelInfo {
 		return
 	}
@@ -105,7 +98,6 @@ func Infof(format string, v ...any) {
 }
 
 func Warn(v ...any) {
-
 	if Verbosity < LevelWarn {
 		return
 	}
@@ -114,7 +106,6 @@ func Warn(v ...any) {
 }
 
 func Warnf(format string, v ...any) {
-
 	if Verbosity < LevelWarn {
 		return
 	}

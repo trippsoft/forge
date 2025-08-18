@@ -36,7 +36,6 @@ func (f *FIPSInfo) Enabled() bool {
 }
 
 func (f *FIPSInfo) populateFipsInfo(osInfo *OSInfo, transport transport.Transport) util.Diags {
-
 	if osInfo == nil || osInfo.id == "" {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagWarning,
@@ -61,7 +60,6 @@ func (f *FIPSInfo) populateFipsInfo(osInfo *OSInfo, transport transport.Transpor
 }
 
 func (f *FIPSInfo) populateLinuxFipsInfo(t transport.Transport) util.Diags {
-
 	cmd, err := t.NewCommand(fipsLinuxDiscoveryScript, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
@@ -73,15 +71,18 @@ func (f *FIPSInfo) populateLinuxFipsInfo(t transport.Transport) util.Diags {
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return util.Diags{&util.Diag{
-			Severity: util.DiagError,
-			Summary:  "Failed to check FIPS status",
-			Detail:   fmt.Sprintf("Error checking FIPS status: %v", err),
-		}, &util.Diag{
-			Severity: util.DiagDebug,
-			Summary:  "Discovery command stderr",
-			Detail:   fmt.Sprintf("stderr: %s", stderr),
-		}}
+		return util.Diags{
+			&util.Diag{
+				Severity: util.DiagError,
+				Summary:  "Failed to check FIPS status",
+				Detail:   fmt.Sprintf("Error checking FIPS status: %v", err),
+			},
+			&util.Diag{
+				Severity: util.DiagDebug,
+				Summary:  "Discovery command stderr",
+				Detail:   fmt.Sprintf("stderr: %s", stderr),
+			},
+		}
 	}
 
 	if stdout == "" {
@@ -95,7 +96,6 @@ func (f *FIPSInfo) populateLinuxFipsInfo(t transport.Transport) util.Diags {
 }
 
 func (f *FIPSInfo) populateWindowsFipsInfo(t transport.Transport) util.Diags {
-
 	cmd, err := t.NewPowerShellCommand(fipsWindowsDiscoveryScript, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
@@ -121,7 +121,6 @@ func (f *FIPSInfo) populateWindowsFipsInfo(t transport.Transport) util.Diags {
 }
 
 func (f *FIPSInfo) toMapOfCtyValues() map[string]cty.Value {
-
 	if !f.known {
 		return map[string]cty.Value{
 			"fips_enabled": cty.NullVal(cty.Bool),
@@ -136,7 +135,6 @@ func (f *FIPSInfo) toMapOfCtyValues() map[string]cty.Value {
 // String returns a string representation of the FIPS information.
 // This is useful for logging or debugging purposes.
 func (f *FIPSInfo) String() string {
-
 	if !f.known {
 		return "fips_enabled: unknown on this OS"
 	}

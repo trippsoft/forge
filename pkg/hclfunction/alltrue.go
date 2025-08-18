@@ -21,9 +21,7 @@ var (
 			return rb.NotNull()
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-
 			result := cty.True
-
 			for iterator := args[0].ElementIterator(); iterator.Next(); {
 				_, value := iterator.Element()
 				if !value.IsKnown() {

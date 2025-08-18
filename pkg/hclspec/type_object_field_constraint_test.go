@@ -36,10 +36,9 @@ func TestFieldConstraintsValidate_Pass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			err := tt.constraints.Validate(tt.value)
 			if err != nil {
-				t.Errorf("expected no error, got %v", err)
+				t.Errorf("expected no error from Validate(), got %q", err.Error())
 			}
 		})
 	}
@@ -47,9 +46,10 @@ func TestFieldConstraintsValidate_Pass(t *testing.T) {
 
 func TestFieldConstraintsValidate_Empty(t *testing.T) {
 	constraints := FieldConstraints{}
+
 	err := constraints.Validate(cty.NilVal)
 	if err != nil {
-		t.Errorf("expected no error, got %v", err)
+		t.Errorf("expected no error from Validate(), got %q", err.Error())
 	}
 }
 
@@ -58,22 +58,23 @@ func TestFieldConstraintsValidate_Fail(t *testing.T) {
 		AllowedValues(cty.StringVal("value1"), cty.StringVal("value2")),
 	}
 
+	expectedError := `value "value3" is not in allowed values: "value1", "value2"`
 	err := constraints.Validate(cty.StringVal("value3"))
 	if err == nil {
-		t.Fatalf("expected error, got none")
+		t.Fatalf("expected error %q from Validate(), got none", expectedError)
 	}
 
-	expectedError := `value "value3" is not in allowed values: "value1", "value2"`
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from Validate(), got %q", expectedError, err.Error())
 	}
 }
 
 func TestFieldConstraintsValidate_Nil(t *testing.T) {
 	var constraints FieldConstraints
+
 	err := constraints.Validate(cty.NilVal)
 	if err != nil {
-		t.Errorf("expected no error, got %v", err)
+		t.Errorf("expected no error from Validate(), got %q", err.Error())
 	}
 }
 
@@ -86,7 +87,7 @@ func TestFieldConstraintsValidateSpec_Pass(t *testing.T) {
 
 	err := constraints.ValidateSpec(field)
 	if err != nil {
-		t.Errorf("expected no error from ValidateSpec(), got %v", err)
+		t.Errorf("expected no error from ValidateSpec(), got %q", err.Error())
 	}
 }
 
@@ -95,14 +96,14 @@ func TestFieldConstraintsValidateSpec_Fail(t *testing.T) {
 
 	field := OptionalField("test", String)
 
+	expectedError := "allowed values constraint has no values defined"
 	err := constraints.ValidateSpec(field)
 	if err == nil {
-		t.Fatalf("expected error, got none")
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
 	}
 
-	expectedError := "allowed values constraint has no values defined"
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -111,14 +112,14 @@ func TestFieldConstraintsValidateSpec_NilField(t *testing.T) {
 		AllowedValues(cty.StringVal("value1"), cty.StringVal("value2")),
 	}
 
+	expectedError := "field is nil"
 	err := constraints.ValidateSpec(nil)
 	if err == nil {
-		t.Fatalf("expected error, got none")
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
 	}
 
-	expectedError := "field is nil"
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -129,7 +130,7 @@ func TestFieldConstraintsValidateSpec_Empty(t *testing.T) {
 
 	err := constraints.ValidateSpec(field)
 	if err != nil {
-		t.Errorf("expected no error from ValidateSpec(), got %v", err)
+		t.Errorf("expected no error from ValidateSpec(), got %q", err.Error())
 	}
 }
 
@@ -140,7 +141,7 @@ func TestFieldConstraintsValidateSpec_Nil(t *testing.T) {
 
 	err := constraints.ValidateSpec(field)
 	if err != nil {
-		t.Errorf("expected no error from ValidateSpec(), got %v", err)
+		t.Errorf("expected no error from ValidateSpec(), got %q", err.Error())
 	}
 }
 
@@ -149,7 +150,7 @@ func TestAllowedValuesValidate_Pass(t *testing.T) {
 
 	err := constraints.Validate(cty.StringVal("value1"))
 	if err != nil {
-		t.Errorf("expected no error, got %v", err)
+		t.Errorf("expected no error from Validate(), got %q", err.Error())
 	}
 }
 
@@ -158,34 +159,35 @@ func TestAllowedValuesValidate_NullValue(t *testing.T) {
 
 	err := constraints.Validate(cty.NullVal(cty.String))
 	if err != nil {
-		t.Errorf("expected no error, got %v", err)
+		t.Errorf("expected no error from Validate(), got %q", err.Error())
 	}
 }
 
 func TestAllowedValuesValidate_Fail(t *testing.T) {
 	constraints := AllowedValues(cty.StringVal("value1"), cty.StringVal("value2"))
 
+	expectedError := `value "value3" is not in allowed values: "value1", "value2"`
 	err := constraints.Validate(cty.StringVal("value3"))
 	if err == nil {
-		t.Fatalf("expected error, got none")
+		t.Fatalf("expected error %q from Validate(), got none", expectedError)
 	}
 
-	expectedError := `value "value3" is not in allowed values: "value1", "value2"`
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from Validate(), got %q", expectedError, err.Error())
 	}
 }
 
 func TestAllowedValuesValidate_Nil(t *testing.T) {
 	var constraint *allowedValuesConstraint
-	err := constraint.Validate(cty.NilVal)
-	if err == nil {
-		t.Fatalf("expected error, got none")
-	}
 
 	expectedError := "allowed values constraint is nil"
+	err := constraint.Validate(cty.NilVal)
+	if err == nil {
+		t.Fatalf("expected error %q from Validate(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from Validate(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -196,33 +198,35 @@ func TestAllowedValuesValidateSpec_Pass(t *testing.T) {
 
 	err := constraint.ValidateSpec(field)
 	if err != nil {
-		t.Errorf("expected no error, got %v", err)
+		t.Errorf("expected no error from ValidateSpec(), got %q", err.Error())
 	}
 }
 
 func TestAllowedValuesValidateSpec_EmptyValues(t *testing.T) {
 	constraint := AllowedValues()
-	err := constraint.ValidateSpec(nil)
-	if err == nil {
-		t.Fatalf("expected error, got none")
-	}
 
 	expectedError := "allowed values constraint has no values defined"
+	err := constraint.ValidateSpec(nil)
+	if err == nil {
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
 func TestAllowedValuesValidateSpec_NilField(t *testing.T) {
 	constraint := AllowedValues(cty.StringVal("value1"), cty.StringVal("value2"))
-	err := constraint.ValidateSpec(nil)
-	if err == nil {
-		t.Fatalf("expected error, got none")
-	}
 
 	expectedError := "field is nil"
+	err := constraint.ValidateSpec(nil)
+	if err == nil {
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -232,7 +236,7 @@ func TestAllowedValuesValidateSpec_InvalidFieldType(t *testing.T) {
 
 	err := constraint.ValidateSpec(field)
 	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+		t.Fatalf("expected no error from ValidateSpec(), got %q", err.Error())
 	}
 }
 
@@ -240,14 +244,14 @@ func TestAllowedValuesValidateSpec_ValueOfWrongType(t *testing.T) {
 	constraint := AllowedValues(cty.StringVal("value1"))
 	field := OptionalField("test", Number)
 
+	expectedError := `allowed value cty.StringVal("value1") does not match field type number`
 	err := constraint.ValidateSpec(field)
 	if err == nil {
-		t.Fatalf("expected error, got none")
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
 	}
 
-	expectedError := `allowed value cty.StringVal("value1") does not match field type number`
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
@@ -255,26 +259,27 @@ func TestAllowedValuesValidateSpec_InvalidValue(t *testing.T) {
 	constraint := AllowedValues(cty.StringVal("not-a-duration"))
 	field := OptionalField("test", Duration)
 
+	expectedError := `allowed value cty.StringVal("not-a-duration") is invalid: field "test" validation failed: time: invalid duration "not-a-duration"`
 	err := constraint.ValidateSpec(field)
 	if err == nil {
-		t.Fatalf("expected error, got none")
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
 	}
 
-	expectedError := `allowed value cty.StringVal("not-a-duration") is invalid: field "test" validation failed: time: invalid duration "not-a-duration"`
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
 func TestAllowedValuesValidateSpec_Nil(t *testing.T) {
 	var constraint *allowedValuesConstraint
-	err := constraint.ValidateSpec(nil)
-	if err == nil {
-		t.Fatalf("expected error, got none")
-	}
 
 	expectedError := "allowed values constraint is nil"
+	err := constraint.ValidateSpec(nil)
+	if err == nil {
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }

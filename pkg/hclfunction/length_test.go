@@ -78,12 +78,9 @@ func getLengthTestCases() []struct {
 }
 
 func TestLength(t *testing.T) {
-
 	tests := getLengthTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			actual, err := Length(tt.input)
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
@@ -96,10 +93,8 @@ func TestLength(t *testing.T) {
 
 func TestLengthFunc(t *testing.T) {
 	tests := getLengthTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			actual, err := LengthFunc.Call([]cty.Value{tt.input})
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)

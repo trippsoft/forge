@@ -16,21 +16,21 @@ func TestSensitiveStringCtyType(t *testing.T) {
 	expected := cty.String
 	actual := SensitiveString.CtyType()
 	if actual != expected {
-		t.Errorf("expected %q, got %q", expected.FriendlyName(), actual.FriendlyName())
+		t.Errorf("expected %q from CtyType(), got %q", expected.FriendlyName(), actual.FriendlyName())
 	}
 }
 
 func TestSensitiveStringCtyType_Nil(t *testing.T) {
 	var sensitiveString *sensitiveStringType
+
 	expected := cty.String
 	actual := sensitiveString.CtyType()
 	if actual != expected {
-		t.Errorf("expected %q, got %q", expected.FriendlyName(), actual.FriendlyName())
+		t.Errorf("expected %q from CtyType(), got %q", expected.FriendlyName(), actual.FriendlyName())
 	}
 }
 
 func TestSensitiveStringConvert_Success(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		input    cty.Value
@@ -88,7 +88,6 @@ func TestSensitiveStringConvert_Success(t *testing.T) {
 }
 
 func TestSensitiveStringConvert_UnknownValue(t *testing.T) {
-
 	tests := []struct {
 		name  string
 		input cty.Value
@@ -105,14 +104,12 @@ func TestSensitiveStringConvert_UnknownValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			expectedError := "cannot convert unknown value"
-			verifyFailedConversion(t, SensitiveString, tt.input, expectedError)
+			verifyFailedConversion(t, SensitiveString, tt.input, "cannot convert unknown value")
 		})
 	}
 }
 
 func TestSensitiveStringConvert_InvalidValues(t *testing.T) {
-
 	tests := []struct {
 		name  string
 		input cty.Value
@@ -170,11 +167,11 @@ func TestSensitiveStringConvert_InvalidValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			expectedError := fmt.Sprintf(
 				"cannot convert %q to %q",
 				tt.input.Type().FriendlyName(),
-				cty.String.FriendlyName())
+				cty.String.FriendlyName(),
+			)
 
 			verifyFailedConversion(t, SensitiveString, tt.input, expectedError)
 		})
@@ -183,23 +180,23 @@ func TestSensitiveStringConvert_InvalidValues(t *testing.T) {
 
 func TestSensitiveStringConvert_Nil(t *testing.T) {
 	var sensitiveString *sensitiveStringType
+
+	expectedError := "sensitive string type is nil"
 	converted, err := sensitiveString.Convert(cty.StringVal("test"))
 	if err == nil {
-		t.Fatalf("expected error, got nil")
+		t.Fatalf("expected error %q from Convert(), got none", expectedError)
 	}
 
 	if !converted.Equals(cty.NilVal).True() {
-		t.Errorf("expected nil, got %q", util.FormatCtyValueToString(converted, 0, 0))
+		t.Errorf("expected nil value from Convert(), got %s", util.FormatCtyValueToString(converted, 0, 0))
 	}
 
-	expectedError := "sensitive string type is nil"
 	if err.Error() != expectedError {
 		t.Errorf("expected error %q, got %q", expectedError, err.Error())
 	}
 }
 
 func TestSensitiveStringValidate_Pass(t *testing.T) {
-
 	tests := []struct {
 		name  string
 		input cty.Value
@@ -236,19 +233,20 @@ func TestSensitiveStringValidate_Pass(t *testing.T) {
 func TestSensitiveStringValidateSpec_Pass(t *testing.T) {
 	err := SensitiveString.ValidateSpec()
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("expected no error from ValidateSpec(), got %q", err.Error())
 	}
 }
 
 func TestSensitiveStringValidateSpec_Nil(t *testing.T) {
 	var sensitiveString *sensitiveStringType
-	err := sensitiveString.ValidateSpec()
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
 
 	expectedError := "sensitive string type is nil"
+	err := sensitiveString.ValidateSpec()
+	if err == nil {
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }

@@ -27,7 +27,6 @@ func TestDurationCtyType_Nil(t *testing.T) {
 }
 
 func TestDurationConvert_Success(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		input    cty.Value
@@ -68,7 +67,6 @@ func TestDurationConvert_Success(t *testing.T) {
 }
 
 func TestDurationConvert_UnknownValue(t *testing.T) {
-
 	tests := []struct {
 		name  string
 		input cty.Value
@@ -149,11 +147,11 @@ func TestDurationConvert_InvalidValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			expectedError := fmt.Sprintf(
 				"cannot convert %q to %q",
 				tt.input.Type().FriendlyName(),
-				cty.String.FriendlyName())
+				cty.String.FriendlyName(),
+			)
 
 			verifyFailedConversion(t, Duration, tt.input, expectedError)
 		})
@@ -161,7 +159,6 @@ func TestDurationConvert_InvalidValues(t *testing.T) {
 }
 
 func TestDurationConvert_Nil(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		input    cty.Value
@@ -198,7 +195,6 @@ func TestDurationConvert_Nil(t *testing.T) {
 }
 
 func TestDurationValidate_Pass(t *testing.T) {
-
 	tests := []struct {
 		name  string
 		input cty.Value
@@ -225,7 +221,6 @@ func TestDurationValidate_Pass(t *testing.T) {
 }
 
 func TestDurationValidate_NonDurationStringValue(t *testing.T) {
-
 	tests := []struct {
 		name          string
 		input         cty.Value
@@ -253,19 +248,20 @@ func TestDurationValidate_NonDurationStringValue(t *testing.T) {
 func TestDurationValidateSpec_Pass(t *testing.T) {
 	err := Duration.ValidateSpec()
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("expected no error from ValidateSpec(), got error %q", err.Error())
 	}
 }
 
 func TestDurationValidateSpec_Nil(t *testing.T) {
 	var nilDuration *durationType
-	err := nilDuration.ValidateSpec()
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
 
 	expectedError := "duration type is nil"
+	err := nilDuration.ValidateSpec()
+	if err == nil {
+		t.Errorf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected error %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }

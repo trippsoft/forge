@@ -8,10 +8,9 @@ import (
 )
 
 func TestHostInfo_Populate_NilTransport(t *testing.T) {
-
 	hostInfo := NewHostInfo()
-	err := hostInfo.Populate(nil)
 
+	err := hostInfo.Populate(nil)
 	if err == nil {
 		t.Fatal("expected error for nil transport, got nil")
 	}
@@ -23,7 +22,6 @@ func TestHostInfo_Populate_NilTransport(t *testing.T) {
 }
 
 func TestHostInfo_ToMapOfCtyValues(t *testing.T) {
-
 	hostInfo := NewHostInfo()
 
 	osValues := hostInfo.OSInfo().toMapOfCtyValues()
@@ -39,7 +37,6 @@ func TestHostInfo_ToMapOfCtyValues(t *testing.T) {
 		len(userValues)
 
 	values := hostInfo.ToMapOfCtyValues()
-
 	if len(values) != totalLength {
 		t.Errorf("expected %d values, got %d", totalLength, len(values))
 	}

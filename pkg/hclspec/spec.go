@@ -62,7 +62,6 @@ func (s *Spec) Validate(values map[string]cty.Value) error {
 //
 // This function checks that all of the components of the spec are valid.
 func (s *Spec) ValidateSpec() error {
-
 	if s.object == nil {
 		return fmt.Errorf("object type is nil")
 	}

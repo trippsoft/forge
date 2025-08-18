@@ -4,20 +4,19 @@
 package hclspec
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/zclconf/go-cty/cty"
 )
 
-func createMockObjectType() *objectType {
-	return Object(
+var (
+	mockObjectType = Object(
 		RequiredField("field1", String),
 		OptionalField("field2", String),
 		OptionalField("field3", Number),
 		OptionalField("field4", Bool),
 	)
-}
+)
 
 func TestObjectConstraintsValidate_Pass(t *testing.T) {
 	tests := []struct {
@@ -59,7 +58,7 @@ func TestObjectConstraintsValidate_Pass(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.constraints.Validate(tt.values)
 			if err != nil {
-				t.Fatalf("expected no error from Validate(), got %v", err)
+				t.Fatalf("expected no error from Validate(), got %q", err.Error())
 			}
 		})
 	}
@@ -81,8 +80,9 @@ func TestObjectConstraintsValidate_Fail(t *testing.T) {
 			values: map[string]cty.Value{
 				"field1": cty.StringVal("value1"),
 				"field2": cty.StringVal("value2"),
+				"field3": cty.StringVal("value3"),
 			},
-			expectedError: "mutually exclusive fields",
+			expectedError: `validation failed: mutually exclusive fields "field1", "field2" are all present`,
 		},
 		{
 			name: "second constraint fails",
@@ -93,20 +93,19 @@ func TestObjectConstraintsValidate_Fail(t *testing.T) {
 			values: map[string]cty.Value{
 				"field1": cty.StringVal("value1"),
 			},
-			expectedError: "at least one of the fields",
+			expectedError: `validation failed: at least one of the fields "field3", "field4" is required`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			err := tt.constraints.Validate(tt.values)
 			if err == nil {
-				t.Fatalf("expected error from Validate() to end with %q, got none", tt.expectedError)
+				t.Fatalf("expected error %q from Validate(), got none", tt.expectedError)
 			}
 
-			if strings.HasSuffix(err.Error(), tt.expectedError) {
-				t.Errorf("expected error from Validate() to end with %q, got %q", tt.expectedError, err.Error())
+			if err.Error() != tt.expectedError {
+				t.Errorf("expected error %q from Validate(), got %q", tt.expectedError, err.Error())
 			}
 		})
 	}
@@ -132,7 +131,7 @@ func TestObjectConstraintsValidateSpec_Pass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			object := createMockObjectType()
+			object := mockObjectType
 			err := tt.constraints.ValidateSpec(object)
 			if err != nil {
 				t.Fatalf("expected no error from Validate(), got %v", err)
@@ -172,7 +171,7 @@ func TestObjectConstraintsValidateSpec_Fail(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.constraints.ValidateSpec(createMockObjectType())
+			err := tt.constraints.ValidateSpec(mockObjectType)
 			if err == nil {
 				t.Fatalf("expected error from Validate() to be %q, got none", tt.expectedError)
 			}
@@ -225,7 +224,7 @@ func TestMutuallyExclusiveValidate_Pass(t *testing.T) {
 			constraint := MutuallyExclusive(tt.fields...)
 			err := constraint.Validate(tt.values)
 			if err != nil {
-				t.Fatalf("expected no error, got %v", err)
+				t.Fatalf("expected no error from Validate(), got %q", err.Error())
 			}
 		})
 	}
@@ -262,6 +261,7 @@ func TestMutuallyExclusiveValidate_MultipleFieldsPresent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			constraint := MutuallyExclusive(tt.fields...)
+
 			err := constraint.Validate(tt.values)
 			if err == nil {
 				t.Fatalf("expected error %q from Validate(), got none", tt.expectedError)
@@ -276,6 +276,7 @@ func TestMutuallyExclusiveValidate_MultipleFieldsPresent(t *testing.T) {
 
 func TestMutuallyExclusiveValidate_Nil(t *testing.T) {
 	var constraint *mutuallyExclusiveGroup
+
 	err := constraint.Validate(map[string]cty.Value{})
 	expectedError := "mutually exclusive group is nil"
 	if err == nil {
@@ -288,9 +289,6 @@ func TestMutuallyExclusiveValidate_Nil(t *testing.T) {
 }
 
 func TestMutuallyExclusiveValidateSpec_Pass(t *testing.T) {
-
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name   string
 		fields []string
@@ -307,21 +305,17 @@ func TestMutuallyExclusiveValidateSpec_Pass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := MutuallyExclusive(tt.fields...)
-			err := constraint.ValidateSpec(mockType)
 
+			err := constraint.ValidateSpec(mockObjectType)
 			if err != nil {
-				t.Fatalf("expected no error from ValidateSpec(), got %v", err)
+				t.Fatalf("expected no error from ValidateSpec(), got %q", err.Error())
 			}
 		})
 	}
 }
 
 func TestMutuallyExclusiveValidateSpec_FieldNotDefined(t *testing.T) {
-
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name          string
 		fields        []string
@@ -341,10 +335,9 @@ func TestMutuallyExclusiveValidateSpec_FieldNotDefined(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := MutuallyExclusive(tt.fields...)
-			err := constraint.ValidateSpec(mockType)
 
+			err := constraint.ValidateSpec(mockObjectType)
 			if err == nil {
 				t.Fatalf("expected error %q from ValidateSpec(), got none", tt.expectedError)
 			}
@@ -358,8 +351,9 @@ func TestMutuallyExclusiveValidateSpec_FieldNotDefined(t *testing.T) {
 
 func TestMutuallyExclusiveValidateSpec_Nil(t *testing.T) {
 	var constraint *mutuallyExclusiveGroup
-	err := constraint.ValidateSpec(createMockObjectType())
+
 	expectedError := "mutually exclusive group is nil"
+	err := constraint.ValidateSpec(mockObjectType)
 	if err == nil {
 		t.Fatalf("expected error %q from Validate(), got none", expectedError)
 	}
@@ -370,7 +364,6 @@ func TestMutuallyExclusiveValidateSpec_Nil(t *testing.T) {
 }
 
 func TestRequiredTogetherValidate_Pass(t *testing.T) {
-
 	tests := []struct {
 		name   string
 		fields []string
@@ -402,12 +395,11 @@ func TestRequiredTogetherValidate_Pass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := RequiredTogether(tt.fields...)
-			err := constraint.Validate(tt.values)
 
+			err := constraint.Validate(tt.values)
 			if err != nil {
-				t.Fatalf("expected no error from Validate(), got %v", err)
+				t.Fatalf("expected no error from Validate(), got %q", err.Error())
 			}
 		})
 	}
@@ -426,7 +418,7 @@ func TestRequiredTogetherValidate_PartialFieldsPresent(t *testing.T) {
 			values: map[string]cty.Value{
 				"field1": cty.StringVal("value1"),
 			},
-			expectedError: `fields ["field1" "field2"] are required together, but only ["field1"] is/are present`,
+			expectedError: `fields "field1", "field2" are required together, but only "field1" is present`,
 		},
 		{
 			name:   "only last field present",
@@ -434,7 +426,7 @@ func TestRequiredTogetherValidate_PartialFieldsPresent(t *testing.T) {
 			values: map[string]cty.Value{
 				"field3": cty.StringVal("value3"),
 			},
-			expectedError: `fields ["field1" "field2" "field3"] are required together, but only ["field3"] is/are present`,
+			expectedError: `fields "field1", "field2", "field3" are required together, but only "field3" is present`,
 		},
 		{
 			name:   "some fields present",
@@ -443,7 +435,7 @@ func TestRequiredTogetherValidate_PartialFieldsPresent(t *testing.T) {
 				"field1": cty.StringVal("value1"),
 				"field3": cty.StringVal("value3"),
 			},
-			expectedError: `fields ["field1" "field2" "field3"] are required together, but only ["field1" "field3"] is/are present`,
+			expectedError: `fields "field1", "field2", "field3" are required together, but only "field1", "field3" is present`,
 		},
 		{
 			name:   "some fields present with null field ignored",
@@ -453,7 +445,7 @@ func TestRequiredTogetherValidate_PartialFieldsPresent(t *testing.T) {
 				"field2": cty.StringVal("value2"),
 				"field3": cty.NullVal(cty.String),
 			},
-			expectedError: `fields ["field1" "field2" "field3"] are required together, but only ["field1" "field2"] is/are present`,
+			expectedError: `fields "field1", "field2", "field3" are required together, but only "field1", "field2" is present`,
 		},
 		{
 			name:   "some fields present with unknown field ignored",
@@ -463,16 +455,15 @@ func TestRequiredTogetherValidate_PartialFieldsPresent(t *testing.T) {
 				"field2": cty.StringVal("value2"),
 				"field3": cty.UnknownVal(cty.String),
 			},
-			expectedError: `fields ["field1" "field2" "field3"] are required together, but only ["field1" "field2"] is/are present`,
+			expectedError: `fields "field1", "field2", "field3" are required together, but only "field1", "field2" is present`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := RequiredTogether(tt.fields...)
-			err := constraint.Validate(tt.values)
 
+			err := constraint.Validate(tt.values)
 			if err == nil {
 				t.Fatalf("expected error %q from Validate(), got none", tt.expectedError)
 			}
@@ -486,8 +477,9 @@ func TestRequiredTogetherValidate_PartialFieldsPresent(t *testing.T) {
 
 func TestRequiredTogetherValidate_Nil(t *testing.T) {
 	var constraint *requiredTogetherGroup
-	err := constraint.Validate(map[string]cty.Value{})
+
 	expectedError := "required together group is nil"
+	err := constraint.Validate(map[string]cty.Value{})
 	if err == nil {
 		t.Fatalf("expected error %q from Validate(), got none", expectedError)
 	}
@@ -498,8 +490,6 @@ func TestRequiredTogetherValidate_Nil(t *testing.T) {
 }
 
 func TestRequiredTogetherValidateSpec_Pass(t *testing.T) {
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name   string
 		fields []string
@@ -516,21 +506,17 @@ func TestRequiredTogetherValidateSpec_Pass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := RequiredTogether(tt.fields...)
-			err := constraint.ValidateSpec(mockType)
 
+			err := constraint.ValidateSpec(mockObjectType)
 			if err != nil {
-				t.Fatalf("expected no error from ValidateSpec(), got %v", err)
+				t.Fatalf("expected no error from ValidateSpec(), got %q", err.Error())
 			}
 		})
 	}
 }
 
 func TestRequiredTogetherValidateSpec_FieldNotDefined(t *testing.T) {
-
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name          string
 		fields        []string
@@ -550,10 +536,9 @@ func TestRequiredTogetherValidateSpec_FieldNotDefined(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := RequiredTogether(tt.fields...)
-			err := constraint.ValidateSpec(mockType)
 
+			err := constraint.ValidateSpec(mockObjectType)
 			if err == nil {
 				t.Fatalf("expected error %q from ValidateSpec(), got none", tt.expectedError)
 			}
@@ -567,8 +552,9 @@ func TestRequiredTogetherValidateSpec_FieldNotDefined(t *testing.T) {
 
 func TestRequiredTogetherValidateSpec_Nil(t *testing.T) {
 	var constraint *requiredTogetherGroup
-	err := constraint.ValidateSpec(createMockObjectType())
+
 	expectedError := "required together group is nil"
+	err := constraint.ValidateSpec(mockObjectType)
 	if err == nil {
 		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
 	}
@@ -579,7 +565,6 @@ func TestRequiredTogetherValidateSpec_Nil(t *testing.T) {
 }
 
 func TestRequiredOneOfValidate_Pass(t *testing.T) {
-
 	tests := []struct {
 		name   string
 		fields []string
@@ -627,19 +612,17 @@ func TestRequiredOneOfValidate_Pass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := RequiredOneOf(tt.fields...)
-			err := constraint.Validate(tt.values)
 
+			err := constraint.Validate(tt.values)
 			if err != nil {
-				t.Fatalf("expected no error from Validate(), got %v", err)
+				t.Fatalf("expected no error from Validate(), got %q", err.Error())
 			}
 		})
 	}
 }
 
 func TestRequiredOneOfValidate_NoFieldsPresent(t *testing.T) {
-
 	tests := []struct {
 		name          string
 		fields        []string
@@ -650,7 +633,7 @@ func TestRequiredOneOfValidate_NoFieldsPresent(t *testing.T) {
 			name:          "no fields in values",
 			fields:        []string{"field1", "field2"},
 			values:        map[string]cty.Value{},
-			expectedError: `at least one of the fields ["field1" "field2"] is required`,
+			expectedError: `at least one of the fields "field1", "field2" is required`,
 		},
 		{
 			name:   "only null values",
@@ -659,7 +642,7 @@ func TestRequiredOneOfValidate_NoFieldsPresent(t *testing.T) {
 				"field1": cty.NullVal(cty.String),
 				"field2": cty.NullVal(cty.String),
 			},
-			expectedError: `at least one of the fields ["field1" "field2"] is required`,
+			expectedError: `at least one of the fields "field1", "field2" is required`,
 		},
 		{
 			name:   "only unknown values",
@@ -668,16 +651,15 @@ func TestRequiredOneOfValidate_NoFieldsPresent(t *testing.T) {
 				"field1": cty.UnknownVal(cty.String),
 				"field2": cty.UnknownVal(cty.String),
 			},
-			expectedError: `at least one of the fields ["field1" "field2"] is required`,
+			expectedError: `at least one of the fields "field1", "field2" is required`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := RequiredOneOf(tt.fields...)
-			err := constraint.Validate(tt.values)
 
+			err := constraint.Validate(tt.values)
 			if err == nil {
 				t.Fatalf("expected error %q from Validate(), got none", tt.expectedError)
 			}
@@ -690,8 +672,9 @@ func TestRequiredOneOfValidate_NoFieldsPresent(t *testing.T) {
 
 func TestRequiredOneOfValidate_Nil(t *testing.T) {
 	var constraint *requiredOneOfGroup
-	err := constraint.Validate(map[string]cty.Value{})
+
 	expectedError := "required one of group is nil"
+	err := constraint.Validate(map[string]cty.Value{})
 	if err == nil {
 		t.Fatalf("expected error %q from Validate(), got none", expectedError)
 	}
@@ -702,9 +685,6 @@ func TestRequiredOneOfValidate_Nil(t *testing.T) {
 }
 
 func TestRequiredOneOfValidateSpec_Pass(t *testing.T) {
-
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name   string
 		fields []string
@@ -721,21 +701,17 @@ func TestRequiredOneOfValidateSpec_Pass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := RequiredOneOf(tt.fields...)
-			err := constraint.ValidateSpec(mockType)
 
+			err := constraint.ValidateSpec(mockObjectType)
 			if err != nil {
-				t.Fatalf("expected no error, got %v", err)
+				t.Fatalf("expected no error, got %q", err.Error())
 			}
 		})
 	}
 }
 
 func TestRequiredOneOfValidateSpec_FieldNotDefined(t *testing.T) {
-
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name          string
 		fields        []string
@@ -755,13 +731,13 @@ func TestRequiredOneOfValidateSpec_FieldNotDefined(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := RequiredOneOf(tt.fields...)
-			err := constraint.ValidateSpec(mockType)
 
+			err := constraint.ValidateSpec(mockObjectType)
 			if err == nil {
 				t.Fatalf("expected error %q from ValidateSpec(), got none", tt.expectedError)
 			}
+
 			if err.Error() != tt.expectedError {
 				t.Errorf("expected error %q from ValidateSpec(), got %q", tt.expectedError, err.Error())
 			}
@@ -771,8 +747,9 @@ func TestRequiredOneOfValidateSpec_FieldNotDefined(t *testing.T) {
 
 func TestRequiredOneOfValidateSpec_Nil(t *testing.T) {
 	var constraint *requiredOneOfGroup
-	err := constraint.ValidateSpec(createMockObjectType())
+
 	expectedError := "required one of group is nil"
+	err := constraint.ValidateSpec(mockObjectType)
 	if err == nil {
 		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
 	}
@@ -783,7 +760,6 @@ func TestRequiredOneOfValidateSpec_Nil(t *testing.T) {
 }
 
 func TestFieldPresentIsMet(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		field    string
@@ -824,12 +800,11 @@ func TestFieldPresentIsMet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			condition := FieldNotPresent(tt.field)
-			result := condition.IsMet(tt.values)
 
-			if result != tt.expected {
-				t.Errorf("expected IsMet() to return %v, got %v", tt.expected, result)
+			actual := condition.IsMet(tt.values)
+			if actual != tt.expected {
+				t.Errorf("expected IsMet() to return %t, got %t", tt.expected, actual)
 			}
 		})
 	}
@@ -837,10 +812,10 @@ func TestFieldPresentIsMet(t *testing.T) {
 
 func TestFieldPresentIsMet_Nil(t *testing.T) {
 	var condition *fieldPresentCondition
-	result := condition.IsMet(map[string]cty.Value{})
 
-	if result != false {
-		t.Errorf("expected IsMet() to return %v, got %v", false, result)
+	actual := condition.IsMet(map[string]cty.Value{})
+	if actual != false {
+		t.Errorf("expected IsMet() to return %t, got %t", false, actual)
 	}
 }
 
@@ -866,7 +841,7 @@ func TestFieldPresentDescription(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			actual := tt.condition.Description()
 			if actual != tt.expected {
-				t.Errorf("expected %q, got %q", tt.expected, actual)
+				t.Errorf("expected Description() to return %q, got %q", tt.expected, actual)
 			}
 		})
 	}
@@ -874,16 +849,14 @@ func TestFieldPresentDescription(t *testing.T) {
 
 func TestFieldPresentDescription_Nil(t *testing.T) {
 	var condition *fieldPresentCondition
+
 	actual := condition.Description()
 	if actual != "" {
-		t.Errorf("expected empty string, got %q", actual)
+		t.Errorf("expected empty string from Description(), got %q", actual)
 	}
 }
 
 func TestFieldPresentValidateSpec_Pass(t *testing.T) {
-
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name  string
 		field string
@@ -900,21 +873,17 @@ func TestFieldPresentValidateSpec_Pass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			condition := FieldNotPresent(tt.field)
-			err := condition.ValidateSpec(mockType)
 
+			err := condition.ValidateSpec(mockObjectType)
 			if err != nil {
-				t.Fatalf("expected no error from ValidateSpec(), got %v", err)
+				t.Fatalf("expected no error from ValidateSpec(), got %q", err.Error())
 			}
 		})
 	}
 }
 
 func TestFieldPresentValidateSpec_FieldNotDefined(t *testing.T) {
-
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name          string
 		field         string
@@ -929,10 +898,9 @@ func TestFieldPresentValidateSpec_FieldNotDefined(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			condition := FieldNotPresent(tt.field)
-			err := condition.ValidateSpec(mockType)
 
+			err := condition.ValidateSpec(mockObjectType)
 			if err == nil {
 				t.Fatalf("expected error %q from ValidateSpec(), got none", tt.expectedError)
 			}
@@ -946,8 +914,9 @@ func TestFieldPresentValidateSpec_FieldNotDefined(t *testing.T) {
 
 func TestFieldPresentValidateSpec_Nil(t *testing.T) {
 	var condition *fieldPresentCondition
-	err := condition.ValidateSpec(createMockObjectType())
+
 	expectedError := "field present condition is nil"
+	err := condition.ValidateSpec(mockObjectType)
 	if err == nil {
 		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
 	}
@@ -958,7 +927,6 @@ func TestFieldPresentValidateSpec_Nil(t *testing.T) {
 }
 
 func TestFieldNotPresentIsMet(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		field    string
@@ -1007,12 +975,11 @@ func TestFieldNotPresentIsMet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			condition := FieldPresent(tt.field)
-			result := condition.IsMet(tt.values)
 
-			if result != tt.expected {
-				t.Errorf("expected IsMet() to return %v, got %v", tt.expected, result)
+			actual := condition.IsMet(tt.values)
+			if actual != tt.expected {
+				t.Errorf("expected IsMet() to return %t, got %t", tt.expected, actual)
 			}
 		})
 	}
@@ -1020,10 +987,10 @@ func TestFieldNotPresentIsMet(t *testing.T) {
 
 func TestFieldNotPresentIsMet_Nil(t *testing.T) {
 	var condition *fieldNotPresentCondition
-	result := condition.IsMet(map[string]cty.Value{})
 
-	if result != false {
-		t.Errorf("expected IsMet() to return %v, got %v", false, result)
+	actual := condition.IsMet(map[string]cty.Value{})
+	if actual != false {
+		t.Errorf("expected IsMet() to return %t, got %t", false, actual)
 	}
 }
 
@@ -1049,7 +1016,7 @@ func TestFieldNotPresentDescription(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			actual := tt.condition.Description()
 			if actual != tt.expected {
-				t.Errorf("expected %q, got %q", tt.expected, actual)
+				t.Errorf("expected Description() to return %q, got %q", tt.expected, actual)
 			}
 		})
 	}
@@ -1059,14 +1026,11 @@ func TestFieldNotPresentDescription_Nil(t *testing.T) {
 	var condition *fieldNotPresentCondition
 	actual := condition.Description()
 	if actual != "" {
-		t.Errorf("expected empty string, got %q", actual)
+		t.Errorf("expected empty string from Description(), got %q", actual)
 	}
 }
 
 func TestFieldNotPresentValidateSpec_Pass(t *testing.T) {
-
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name  string
 		field string
@@ -1083,21 +1047,17 @@ func TestFieldNotPresentValidateSpec_Pass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			condition := FieldPresent(tt.field)
-			err := condition.ValidateSpec(mockType)
 
+			err := condition.ValidateSpec(mockObjectType)
 			if err != nil {
-				t.Fatalf("expected no error from ValidateSpec(), got %v", err)
+				t.Fatalf("expected no error from ValidateSpec(), got %q", err.Error())
 			}
 		})
 	}
 }
 
 func TestFieldNotPresentValidateSpec_FieldNotDefined(t *testing.T) {
-
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name          string
 		field         string
@@ -1112,10 +1072,9 @@ func TestFieldNotPresentValidateSpec_FieldNotDefined(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			condition := FieldPresent(tt.field)
-			err := condition.ValidateSpec(mockType)
 
+			err := condition.ValidateSpec(mockObjectType)
 			if err == nil {
 				t.Fatalf("expected error %q from ValidateSpec(), got none", tt.expectedError)
 			}
@@ -1129,8 +1088,9 @@ func TestFieldNotPresentValidateSpec_FieldNotDefined(t *testing.T) {
 
 func TestFieldNotPresentValidateSpec_Nil(t *testing.T) {
 	var condition *fieldNotPresentCondition
-	err := condition.ValidateSpec(createMockObjectType())
+
 	expectedError := "field not present condition is nil"
+	err := condition.ValidateSpec(mockObjectType)
 	if err == nil {
 		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
 	}
@@ -1141,7 +1101,6 @@ func TestFieldNotPresentValidateSpec_Nil(t *testing.T) {
 }
 
 func TestFieldEqualsIsMet(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		field    string
@@ -1223,12 +1182,11 @@ func TestFieldEqualsIsMet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			condition := FieldEquals(tt.field, tt.value)
-			result := condition.IsMet(tt.values)
 
-			if result != tt.expected {
-				t.Errorf("expected IsMet() to return %v, got %v", tt.expected, result)
+			actual := condition.IsMet(tt.values)
+			if actual != tt.expected {
+				t.Errorf("expected IsMet() to return %t, got %t", tt.expected, actual)
 			}
 		})
 	}
@@ -1236,10 +1194,10 @@ func TestFieldEqualsIsMet(t *testing.T) {
 
 func TestFieldEqualsIsMet_Nil(t *testing.T) {
 	var condition *fieldEqualsCondition
-	result := condition.IsMet(map[string]cty.Value{})
 
-	if result != false {
-		t.Errorf("expected IsMet() to return %v, got %v", false, result)
+	actual := condition.IsMet(map[string]cty.Value{})
+	if actual != false {
+		t.Errorf("expected IsMet() to return %t, got %t", false, actual)
 	}
 }
 
@@ -1265,7 +1223,7 @@ func TestFieldEqualsDescription(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			actual := tt.condition.Description()
 			if actual != tt.expected {
-				t.Errorf("expected %q, got %q", tt.expected, actual)
+				t.Errorf("expected Description() to return %q, got %q", tt.expected, actual)
 			}
 		})
 	}
@@ -1273,16 +1231,14 @@ func TestFieldEqualsDescription(t *testing.T) {
 
 func TestFieldEqualsDescription_Nil(t *testing.T) {
 	var condition *fieldEqualsCondition
+
 	actual := condition.Description()
 	if actual != "" {
-		t.Errorf("expected empty string, got %q", actual)
+		t.Errorf("expected empty string from Description(), got %q", actual)
 	}
 }
 
 func TestFieldEqualsValidateSpec_Pass(t *testing.T) {
-
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name  string
 		field string
@@ -1302,21 +1258,17 @@ func TestFieldEqualsValidateSpec_Pass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			condition := FieldEquals(tt.field, tt.value)
-			err := condition.ValidateSpec(mockType)
 
+			err := condition.ValidateSpec(mockObjectType)
 			if err != nil {
-				t.Fatalf("expected no error from ValidateSpec(), got %v", err)
+				t.Fatalf("expected no error from ValidateSpec(), got %q", err.Error())
 			}
 		})
 	}
 }
 
 func TestFieldEqualsValidateSpec_FieldNotDefined(t *testing.T) {
-
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name          string
 		field         string
@@ -1333,10 +1285,9 @@ func TestFieldEqualsValidateSpec_FieldNotDefined(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			condition := FieldEquals(tt.field, tt.value)
-			err := condition.ValidateSpec(mockType)
 
+			err := condition.ValidateSpec(mockObjectType)
 			if err == nil {
 				t.Fatalf("expected error %q from ValidateSpec(), got none", tt.expectedError)
 			}
@@ -1350,8 +1301,9 @@ func TestFieldEqualsValidateSpec_FieldNotDefined(t *testing.T) {
 
 func TestFieldEqualsValidateSpec_Nil(t *testing.T) {
 	var condition *fieldEqualsCondition
-	err := condition.ValidateSpec(createMockObjectType())
+
 	expectedError := "field equals condition is nil"
+	err := condition.ValidateSpec(mockObjectType)
 	if err == nil {
 		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
 	}
@@ -1362,7 +1314,6 @@ func TestFieldEqualsValidateSpec_Nil(t *testing.T) {
 }
 
 func TestConditionalConstraintValidate_Pass(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		condition  ObjectCondition
@@ -1390,19 +1341,17 @@ func TestConditionalConstraintValidate_Pass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := ConditionalConstraint(tt.condition, tt.constraint)
-			err := constraint.Validate(tt.values)
 
+			err := constraint.Validate(tt.values)
 			if err != nil {
-				t.Fatalf("expected no error from Validate(), got %v", err)
+				t.Fatalf("expected no error from Validate(), got %q", err.Error())
 			}
 		})
 	}
 }
 
 func TestConditionalConstraintValidate_ConditionMetConstraintFails(t *testing.T) {
-
 	tests := []struct {
 		name          string
 		condition     ObjectCondition
@@ -1417,7 +1366,7 @@ func TestConditionalConstraintValidate_ConditionMetConstraintFails(t *testing.T)
 			values: map[string]cty.Value{
 				"field1": cty.StringVal("value1"),
 			},
-			expectedError: "at least one of the fields",
+			expectedError: `conditional constraint failed: when field "field1" is present, at least one of the fields "field2", "field3" is required`,
 		},
 		{
 			name:       "condition met, mutually exclusive constraint fails",
@@ -1428,31 +1377,27 @@ func TestConditionalConstraintValidate_ConditionMetConstraintFails(t *testing.T)
 				"field2": cty.StringVal("value2"),
 				"field3": cty.StringVal("value3"),
 			},
-			expectedError: "mutually exclusive fields",
+			expectedError: `conditional constraint failed: when field "field1" is equal to "trigger", mutually exclusive fields "field2", "field3" are all present`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := ConditionalConstraint(tt.condition, tt.constraint)
-			err := constraint.Validate(tt.values)
 
+			err := constraint.Validate(tt.values)
 			if err == nil {
-				t.Fatalf("expected error from Validate() to end with %q, got none", tt.expectedError)
+				t.Fatalf("expected error %q from Validate(), got none", tt.expectedError)
 			}
 
-			if strings.HasSuffix(err.Error(), tt.expectedError) {
-				t.Errorf("expected error from Validate() to end with %q, got %q", tt.expectedError, err.Error())
+			if err.Error() != tt.expectedError {
+				t.Errorf("expected error %q from Validate(), got %q", tt.expectedError, err.Error())
 			}
 		})
 	}
 }
 
 func TestConditionalConstraintValidateSpec_Pass(t *testing.T) {
-
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name       string
 		condition  ObjectCondition
@@ -1472,21 +1417,17 @@ func TestConditionalConstraintValidateSpec_Pass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := ConditionalConstraint(tt.condition, tt.constraint)
-			err := constraint.ValidateSpec(mockType)
 
+			err := constraint.ValidateSpec(mockObjectType)
 			if err != nil {
-				t.Fatalf("expected no error from ValidateSpec(), got %v", err)
+				t.Fatalf("expected no error from ValidateSpec(), got %q", err.Error())
 			}
 		})
 	}
 }
 
 func TestConditionalConstraintValidateSpec_InvalidCondition(t *testing.T) {
-
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name          string
 		condition     ObjectCondition
@@ -1503,25 +1444,21 @@ func TestConditionalConstraintValidateSpec_InvalidCondition(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := ConditionalConstraint(tt.condition, tt.constraint)
-			err := constraint.ValidateSpec(mockType)
 
+			err := constraint.ValidateSpec(mockObjectType)
 			if err == nil {
-				t.Fatalf("expected error from ValidateSpec() to end with %q, got none", tt.expectedError)
+				t.Fatalf("expected error %q from ValidateSpec(), got none", tt.expectedError)
 			}
 
 			if err.Error() != tt.expectedError {
-				t.Errorf("expected error from ValidateSpec() to end with %q, got %q", tt.expectedError, err.Error())
+				t.Errorf("expected error %q from ValidateSpec(), got %q", tt.expectedError, err.Error())
 			}
 		})
 	}
 }
 
 func TestConditionalConstraintValidateSpec_InvalidConstraint(t *testing.T) {
-
-	mockType := createMockObjectType()
-
 	tests := []struct {
 		name          string
 		condition     ObjectCondition
@@ -1538,16 +1475,15 @@ func TestConditionalConstraintValidateSpec_InvalidConstraint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			constraint := ConditionalConstraint(tt.condition, tt.constraint)
-			err := constraint.ValidateSpec(mockType)
 
+			err := constraint.ValidateSpec(mockObjectType)
 			if err == nil {
-				t.Fatalf("expected error from ValidateSpec() to end with %q, got none", tt.expectedError)
+				t.Fatalf("expected error %q from ValidateSpec(), got none", tt.expectedError)
 			}
 
 			if err.Error() != tt.expectedError {
-				t.Errorf("expected error from ValidateSpec() to end with %q, got %q", tt.expectedError, err.Error())
+				t.Errorf("expected error %q from ValidateSpec(), got %q", tt.expectedError, err.Error())
 			}
 		})
 	}

@@ -11,7 +11,6 @@ import (
 
 // Helper function to compare cty.Values including unknown values
 func assertCtyValueEqual(t *testing.T, actual, expected cty.Value) {
-
 	if !expected.Type().Equals(actual.Type()) {
 		t.Fatalf("expected type %q, got %q", expected.Type().FriendlyName(), actual.Type().FriendlyName())
 	}

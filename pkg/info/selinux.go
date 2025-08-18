@@ -66,7 +66,6 @@ func (s *SELinuxInfo) SelinuxType() SELinuxType {
 }
 
 func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport) util.Diags {
-
 	if osInfo == nil || osInfo.id == "" {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagWarning,
@@ -97,15 +96,18 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport)
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return util.Diags{&util.Diag{
-			Severity: util.DiagError,
-			Summary:  "Failed to execute SELinux discovery script",
-			Detail:   fmt.Sprintf("Error executing SELinux discovery script: %v", err),
-		}, &util.Diag{
-			Severity: util.DiagDebug,
-			Summary:  "Discovery command stderr",
-			Detail:   fmt.Sprintf("stderr: %s", stderr),
-		}}
+		return util.Diags{
+			&util.Diag{
+				Severity: util.DiagError,
+				Summary:  "Failed to execute SELinux discovery script",
+				Detail:   fmt.Sprintf("Error executing SELinux discovery script: %v", err),
+			},
+			&util.Diag{
+				Severity: util.DiagDebug,
+				Summary:  "Discovery command stderr",
+				Detail:   fmt.Sprintf("stderr: %s", stderr),
+			},
+		}
 	}
 
 	discoveredData := make(map[string]string)
@@ -120,7 +122,6 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport)
 
 	installed, _ := discoveredData["selinux_installed"]
 	s.installed = installed == "1"
-
 	if !s.installed {
 		s.status = SELinuxNotSupported
 		s.selinuxType = SELinuxTypeNotSupported
@@ -130,7 +131,6 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport)
 
 	status, _ := discoveredData["selinux_status"]
 	s.status = SELinuxStatus(status)
-
 	if s.status == SELinuxDisabled {
 		s.selinuxType = SELinuxTypeNotSupported
 		return util.Diags{}
@@ -143,7 +143,6 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport)
 }
 
 func (s *SELinuxInfo) toMapOfCtyValues() map[string]cty.Value {
-
 	if !s.supported {
 		return map[string]cty.Value{
 			"selinux_installed": cty.NullVal(cty.String),
@@ -170,7 +169,6 @@ func (s *SELinuxInfo) toMapOfCtyValues() map[string]cty.Value {
 // String returns a string representation of the SELinux information.
 // This is useful for logging or debugging purposes.
 func (s *SELinuxInfo) String() string {
-
 	stringBuilder := &strings.Builder{}
 	if !s.supported {
 		stringBuilder.WriteString("selinux_installed: not supported on this OS\n")

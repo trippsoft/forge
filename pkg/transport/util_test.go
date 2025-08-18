@@ -235,12 +235,12 @@ and special characters: !@#$%^&*()
 }
 
 func TestEncodePowerShellAsUTF16LEBase64Encoding(t *testing.T) {
-	// Test that the encoding is indeed UTF-16LE by manually constructing expected output
 	input := "Hi"
 	expected := []byte{
 		0x48, 0x00, // 'H' in UTF-16LE
 		0x69, 0x00, // 'i' in UTF-16LE
 	}
+
 	expectedBase64 := base64.StdEncoding.EncodeToString(expected)
 
 	result, err := encodePowerShellAsUTF16LEBase64(input)
@@ -254,7 +254,6 @@ func TestEncodePowerShellAsUTF16LEBase64Encoding(t *testing.T) {
 }
 
 func TestEncodePowerShellAsUTF16LEBase64Consistency(t *testing.T) {
-	// Test that multiple calls with same input produce same output
 	input := "Get-Process | Select-Object Name"
 
 	results := make([]string, 5)
@@ -263,10 +262,10 @@ func TestEncodePowerShellAsUTF16LEBase64Consistency(t *testing.T) {
 		if err != nil {
 			t.Fatalf("encodePowerShellAsUTF16LEBase64() error on call %d: %v", i+1, err)
 		}
+
 		results[i] = result
 	}
 
-	// All results should be identical
 	for i := 1; i < len(results); i++ {
 		if results[i] != results[0] {
 			t.Errorf("Inconsistent results: call 1 returned %q, call %d returned %q", results[0], i+1, results[i])

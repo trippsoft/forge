@@ -22,7 +22,6 @@ var (
 			return rb.NotNull()
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-
 			if !args[0].CanIterateElements() {
 				return cty.NilVal, function.NewArgErrorf(0, "sum function requires an iterable type")
 			}
@@ -32,7 +31,6 @@ var (
 			}
 
 			listType := args[0].Type()
-
 			if !listType.IsListType() && !listType.IsSetType() && !listType.IsTupleType() {
 				return cty.NilVal, function.NewArgErrorf(0, "sum function requires a list, set, or tuple type, got %q", listType.FriendlyName())
 			}

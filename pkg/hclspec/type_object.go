@@ -75,7 +75,8 @@ func (o *objectType) Convert(value cty.Value) (cty.Value, error) {
 	}
 
 	if !value.Type().IsObjectType() && !value.Type().IsMapType() {
-		return cty.NilVal, fmt.Errorf("cannot convert %q to %q", value.Type().FriendlyName(), o.CtyType().FriendlyName())
+		err := fmt.Errorf("cannot convert %q to %q", value.Type().FriendlyName(), o.CtyType().FriendlyName())
+		return cty.NilVal, err
 	}
 
 	valueMap := value.AsValueMap()
@@ -104,12 +105,12 @@ func (o *objectType) convertMap(values map[string]cty.Value) (map[string]cty.Val
 		fieldValue := field.defaultValue
 		foundAs := []string{}
 		validKeys = append(validKeys, name)
-
 		if value, ok := values[name]; ok {
 			value, err := field.t.Convert(value)
 			if err != nil {
 				return nil, fmt.Errorf("cannot convert field %q: %w", name, err)
 			}
+
 			foundAs = append(foundAs, name)
 			fieldValue = value
 		}
@@ -121,13 +122,23 @@ func (o *objectType) convertMap(values map[string]cty.Value) (map[string]cty.Val
 				if err != nil {
 					return nil, fmt.Errorf("cannot convert field %q (alias %q): %w", name, alias, err)
 				}
+
 				foundAs = append(foundAs, alias)
 				fieldValue = value
 			}
 		}
 
 		if len(foundAs) > 1 {
-			return nil, fmt.Errorf("field %q is defined multiple times as %v", name, foundAs)
+			foundAsNames := ""
+			for i, name := range foundAs {
+				if i > 0 {
+					foundAsNames += ", "
+				}
+
+				foundAsNames = fmt.Sprintf("%s%q", foundAsNames, name)
+			}
+
+			return nil, fmt.Errorf("field %q is defined multiple times as %s", name, foundAsNames)
 		}
 
 		resultFields[name] = fieldValue
@@ -141,7 +152,16 @@ func (o *objectType) convertMap(values map[string]cty.Value) (map[string]cty.Val
 	}
 
 	if len(invalidIndexes) > 0 {
-		return nil, fmt.Errorf("invalid indexes found: %v", invalidIndexes)
+		indexes := ""
+		for i, index := range invalidIndexes {
+			if i > 0 {
+				indexes += ", "
+			}
+
+			indexes += fmt.Sprintf("%q", index)
+		}
+
+		return nil, fmt.Errorf("invalid indexes found: %s", indexes)
 	}
 
 	return resultFields, nil
@@ -234,7 +254,6 @@ func (o *objectType) ValidateSpec() error {
 		err = errors.Join(err, e)
 
 		definedNames[name] = append(definedNames[name], name)
-
 		for _, alias := range field.aliases {
 			definedNames[alias] = append(definedNames[alias], name)
 		}
@@ -242,7 +261,16 @@ func (o *objectType) ValidateSpec() error {
 
 	for name, definitions := range definedNames {
 		if len(definitions) > 1 {
-			err = errors.Join(err, fmt.Errorf("field %q is defined multiple times (aliases: %v)", name, definitions))
+			aliases := ""
+			for i, alias := range definitions {
+				if i > 0 {
+					aliases += ", "
+				}
+
+				aliases = fmt.Sprintf("%s%q", aliases, alias)
+			}
+
+			err = errors.Join(err, fmt.Errorf("field %q is defined multiple times (aliases: %s)", name, aliases))
 		}
 	}
 
@@ -310,12 +338,11 @@ func (c ObjectConstraints) ValidateSpec(t *objectType) error {
 	return err
 }
 
-// mutuallyExclusiveGroup represents a group of fields that are mutually exclusive in an object.
 type mutuallyExclusiveGroup struct {
 	fields []string // List of field names that are mutually exclusive.
 }
 
-// MutuallyExclusive creates a new mutuallyExclusiveGroup with the given field names.
+// MutuallyExclusive creates a constraint requiring the specified fields to be mutually exclusive.
 func MutuallyExclusive(fields ...string) ObjectConstraint {
 	return &mutuallyExclusiveGroup{fields: fields}
 }
@@ -332,6 +359,7 @@ func (m *mutuallyExclusiveGroup) Validate(values map[string]cty.Value) error {
 			if !value.IsWhollyKnown() || value.IsNull() {
 				continue
 			}
+
 			foundFields = append(foundFields, field)
 		}
 	}
@@ -341,6 +369,7 @@ func (m *mutuallyExclusiveGroup) Validate(values map[string]cty.Value) error {
 		if i > 0 {
 			fieldNames += ", "
 		}
+
 		fieldNames = fmt.Sprintf("%s%q", fieldNames, field)
 	}
 
@@ -367,12 +396,11 @@ func (m *mutuallyExclusiveGroup) ValidateSpec(t *objectType) error {
 	return err
 }
 
-// requiredTogetherGroup represents a group of fields that are required together in an object.
 type requiredTogetherGroup struct {
-	fields []string // List of field names that are required together.
+	fields []string
 }
 
-// RequiredTogether creates a new requiredTogetherGroup with the given field names.
+// RequiredTogether creates a constraint requiring the specified fields to be present together.
 func RequiredTogether(fields ...string) ObjectConstraint {
 	return &requiredTogetherGroup{fields: fields}
 }
@@ -389,12 +417,22 @@ func (r *requiredTogetherGroup) Validate(values map[string]cty.Value) error {
 			if !value.IsWhollyKnown() || value.IsNull() {
 				continue
 			}
+
 			foundFields = append(foundFields, field)
 		}
 	}
 
 	if len(foundFields) > 0 && len(foundFields) != len(r.fields) {
-		return fmt.Errorf("fields %q are required together, but only %q is/are present", r.fields, foundFields)
+		fieldNames := ""
+		for i, field := range foundFields {
+			if i > 0 {
+				fieldNames += ", "
+			}
+
+			fieldNames = fmt.Sprintf("%s%q", fieldNames, field)
+		}
+
+		return fmt.Errorf("fields %s are required together, but only %s is present", r.formatFieldNames(), fieldNames)
 	}
 
 	return nil
@@ -414,6 +452,23 @@ func (r *requiredTogetherGroup) ValidateSpec(t *objectType) error {
 	}
 
 	return err
+}
+
+func (r *requiredTogetherGroup) formatFieldNames() any {
+	if r == nil {
+		return ""
+	}
+
+	fieldNames := ""
+	for i, field := range r.fields {
+		if i > 0 {
+			fieldNames += ", "
+		}
+
+		fieldNames = fmt.Sprintf("%s%q", fieldNames, field)
+	}
+
+	return fieldNames
 }
 
 type requiredOneOfGroup struct {
@@ -437,12 +492,22 @@ func (r *requiredOneOfGroup) Validate(values map[string]cty.Value) error {
 			if !value.IsWhollyKnown() || value.IsNull() {
 				continue
 			}
+
 			foundFields = append(foundFields, field)
 		}
 	}
 
 	if len(foundFields) == 0 {
-		return fmt.Errorf("at least one of the fields %q is required", r.fields)
+		fieldNames := ""
+		for i, fieldName := range r.fields {
+			if i > 0 {
+				fieldNames += ", "
+			}
+
+			fieldNames = fmt.Sprintf("%s%q", fieldNames, fieldName)
+		}
+
+		return fmt.Errorf("at least one of the fields %s is required", fieldNames)
 	}
 
 	return nil
@@ -466,9 +531,17 @@ func (r *requiredOneOfGroup) ValidateSpec(t *objectType) error {
 
 // ObjectCondition is used by constraints that require a specific condition to be met to apply.
 type ObjectCondition interface {
-	IsMet(values map[string]cty.Value) bool // IsMet checks if the condition is satisfied by the given values.
-	Description() string                    // Description provides a human-readable description of the condition for error messages.
-	ValidateSpec(t *objectType) error       // ValidateSpec checks if the condition is valid for the object type.
+	// IsMet checks if the condition is satisfied by the given values.
+	//
+	// Note that no error is returned from this method.
+	// If there is an error, it means the condition is not met.
+	IsMet(values map[string]cty.Value) bool
+
+	// Description provides a human-readable description of the condition for error messages.
+	Description() string
+
+	// ValidateSpec checks if the condition is valid for the object type.
+	ValidateSpec(t *objectType) error
 }
 
 type fieldPresentCondition struct {
@@ -600,6 +673,7 @@ func (c *fieldEqualsCondition) ValidateSpec(t *objectType) error {
 	if _, ok := t.fields[c.field]; !ok {
 		return fmt.Errorf("field %q is not defined in the object type", c.field)
 	}
+
 	return nil
 }
 
@@ -618,9 +692,20 @@ func ConditionalConstraint(condition ObjectCondition, constraint ObjectConstrain
 
 // Validate implements ObjectConstraint.
 func (c *conditionalConstraint) Validate(values map[string]cty.Value) error {
+	if c == nil {
+		return errors.New("conditional constraint is nil")
+	}
+
+	if c.condition == nil {
+		return nil // No condition means the constraint is never applied
+	}
+
+	if c.constraint == nil {
+		return nil // No constraint means nothing to validate
+	}
+
 	if c.condition.IsMet(values) {
-		err := c.constraint.Validate(values)
-		if err != nil {
+		if err := c.constraint.Validate(values); err != nil {
 			return fmt.Errorf("conditional constraint failed: when %s, %w", c.condition.Description(), err)
 		}
 	}

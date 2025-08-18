@@ -26,6 +26,7 @@ var (
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			name := args[0].AsString()
+
 			return cty.StringVal(os.Getenv(name)), nil
 		},
 	})

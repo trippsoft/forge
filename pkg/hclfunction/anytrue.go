@@ -21,7 +21,6 @@ var (
 			return rb.NotNull()
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-
 			result := cty.False
 			containsUnknown := false
 

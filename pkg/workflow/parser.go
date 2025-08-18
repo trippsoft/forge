@@ -35,7 +35,6 @@ func NewParser(inventory *inventory.Inventory, moduleRegistry *module.Registry) 
 }
 
 func (p *parser) ParseWorkflowFile(path string, content []byte) (*Workflow, hcl.Diagnostics) {
-
 	file, diags := p.parser.ParseHCL(content, path)
 	if diags.HasErrors() {
 		return nil, diags
@@ -44,14 +43,12 @@ func (p *parser) ParseWorkflowFile(path string, content []byte) (*Workflow, hcl.
 	bodyContent, moreDiags := file.Body.Content(workflowFileSchema)
 	util.ModifyUnexpectedElementDiags(moreDiags, "in a workflow file")
 	diags = diags.Extend(moreDiags)
-
 	if diags.HasErrors() {
 		return nil, diags
 	}
 
 	processes, moreDiags := p.parseProcessBlocks(bodyContent)
 	diags = diags.Extend(moreDiags)
-
 	if diags.HasErrors() {
 		return nil, diags
 	}
@@ -63,9 +60,7 @@ func (p *parser) parseProcessBlocks(content *hcl.BodyContent) ([]*Process, hcl.D
 
 	processes := make([]*Process, 0, len(content.Blocks))
 	diags := hcl.Diagnostics{}
-
 	for _, block := range content.Blocks {
-
 		process, moreDiags := p.parseProcessBlock(block)
 		diags = diags.Extend(moreDiags)
 		if moreDiags.HasErrors() {
@@ -83,7 +78,6 @@ func (p *parser) parseProcessBlocks(content *hcl.BodyContent) ([]*Process, hcl.D
 }
 
 func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics) {
-
 	if block.Type != "process" {
 		return nil, hcl.Diagnostics{&hcl.Diagnostic{
 			Severity: hcl.DiagError,
@@ -107,7 +101,6 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 	content, moreDiags := block.Body.Content(processBlockSchema)
 	util.ModifyUnexpectedElementDiags(moreDiags, "in a process block")
 	diags = diags.Extend(moreDiags)
-
 	if moreDiags.HasErrors() {
 		return nil, diags
 	}
@@ -116,7 +109,6 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 
 	foundEscalate := false
 	for _, block := range content.Blocks {
-
 		if block.Type != "escalate" {
 			continue
 		}
@@ -135,7 +127,6 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 
 		escalate, moreDiags := parseEscalateBlock(block)
 		diags = diags.Extend(moreDiags)
-
 		if moreDiags.HasErrors() {
 			continue
 		}
@@ -145,7 +136,6 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 
 	common, moreDiags := p.parseCommonElements(content)
 	diags = diags.Extend(moreDiags)
-
 	if !moreDiags.HasErrors() {
 		intermediate.common = common
 	}
@@ -153,19 +143,17 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 	steps := []Step{}
 
 	for _, block := range content.Blocks {
-
 		switch block.Type {
 		case "step":
-
 			step, moreDiags := p.parseStepBlock(block, intermediate)
 			diags = diags.Extend(moreDiags)
 			if moreDiags.HasErrors() {
 				continue
 			}
+
 			steps = append(steps, step)
 
 		case "procedure":
-
 			diags = diags.Append(&hcl.Diagnostic{
 				Severity: hcl.DiagWarning,
 				Summary:  "Procedure blocks are not yet supported",
@@ -197,6 +185,7 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 			Detail:   "The 'process' block is missing required common attributes. This is likely a parser error.",
 			Subject:  &block.DefRange,
 		})
+
 		return nil, diags
 	}
 
@@ -206,7 +195,6 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 }
 
 func (p *parser) parseStepBlock(block *hcl.Block, intermediate *intermediateProcess) (Step, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 
 	if block == nil {
@@ -234,7 +222,6 @@ func (p *parser) parseStepBlock(block *hcl.Block, intermediate *intermediateProc
 	content, moreDiags := block.Body.Content(stepBlockSchema)
 	util.ModifyUnexpectedElementDiags(moreDiags, "in a step block")
 	diags = diags.Extend(moreDiags)
-
 	if moreDiags.HasErrors() {
 		return nil, diags
 	}
@@ -243,7 +230,6 @@ func (p *parser) parseStepBlock(block *hcl.Block, intermediate *intermediateProc
 
 	common, moreDiags := p.parseCommonElements(content)
 	diags = diags.Extend(moreDiags)
-
 	if common != nil {
 		if intermediate != nil && intermediate.common != nil {
 			if common.targets == nil {
@@ -260,6 +246,7 @@ func (p *parser) parseStepBlock(block *hcl.Block, intermediate *intermediateProc
 		}
 
 		common.id = block.Labels[0]
+
 	} else if intermediate != nil && intermediate.common != nil {
 		common = &StepCommonConfig{
 			id:          block.Labels[0],
@@ -279,10 +266,8 @@ func (p *parser) parseStepBlock(block *hcl.Block, intermediate *intermediateProc
 	foundOutput := false
 
 	for _, block := range content.Blocks {
-
 		switch block.Type {
 		case "escalate":
-
 			if foundEscalate {
 				diags = diags.Append(&hcl.Diagnostic{
 					Severity: hcl.DiagError,
@@ -297,7 +282,6 @@ func (p *parser) parseStepBlock(block *hcl.Block, intermediate *intermediateProc
 
 			escalate, moreDiags := parseEscalateBlock(block)
 			diags = diags.Extend(moreDiags)
-
 			if moreDiags.HasErrors() {
 				continue
 			}
@@ -305,7 +289,6 @@ func (p *parser) parseStepBlock(block *hcl.Block, intermediate *intermediateProc
 			step.escalation = escalate
 
 		case "output":
-
 			if foundOutput {
 				diags = diags.Append(&hcl.Diagnostic{
 					Severity: hcl.DiagError,
@@ -320,7 +303,6 @@ func (p *parser) parseStepBlock(block *hcl.Block, intermediate *intermediateProc
 
 			output, moreDiags := parseOutputBlock(block)
 			diags = diags.Extend(moreDiags)
-
 			if moreDiags.HasErrors() {
 				continue
 			}
@@ -347,7 +329,6 @@ func (p *parser) parseStepBlock(block *hcl.Block, intermediate *intermediateProc
 	}
 
 	for name, attr := range content.Attributes {
-
 		if name != "module" {
 			continue
 		}
@@ -387,7 +368,6 @@ func (p *parser) parseStepBlock(block *hcl.Block, intermediate *intermediateProc
 }
 
 func (p *parser) parseCommonElements(content *hcl.BodyContent) (*StepCommonConfig, hcl.Diagnostics) {
-
 	config := &StepCommonConfig{}
 	diags := hcl.Diagnostics{}
 
@@ -411,7 +391,6 @@ func (p *parser) parseCommonElements(content *hcl.BodyContent) (*StepCommonConfi
 
 			loop, moreDiags := parseLoopBlock(block)
 			diags = diags.Extend(moreDiags)
-
 			if moreDiags.HasErrors() {
 				continue
 			}
@@ -433,7 +412,6 @@ func (p *parser) parseCommonElements(content *hcl.BodyContent) (*StepCommonConfi
 
 			input, moreDiags := parseInputBlock(block)
 			diags = diags.Extend(moreDiags)
-
 			if moreDiags.HasErrors() {
 				continue
 			}
@@ -445,10 +423,8 @@ func (p *parser) parseCommonElements(content *hcl.BodyContent) (*StepCommonConfi
 	for name, attr := range content.Attributes {
 		switch name {
 		case "name":
-
 			name, moreDiags := util.ConvertHCLAttributeToString(attr, nil)
 			diags = diags.Extend(moreDiags)
-
 			if moreDiags.HasErrors() {
 				continue
 			}
@@ -456,10 +432,8 @@ func (p *parser) parseCommonElements(content *hcl.BodyContent) (*StepCommonConfi
 			config.name = name
 
 		case "targets":
-
 			targets, moreDiags := p.parseTargetsAttribute(attr)
 			diags = diags.Extend(moreDiags)
-
 			if moreDiags.HasErrors() {
 				continue
 			}
@@ -483,7 +457,6 @@ func (p *parser) parseCommonElements(content *hcl.BodyContent) (*StepCommonConfi
 }
 
 func (p *parser) parseTargetsAttribute(attr *hcl.Attribute) ([]*inventory.Host, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 
 	targetsValue, moreDiags := attr.Expr.Value(nil)
@@ -500,7 +473,9 @@ func (p *parser) parseTargetsAttribute(attr *hcl.Attribute) ([]*inventory.Host, 
 			Detail:   "The 'targets' attribute cannot be null.",
 			Subject:  attr.Expr.Range().Ptr(),
 		})
+
 		return nil, diags
+
 	case !targetsValue.IsWhollyKnown():
 		diags = diags.Append(&hcl.Diagnostic{
 			Severity: hcl.DiagError,
@@ -508,7 +483,9 @@ func (p *parser) parseTargetsAttribute(attr *hcl.Attribute) ([]*inventory.Host, 
 			Detail:   "The 'targets' attribute must be a known value.",
 			Subject:  attr.Expr.Range().Ptr(),
 		})
+
 		return nil, diags
+
 	case targetsValue.Type().Equals(cty.String):
 		target, exists := p.inventory.Host(targetsValue.AsString())
 		if exists {
@@ -525,14 +502,11 @@ func (p *parser) parseTargetsAttribute(attr *hcl.Attribute) ([]*inventory.Host, 
 		return nil, diags
 
 	case targetsValue.Type().IsListType() || targetsValue.Type().IsSetType() || targetsValue.Type().IsTupleType():
-
 		it := targetsValue.ElementIterator()
 		seenTargets := util.NewSet[string]()
 		targetHosts := util.NewSet[*inventory.Host]()
-
 		for it.Next() {
 			_, elem := it.Element()
-
 			if elem.IsNull() {
 				diags = diags.Append(&hcl.Diagnostic{
 					Severity: hcl.DiagError,
@@ -554,7 +528,6 @@ func (p *parser) parseTargetsAttribute(attr *hcl.Attribute) ([]*inventory.Host, 
 			}
 
 			targetName := elem.AsString()
-
 			if seenTargets.Contains(targetName) {
 				continue
 			}
@@ -587,12 +560,12 @@ func (p *parser) parseTargetsAttribute(attr *hcl.Attribute) ([]*inventory.Host, 
 			Detail:   "The 'targets' attribute must be a string or a list of strings.",
 			Subject:  attr.Expr.Range().Ptr(),
 		})
+
 		return nil, diags
 	}
 }
 
 func parseEscalateBlock(block *hcl.Block) (*StepEscalationConfig, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 	if block == nil {
 		return nil, diags
@@ -619,13 +592,11 @@ func parseEscalateBlock(block *hcl.Block) (*StepEscalationConfig, hcl.Diagnostic
 	content, moreDiags := block.Body.Content(escalateBlockSchema)
 	util.ModifyUnexpectedElementDiags(moreDiags, "in an escalate block")
 	diags = diags.Extend(moreDiags)
-
 	if moreDiags.HasErrors() {
 		return nil, diags
 	}
 
 	config := &StepEscalationConfig{}
-
 	for name, attr := range content.Attributes {
 		switch name {
 		case "escalate":
@@ -643,9 +614,7 @@ func parseEscalateBlock(block *hcl.Block) (*StepEscalationConfig, hcl.Diagnostic
 }
 
 func parseLoopBlock(block *hcl.Block) (*StepLoopConfig, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
-
 	if block == nil {
 		return nil, diags
 	}
@@ -671,7 +640,6 @@ func parseLoopBlock(block *hcl.Block) (*StepLoopConfig, hcl.Diagnostics) {
 	content, moreDiags := block.Body.Content(loopBlockSchema)
 	util.ModifyUnexpectedElementDiags(moreDiags, "in a loop block")
 	diags = diags.Extend(moreDiags)
-
 	if diags.HasErrors() {
 		return nil, diags
 	}
@@ -701,9 +669,7 @@ func parseLoopBlock(block *hcl.Block) (*StepLoopConfig, hcl.Diagnostics) {
 }
 
 func parseInputBlock(block *hcl.Block) (map[string]*hcl.Attribute, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
-
 	if block == nil {
 		return nil, diags
 	}
@@ -725,6 +691,7 @@ func parseInputBlock(block *hcl.Block) (map[string]*hcl.Attribute, hcl.Diagnosti
 			})
 			continue
 		}
+
 		input[name] = attr
 	}
 
@@ -736,9 +703,7 @@ func parseInputBlock(block *hcl.Block) (map[string]*hcl.Attribute, hcl.Diagnosti
 }
 
 func parseOutputBlock(block *hcl.Block) (*StepOutputConfig, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
-
 	if block == nil {
 		return nil, diags
 	}
@@ -763,7 +728,6 @@ func parseOutputBlock(block *hcl.Block) (*StepOutputConfig, hcl.Diagnostics) {
 
 	content, moreDiags := block.Body.Content(outputBlockSchema)
 	diags = diags.Extend(moreDiags)
-
 	if diags.HasErrors() {
 		return nil, diags
 	}

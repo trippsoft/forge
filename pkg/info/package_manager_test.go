@@ -12,14 +12,12 @@ import (
 )
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_NoOS(t *testing.T) {
-
 	osInfo := newOSInfo()
-
 	mockTransport := transport.NewMockTransport()
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -53,7 +51,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_NoOS(t *testing.T) {
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Windows(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "windows-server"
 	osInfo.families.Add("windows")
@@ -61,8 +58,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Windows(t *testing.T) {
 	mockTransport := transport.NewMockTransport()
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -81,7 +78,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Windows(t *testing.T) {
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Darwin(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		output       string
@@ -200,7 +196,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Darwin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			osInfo := newOSInfo()
 			osInfo.id = "macos"
 			osInfo.families.Add("darwin")
@@ -212,8 +207,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Darwin(t *testing.T) {
 			}
 
 			info := newPackageManagerInfo()
-			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 			if diags.HasErrors() {
 				t.Errorf("Expected no error, got: %v", diags.Errors())
 			}
@@ -234,14 +229,12 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Darwin(t *testing.T) {
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Darwin_NotFound(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "macos"
 	osInfo.families.Add("darwin")
 	osInfo.families.Add("macos")
 
 	mockTransport := transport.NewMockTransport()
-
 	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
@@ -277,8 +270,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Darwin_NotFound(t *testin
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -312,7 +305,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Darwin_NotFound(t *testin
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "archlinux"
 	osInfo.families.Add("archlinux")
@@ -353,8 +345,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux(t *testing.T) {
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -375,7 +367,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux(t *testing.T) {
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux_NotPacman(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "archlinux"
 	osInfo.families.Add("archlinux")
@@ -416,8 +407,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux_NotPacman(t *te
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -453,7 +444,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux_NotPacman(t *te
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux_NotFound(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "archlinux"
 	osInfo.families.Add("archlinux")
@@ -494,8 +484,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux_NotFound(t *tes
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -539,7 +529,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux_NotFound(t *tes
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		output       string
@@ -622,7 +611,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			osInfo := newOSInfo()
 			osInfo.id = "debian"
 			osInfo.families.Add("debian")
@@ -633,8 +621,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian(t *testing.T) {
 			}
 
 			info := newPackageManagerInfo()
-			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 			if diags.HasErrors() {
 				t.Errorf("Expected no error, got: %v", diags.Errors())
 			}
@@ -655,7 +643,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian(t *testing.T) {
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian_NotApt(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "debian"
 	osInfo.families.Add("debian")
@@ -696,8 +683,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian_NotApt(t *testing.
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -733,7 +720,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian_NotApt(t *testing.
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian_NotFound(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "debian"
 	osInfo.families.Add("debian")
@@ -774,8 +760,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian_NotFound(t *testin
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -819,7 +805,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian_NotFound(t *testin
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		output       string
@@ -902,7 +887,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			osInfo := newOSInfo()
 			osInfo.id = "altlinux"
 			osInfo.families.Add("altlinux")
@@ -913,8 +897,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux(t *testing.T) {
 			}
 
 			info := newPackageManagerInfo()
-			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 			if diags.HasErrors() {
 				t.Errorf("Expected no error, got: %v", diags.Errors())
 			}
@@ -935,7 +919,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux(t *testing.T) {
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux_NotApt(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "altlinux"
 	osInfo.families.Add("altlinux")
@@ -976,8 +959,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux_NotApt(t *testin
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -1013,7 +996,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux_NotApt(t *testin
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux_NotFound(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "altlinux"
 	osInfo.families.Add("altlinux")
@@ -1054,8 +1036,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux_NotFound(t *test
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -1099,7 +1081,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux_NotFound(t *test
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_EL(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		output       string
@@ -1254,7 +1235,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			osInfo := newOSInfo()
 			osInfo.id = "rhel"
 			osInfo.families.Add("el")
@@ -1265,8 +1245,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL(t *testing.T) {
 			}
 
 			info := newPackageManagerInfo()
-			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 			if diags.HasErrors() {
 				t.Errorf("Expected no error, got: %v", diags.Errors())
 			}
@@ -1287,7 +1267,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL(t *testing.T) {
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_EL_NotDnfOrYum(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "rhel"
 	osInfo.families.Add("el")
@@ -1328,8 +1307,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL_NotDnfOrYum(t *testing
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -1365,7 +1344,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL_NotDnfOrYum(t *testing
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_EL_NotFound(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "rhel"
 	osInfo.families.Add("el")
@@ -1406,8 +1384,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL_NotFound(t *testing.T)
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -1451,7 +1429,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL_NotFound(t *testing.T)
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "gentoo"
 	osInfo.families.Add("gentoo")
@@ -1492,8 +1469,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo(t *testing.T) {
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -1514,7 +1491,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo(t *testing.T) {
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo_NotPortage(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "gentoo"
 	osInfo.families.Add("gentoo")
@@ -1555,8 +1531,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo_NotPortage(t *test
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -1592,7 +1568,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo_NotPortage(t *test
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo_NotFound(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "gentoo"
 	osInfo.families.Add("gentoo")
@@ -1633,8 +1608,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo_NotFound(t *testin
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -1678,7 +1653,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo_NotFound(t *testin
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "suse"
 	osInfo.families.Add("suse")
@@ -1719,8 +1693,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE(t *testing.T) {
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -1741,7 +1715,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE(t *testing.T) {
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE_NotZypper(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "suse"
 	osInfo.families.Add("suse")
@@ -1782,8 +1755,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE_NotZypper(t *testing
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -1819,7 +1792,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE_NotZypper(t *testing
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE_NotFound(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "suse"
 	osInfo.families.Add("suse")
@@ -1860,8 +1832,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE_NotFound(t *testing.
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -1905,7 +1877,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE_NotFound(t *testing.
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		output       string
@@ -2924,7 +2895,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			osInfo := newOSInfo()
 			osInfo.id = "generic"
 
@@ -2934,8 +2904,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic(t *testing.T) {
 			}
 
 			info := newPackageManagerInfo()
-			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+			diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 			if diags.HasErrors() {
 				t.Errorf("Expected no error, got: %v", diags.Errors())
 			}
@@ -2956,7 +2926,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic(t *testing.T) {
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_NotFound(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "generic"
 
@@ -2996,8 +2965,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_NotFound(t *testi
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Errorf("Expected no error, got: %v", diags.Errors())
 	}
@@ -3031,7 +3000,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_NotFound(t *testi
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_Error(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "generic"
 
@@ -3041,8 +3009,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_Error(t *testing.
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Errorf("Expected errors, got none")
 	}
@@ -3076,7 +3044,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_Error(t *testing.
 }
 
 func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_NotJSON(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "generic"
 
@@ -3086,8 +3053,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_NotJSON(t *testin
 	}
 
 	info := newPackageManagerInfo()
-	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 
+	diags := info.populatePackageManagerInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Errorf("Expected errors, got none")
 	}
@@ -3121,7 +3088,6 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_NotJSON(t *testin
 }
 
 func TestPackageManagerInfo_ToMapOfCtyValues(t *testing.T) {
-
 	tests := []struct {
 		name               string
 		packageManagerName string
@@ -3141,13 +3107,11 @@ func TestPackageManagerInfo_ToMapOfCtyValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			info := newPackageManagerInfo()
 			info.name = tt.packageManagerName
 			info.path = tt.packageManagerPath
 
 			result := info.toMapOfCtyValues()
-
 			if result["package_manager_name"].AsString() != tt.packageManagerName {
 				t.Errorf("Expected package_manager_name to be %q, got: %q", tt.packageManagerName, result["package_manager_name"].AsString())
 			}
@@ -3160,11 +3124,9 @@ func TestPackageManagerInfo_ToMapOfCtyValues(t *testing.T) {
 }
 
 func TestPackageManagerInfo_ToMapOfCtyValues_Empty(t *testing.T) {
-
 	info := newPackageManagerInfo()
 
 	result := info.toMapOfCtyValues()
-
 	if result["package_manager_name"].Type() != cty.String {
 		t.Errorf("Expected package_manager_name to be of type string, got: %q", result["package_manager_name"].Type())
 	}

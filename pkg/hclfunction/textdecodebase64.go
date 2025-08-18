@@ -33,12 +33,14 @@ var (
 			if err != nil {
 				return cty.UnknownVal(cty.String), function.NewArgErrorf(1, "invalid encoding %q", args[1].AsString())
 			}
+
 			encodingName, err := ianaindex.IANA.Name(encoding)
 			if err != nil {
 				encodingName = args[1].AsString() // Fallback to the original string if not found, this should not happen
 			}
 
 			input := args[0].AsString()
+
 			base64Decoded, err := base64.StdEncoding.DecodeString(input)
 			if err != nil {
 				switch err := err.(type) {
@@ -48,11 +50,14 @@ var (
 					return cty.UnknownVal(cty.String), function.NewArgErrorf(0, "failed to decode input: %w", err)
 				}
 			}
+
 			decoder := encoding.NewDecoder()
+
 			decoded, err := decoder.Bytes([]byte(base64Decoded))
 			if err != nil || bytes.ContainsRune(decoded, '�') {
 				return cty.UnknownVal(cty.String), function.NewArgErrorf(0, "failed to decode input as %q", encodingName)
 			}
+
 			return cty.StringVal(string(decoded)), nil
 		},
 	})

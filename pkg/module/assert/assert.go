@@ -41,9 +41,7 @@ func (m *Module) Validate(config *module.RunConfig) error {
 
 // Run implements module.Module.
 func (m *Module) Run(ctx context.Context, config *module.RunConfig) *module.Result {
-
 	condition := config.Input["condition"].True()
-
 	message := ""
 	if !condition {
 		failureMessage, exists := config.Input["failure_message"]
@@ -68,7 +66,6 @@ func (m *Module) Run(ctx context.Context, config *module.RunConfig) *module.Resu
 	}
 
 	result := module.NewSuccess(false, output)
-
 	result.Message = message
 
 	return result

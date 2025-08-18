@@ -11,14 +11,12 @@ import (
 )
 
 func TestFipsInfo_PopulateFipsInfo_NoOS(t *testing.T) {
-
 	osInfo := newOSInfo()
 
 	mockTransport := transport.NewMockTransport()
-
 	info := newFipsInfo()
-	diags := info.populateFipsInfo(osInfo, mockTransport)
 
+	diags := info.populateFipsInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
@@ -52,7 +50,6 @@ func TestFipsInfo_PopulateFipsInfo_NoOS(t *testing.T) {
 }
 
 func TestFipsInfo_PopulateFipsInfo_Darwin(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.families.Add("darwin") // macOS
 	osInfo.families.Add("macos")
@@ -61,8 +58,8 @@ func TestFipsInfo_PopulateFipsInfo_Darwin(t *testing.T) {
 	mockTransport := transport.NewMockTransport()
 
 	info := newFipsInfo()
-	diags := info.populateFipsInfo(osInfo, mockTransport)
 
+	diags := info.populateFipsInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
@@ -81,7 +78,6 @@ func TestFipsInfo_PopulateFipsInfo_Darwin(t *testing.T) {
 }
 
 func TestFipsInfo_PopulateFipsInfo_Linux(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		output          string
@@ -106,7 +102,6 @@ func TestFipsInfo_PopulateFipsInfo_Linux(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			osInfo := newOSInfo()
 			osInfo.families.Add("linux")
 			osInfo.id = "ubuntu"
@@ -117,8 +112,8 @@ func TestFipsInfo_PopulateFipsInfo_Linux(t *testing.T) {
 			}
 
 			info := newFipsInfo()
-			diags := info.populateFipsInfo(osInfo, mockTransport)
 
+			diags := info.populateFipsInfo(osInfo, mockTransport)
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
@@ -149,8 +144,8 @@ func TestFipsInfo_PopulateFipsInfo_Linux_Error(t *testing.T) {
 	}
 
 	info := newFipsInfo()
-	diags := info.populateFipsInfo(osInfo, mockTransport)
 
+	diags := info.populateFipsInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
 	}
@@ -184,7 +179,6 @@ func TestFipsInfo_PopulateFipsInfo_Linux_Error(t *testing.T) {
 }
 
 func TestFipsInfo_PopulateFipsInfo_Windows(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		output          string
@@ -209,7 +203,6 @@ func TestFipsInfo_PopulateFipsInfo_Windows(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			osInfo := newOSInfo()
 			osInfo.families.Add("windows")
 			osInfo.id = "windows-server"
@@ -220,8 +213,8 @@ func TestFipsInfo_PopulateFipsInfo_Windows(t *testing.T) {
 			}
 
 			info := newFipsInfo()
-			diags := info.populateFipsInfo(osInfo, mockTransport)
 
+			diags := info.populateFipsInfo(osInfo, mockTransport)
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
@@ -252,6 +245,7 @@ func TestFipsInfo_PopulateFipsInfo_Windows_Error(t *testing.T) {
 	}
 
 	info := newFipsInfo()
+
 	diags := info.populateFipsInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
@@ -291,7 +285,6 @@ func TestFipsInfo_ToMapOfCtyValues_Known_Enabled(t *testing.T) {
 	info.enabled = true
 
 	values := info.toMapOfCtyValues()
-
 	if _, exists := values["fips_enabled"]; !exists {
 		t.Error("expected fips_enabled key to be present in values map")
 	}
@@ -307,7 +300,6 @@ func TestFipsInfo_ToMapOfCtyValues_Known_Disabled(t *testing.T) {
 	info.enabled = false
 
 	values := info.toMapOfCtyValues()
-
 	if _, exists := values["fips_enabled"]; !exists {
 		t.Error("expected fips_enabled key to be present in values map")
 	}
@@ -318,7 +310,6 @@ func TestFipsInfo_ToMapOfCtyValues_Known_Disabled(t *testing.T) {
 }
 
 func TestFipsInfo_ToMapOfCtyValues_Unknown(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		enabled bool
@@ -335,13 +326,11 @@ func TestFipsInfo_ToMapOfCtyValues_Unknown(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			info := newFipsInfo()
 			info.known = false
 			info.enabled = tt.enabled
 
 			values := info.toMapOfCtyValues()
-
 			if value, exists := values["fips_enabled"]; exists {
 				if !value.IsNull() {
 					t.Error("expected fips_enabled to be null for unknown FIPS")

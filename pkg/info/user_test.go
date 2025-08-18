@@ -11,14 +11,12 @@ import (
 )
 
 func TestUserInfo_PopulateUserInfo_NoOS(t *testing.T) {
-
 	osInfo := newOSInfo()
-
 	mockTransport := transport.NewMockTransport()
 
 	info := newUserInfo()
-	diags := info.populateUserInfo(osInfo, mockTransport)
 
+	diags := info.populateUserInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got %v", diags.Errors())
 	}
@@ -44,7 +42,6 @@ func TestUserInfo_PopulateUserInfo_NoOS(t *testing.T) {
 }
 
 func TestUserInfo_PopulateUserInfo_Posix(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		output          string
@@ -93,20 +90,18 @@ func TestUserInfo_PopulateUserInfo_Posix(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			osInfo := newOSInfo()
 			osInfo.families.Add("posix")
 			osInfo.id = "generic"
-
-			info := newUserInfo()
 
 			mockTransport := transport.NewMockTransport()
 			mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
-			diags := info.populateUserInfo(osInfo, mockTransport)
+			info := newUserInfo()
 
+			diags := info.populateUserInfo(osInfo, mockTransport)
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got %v", diags.Errors())
 			}
@@ -138,20 +133,18 @@ func TestUserInfo_PopulateUserInfo_Posix(t *testing.T) {
 }
 
 func TestUserInfo_PopulateUserInfo_Posix_Error(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.families.Add("posix")
 	osInfo.id = "generic"
-
-	info := newUserInfo()
 
 	mockTransport := transport.NewMockTransport()
 	mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 
-	diags := info.populateUserInfo(osInfo, mockTransport)
+	info := newUserInfo()
 
+	diags := info.populateUserInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatalf("expected error, got none")
 	}
@@ -201,20 +194,18 @@ func TestUserInfo_PopulateUserInfo_Posix_Error(t *testing.T) {
 }
 
 func TestUserInfo_PopulateUserInfo_Posix_NotJSON(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.families.Add("posix")
 	osInfo.id = "generic"
-
-	info := newUserInfo()
 
 	mockTransport := transport.NewMockTransport()
 	mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.MockCmd{
 		Stdout: "Not a valid JSON output",
 	}
 
-	diags := info.populateUserInfo(osInfo, mockTransport)
+	info := newUserInfo()
 
+	diags := info.populateUserInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatalf("expected error, got none")
 	}
@@ -264,7 +255,6 @@ func TestUserInfo_PopulateUserInfo_Posix_NotJSON(t *testing.T) {
 }
 
 func TestUserInfo_PopulateUserInfo_Windows(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		output          string
@@ -298,17 +288,16 @@ func TestUserInfo_PopulateUserInfo_Windows(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			osInfo := newOSInfo()
 			osInfo.families.Add("windows")
 			osInfo.id = "windows-server"
-
-			info := newUserInfo()
 
 			mockTransport := transport.NewWinMockTransport()
 			mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
+
+			info := newUserInfo()
 
 			diags := info.populateUserInfo(osInfo, mockTransport)
 			if diags.HasErrors() {
@@ -337,15 +326,14 @@ func TestUserInfo_PopulateUserInfo_Windows_Error(t *testing.T) {
 	osInfo.families.Add("windows")
 	osInfo.id = "windows-server"
 
-	info := newUserInfo()
-
 	mockTransport := transport.NewWinMockTransport()
 	mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 
-	diags := info.populateUserInfo(osInfo, mockTransport)
+	info := newUserInfo()
 
+	diags := info.populateUserInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatalf("expected error, got none")
 	}
@@ -381,19 +369,19 @@ func TestUserInfo_PopulateUserInfo_Windows_Error(t *testing.T) {
 }
 
 func TestUserInfo_PopulateUserInfo_Windows_NotJSON(t *testing.T) {
+
 	osInfo := newOSInfo()
 	osInfo.families.Add("windows")
 	osInfo.id = "windows-server"
-
-	info := newUserInfo()
 
 	mockTransport := transport.NewWinMockTransport()
 	mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.MockCmd{
 		Stdout: "Not a valid JSON output",
 	}
 
-	diags := info.populateUserInfo(osInfo, mockTransport)
+	info := newUserInfo()
 
+	diags := info.populateUserInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatalf("expected error, got none")
 	}
@@ -433,12 +421,11 @@ func TestUserInfo_PopulateUserInfo_UnknownOS(t *testing.T) {
 	osInfo.families.Add("unknown")
 	osInfo.id = "unknown-os"
 
-	info := newUserInfo()
-
 	mockTransport := transport.NewMockTransport()
 
-	diags := info.populateUserInfo(osInfo, mockTransport)
+	info := newUserInfo()
 
+	diags := info.populateUserInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatalf("expected error, got none")
 	}
@@ -464,7 +451,6 @@ func TestUserInfo_PopulateUserInfo_UnknownOS(t *testing.T) {
 }
 
 func TestUserInfo_ToMapOfCtyValues_EmptyValues(t *testing.T) {
-
 	info := newUserInfo()
 
 	result := info.toMapOfCtyValues()
@@ -526,7 +512,6 @@ func TestUserInfo_ToMapOfCtyValues_EmptyValues(t *testing.T) {
 }
 
 func TestUserInfo_ToMapOfCtyValues_PopulatedValues(t *testing.T) {
-
 	info := newUserInfo()
 	info.name = "mock"
 	info.userId = "1000"

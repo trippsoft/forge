@@ -32,6 +32,7 @@ var (
 			if err != nil {
 				return cty.UnknownVal(cty.String), function.NewArgErrorf(1, "invalid encoding %q", args[1].AsString())
 			}
+
 			encodingName, err := ianaindex.IANA.Name(encoding)
 			if err != nil {
 				encodingName = args[1].AsString() // Fallback to the original string if not found, this should not happen
@@ -43,7 +44,9 @@ var (
 			if err != nil {
 				return cty.UnknownVal(cty.String), function.NewArgErrorf(0, "failed to encode input as %q", encodingName)
 			}
+
 			base64Encoded := base64.StdEncoding.EncodeToString(encoded)
+
 			return cty.StringVal(base64Encoded), nil
 		},
 	})

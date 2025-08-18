@@ -178,7 +178,6 @@ func (o *OSInfo) ProcArchBits() int {
 }
 
 func (o *OSInfo) populateOSInfo(t transport.Transport) util.Diags {
-
 	cmd, err := t.NewCommand("uname -s", nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
@@ -226,7 +225,6 @@ func (o *OSInfo) populateOSInfo(t transport.Transport) util.Diags {
 }
 
 func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) util.Diags {
-
 	o.id = "macos"
 	o.families.Add(o.id)
 
@@ -242,15 +240,18 @@ func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) util.Diags {
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
 		o.friendlyName = "macOS"
-		return util.Diags{&util.Diag{
-			Severity: util.DiagError,
-			Summary:  "Failed to get macOS version",
-			Detail:   fmt.Sprintf("Error executing discovery command: %v", err),
-		}, &util.Diag{
-			Severity: util.DiagDebug,
-			Summary:  "Discovery command stderr",
-			Detail:   fmt.Sprintf("stderr: %s", stderr),
-		}}
+		return util.Diags{
+			&util.Diag{
+				Severity: util.DiagError,
+				Summary:  "Failed to get macOS version",
+				Detail:   fmt.Sprintf("Error executing discovery command: %v", err),
+			},
+			&util.Diag{
+				Severity: util.DiagDebug,
+				Summary:  "Discovery command stderr",
+				Detail:   fmt.Sprintf("stderr: %s", stderr),
+			},
+		}
 	}
 
 	discoveredData := make(map[string]string)
@@ -296,7 +297,6 @@ func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) util.Diags {
 }
 
 func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) util.Diags {
-
 	cmd, err := t.NewCommand(osLinuxDiscoveryScript, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
@@ -308,15 +308,18 @@ func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) util.Diags {
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return util.Diags{&util.Diag{
-			Severity: util.DiagError,
-			Summary:  "Failed to get Linux OS information",
-			Detail:   fmt.Sprintf("Error executing Linux discovery script: %v", err),
-		}, &util.Diag{
-			Severity: util.DiagDebug,
-			Summary:  "Discovery command stderr",
-			Detail:   fmt.Sprintf("stderr: %s", stderr),
-		}}
+		return util.Diags{
+			&util.Diag{
+				Severity: util.DiagError,
+				Summary:  "Failed to get Linux OS information",
+				Detail:   fmt.Sprintf("Error executing Linux discovery script: %v", err),
+			},
+			&util.Diag{
+				Severity: util.DiagDebug,
+				Summary:  "Discovery command stderr",
+				Detail:   fmt.Sprintf("stderr: %s", stderr),
+			},
+		}
 	}
 
 	discoveredData := make(map[string]string)
@@ -335,9 +338,7 @@ func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) util.Diags {
 	diags = diags.AppendAll(moreDiags)
 
 	o.id, _ = discoveredData["os_id"]
-
 	o.id = strings.Trim(strings.ToLower(o.id), "\"")
-
 	if o.id == "n/a" {
 		o.id = ""
 	}
@@ -356,33 +357,25 @@ func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) util.Diags {
 	}
 
 	o.friendlyName, _ = discoveredData["os_friendly_name"]
-
 	o.friendlyName = strings.Trim(strings.TrimSpace(o.friendlyName), "\"")
-
 	if o.friendlyName == "n/a" || o.friendlyName == "" {
 		o.friendlyName = o.id
 	}
 
 	o.release, _ = discoveredData["os_release"]
-
 	o.release = strings.Trim(strings.TrimSpace(o.release), "\"")
-
 	if o.release == "n/a" {
 		o.release = ""
 	}
 
 	o.edition, _ = discoveredData["os_edition"]
-
 	o.edition = strings.Trim(strings.TrimSpace(o.edition), "\"")
-
 	if o.edition == "n/a" {
 		o.edition = ""
 	}
 
 	o.editionID, _ = discoveredData["os_edition_id"]
-
 	o.editionID = strings.Trim(strings.ToLower(strings.TrimSpace(o.editionID)), "\"")
-
 	if o.editionID == "n/a" {
 		o.editionID = ""
 	}
@@ -391,7 +384,6 @@ func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) util.Diags {
 }
 
 func (o *OSInfo) populateWindowsOSInfo(t transport.Transport) util.Diags {
-
 	cmd, err := t.NewPowerShellCommand(osWindowsDiscoveryScript, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
@@ -403,15 +395,18 @@ func (o *OSInfo) populateWindowsOSInfo(t transport.Transport) util.Diags {
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return util.Diags{&util.Diag{
-			Severity: util.DiagError,
-			Summary:  "Failed to get Windows OS information",
-			Detail:   fmt.Sprintf("Error executing Windows discovery script: %v", err),
-		}, &util.Diag{
-			Severity: util.DiagDebug,
-			Summary:  "Discovery command stderr",
-			Detail:   fmt.Sprintf("stderr: %s", stderr),
-		}}
+		return util.Diags{
+			&util.Diag{
+				Severity: util.DiagError,
+				Summary:  "Failed to get Windows OS information",
+				Detail:   fmt.Sprintf("Error executing Windows discovery script: %v", err),
+			},
+			&util.Diag{
+				Severity: util.DiagDebug,
+				Summary:  "Discovery command stderr",
+				Detail:   fmt.Sprintf("stderr: %s", stderr),
+			},
+		}
 	}
 
 	discoveredData := make(map[string]string)
@@ -432,7 +427,6 @@ func (o *OSInfo) populateWindowsOSInfo(t transport.Transport) util.Diags {
 	o.friendlyName, _ = discoveredData["os_friendly_name"]
 
 	isServer := strings.Contains(strings.ToLower(o.friendlyName), "server")
-
 	if isServer {
 		o.id = "windows-server"
 	} else {
@@ -582,7 +576,6 @@ func (o *OSInfo) populateWindowsOSInfo(t transport.Transport) util.Diags {
 }
 
 func (o *OSInfo) populatePosixArchitectureInfo(data map[string]string) util.Diags {
-
 	archString, exists := data["os_arch"]
 	if !exists {
 		o.procArch = ""
@@ -633,7 +626,6 @@ func (o *OSInfo) populatePosixArchitectureInfo(data map[string]string) util.Diag
 }
 
 func (o *OSInfo) populateWindowsArchitectureInfo(data map[string]string) util.Diags {
-
 	procArchString, exists := data["processor_arch"]
 	if !exists {
 		o.procArch = ""
@@ -723,9 +715,7 @@ func (o *OSInfo) populateWindowsArchitectureInfo(data map[string]string) util.Di
 }
 
 func (o *OSInfo) populateVersionInfo(data map[string]string) util.Diags {
-
 	o.version, _ = data["os_version"]
-
 	o.version = strings.Trim(strings.TrimSpace(o.version), "\"")
 
 	versionParts := strings.Split(o.version, ".")
@@ -735,18 +725,14 @@ func (o *OSInfo) populateVersionInfo(data map[string]string) util.Diags {
 }
 
 func (o *OSInfo) toMapOfCtyValues() map[string]cty.Value {
-
 	values := make(map[string]cty.Value)
-
 	if o.families.Size() > 0 {
-
 		families := make([]cty.Value, 0, o.families.Size())
 		for _, family := range o.families.Items() {
 			families = append(families, cty.StringVal(family))
 		}
 
 		values["os_families"] = cty.SetVal(families)
-
 	} else {
 		values["os_families"] = cty.NullVal(cty.Set(cty.String))
 	}
@@ -829,16 +815,13 @@ func (o *OSInfo) toMapOfCtyValues() map[string]cty.Value {
 // String returns a string representation of the OS information.
 // This is useful for logging or debugging purposes.
 func (o *OSInfo) String() string {
-
 	stringBuilder := &strings.Builder{}
-
 	stringBuilder.WriteString("os_families: ")
 
 	if o.families.Size() == 0 {
 		stringBuilder.WriteString("none\n")
 	} else {
 		for i, family := range o.families.Items() {
-
 			if i > 0 {
 				stringBuilder.WriteString(", ")
 			}

@@ -64,7 +64,6 @@ func TestConvertHCLAttributeToString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a mock attribute and eval context
 			expr := &mockExpr{value: tt.value}
 			attr := &hcl.Attribute{
 				Name: "test_attr",
@@ -73,7 +72,6 @@ func TestConvertHCLAttributeToString(t *testing.T) {
 			evalCtx := &hcl.EvalContext{}
 
 			result, diags := ConvertHCLAttributeToString(attr, evalCtx)
-
 			if tt.hasError {
 				if !diags.HasErrors() {
 					t.Errorf("expected error but got none")
@@ -216,7 +214,6 @@ func TestConvertHCLAttributeToBool(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a mock attribute and eval context
 			expr := &mockExpr{value: tt.value}
 			attr := &hcl.Attribute{
 				Name: "test_attr",
@@ -225,7 +222,6 @@ func TestConvertHCLAttributeToBool(t *testing.T) {
 			evalCtx := &hcl.EvalContext{}
 
 			result, diags := ConvertHCLAttributeToBool(attr, evalCtx)
-
 			if tt.hasError {
 				if !diags.HasErrors() {
 					t.Errorf("expected error but got none")
@@ -331,7 +327,6 @@ func TestConvertHCLAttributeToDuration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a mock attribute and eval context
 			expr := &mockExpr{value: tt.value}
 			attr := &hcl.Attribute{
 				Name: "test_attr",
@@ -340,7 +335,6 @@ func TestConvertHCLAttributeToDuration(t *testing.T) {
 			evalCtx := &hcl.EvalContext{}
 
 			result, diags := ConvertHCLAttributeToDuration(attr, evalCtx)
-
 			if tt.hasError {
 				if !diags.HasErrors() {
 					t.Errorf("expected error but got none")
@@ -358,7 +352,6 @@ func TestConvertHCLAttributeToDuration(t *testing.T) {
 }
 
 func TestConvertHCLAttributeWithExpressionError(t *testing.T) {
-	// Test that expression evaluation errors are properly propagated
 	expr := &mockExpr{
 		value: cty.StringVal("test"),
 		err:   hcl.Diagnostics{&hcl.Diagnostic{Severity: hcl.DiagError, Summary: "test error"}},
@@ -627,14 +620,11 @@ func TestGetAllCtyStrings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := GetAllCtyStrings(tt.value)
-
-			// Check length first
 			if len(result) != len(tt.expected) {
 				t.Errorf("expected %d strings, got %d: expected %v, got %v", len(tt.expected), len(result), tt.expected, result)
 				return
 			}
 
-			// Convert to maps for easier comparison since order might vary for maps/objects
 			expectedMap := make(map[string]int)
 			for _, s := range tt.expected {
 				expectedMap[s]++
@@ -645,7 +635,6 @@ func TestGetAllCtyStrings(t *testing.T) {
 				resultMap[s]++
 			}
 
-			// Compare the maps
 			for expected, count := range expectedMap {
 				if resultMap[expected] != count {
 					t.Errorf("expected string %q to appear %d times, but it appeared %d times", expected, count, resultMap[expected])
@@ -775,7 +764,6 @@ func TestModifyUnexpectedElementDiags(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ModifyUnexpectedElementDiags(tt.diags, tt.location)
-
 			for i := range tt.diags {
 				if tt.diags[i].Severity != tt.expected[i].Severity ||
 					tt.diags[i].Summary != tt.expected[i].Summary ||
@@ -788,7 +776,6 @@ func TestModifyUnexpectedElementDiags(t *testing.T) {
 }
 
 func TestFormatCtyValueToString(t *testing.T) {
-
 	tests := []struct {
 		name           string
 		value          cty.Value
@@ -870,9 +857,7 @@ func TestFormatCtyValueToString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			actual := FormatCtyValueToString(tt.value, tt.startingIndent, tt.indentSize)
-
 			if actual != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, actual)
 			}

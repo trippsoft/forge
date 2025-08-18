@@ -79,9 +79,7 @@ func getSumTestCases() []struct {
 }
 
 func TestSum(t *testing.T) {
-
 	tests := getSumTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			actual, err := Sum(tt.input)
@@ -95,7 +93,6 @@ func TestSum(t *testing.T) {
 }
 
 func TestSum_EmptyList(t *testing.T) {
-
 	// Test case for an empty list
 	input := cty.ListValEmpty(cty.Number)
 
@@ -141,7 +138,6 @@ func TestSum_TupleWithNonNumber(t *testing.T) {
 }
 
 func TestSum_NonIterable(t *testing.T) {
-
 	// Test case for a non-iterable input
 	input := cty.StringVal("not_an_iterable")
 
@@ -157,9 +153,7 @@ func TestSum_NonIterable(t *testing.T) {
 }
 
 func TestSumFunc(t *testing.T) {
-
 	tests := getSumTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
@@ -174,7 +168,6 @@ func TestSumFunc(t *testing.T) {
 }
 
 func TestSumFunc_EmptyList(t *testing.T) {
-
 	// Test case for an empty list
 	input := cty.ListValEmpty(cty.Number)
 
@@ -220,7 +213,6 @@ func TestSumFunc_TupleWithNonNumber(t *testing.T) {
 }
 
 func TestSumFunc_NonIterable(t *testing.T) {
-
 	// Test case for a non-iterable input
 	input := cty.StringVal("not_an_iterable")
 

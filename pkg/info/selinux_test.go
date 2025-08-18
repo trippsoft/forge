@@ -13,12 +13,11 @@ import (
 
 func TestSelinuxInfo_PopulateSelinuxInfo_NoOS(t *testing.T) {
 	osInfo := newOSInfo()
-
 	mockTransport := transport.NewMockTransport()
 
 	info := newSELinuxInfo()
-	diags := info.populateSelinuxInfo(osInfo, mockTransport)
 
+	diags := info.populateSelinuxInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags)
 	}
@@ -60,7 +59,6 @@ func TestSelinuxInfo_PopulateSelinuxInfo_NoOS(t *testing.T) {
 }
 
 func TestSelinuxInfo_PopulateSelinuxInfo_Windows(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.families.Add("windows")
 	osInfo.id = "windows-server"
@@ -68,8 +66,8 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Windows(t *testing.T) {
 	mockTransport := transport.NewWinMockTransport()
 
 	info := newSELinuxInfo()
-	diags := info.populateSelinuxInfo(osInfo, mockTransport)
 
+	diags := info.populateSelinuxInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
@@ -96,7 +94,6 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Windows(t *testing.T) {
 }
 
 func TestSelinuxInfo_PopulateSelinuxInfo_Linux(t *testing.T) {
-
 	tests := []struct {
 		name              string
 		output            string
@@ -163,7 +160,6 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Linux(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			osInfo := newOSInfo()
 			osInfo.families.Add("linux")
 			osInfo.id = "ubuntu"
@@ -174,8 +170,8 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Linux(t *testing.T) {
 			}
 
 			info := newSELinuxInfo()
-			diags := info.populateSelinuxInfo(osInfo, mockTransport)
 
+			diags := info.populateSelinuxInfo(osInfo, mockTransport)
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
@@ -214,8 +210,8 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Linux_Error(t *testing.T) {
 	}
 
 	info := newSELinuxInfo()
-	diags := info.populateSelinuxInfo(osInfo, mockTransport)
 
+	diags := info.populateSelinuxInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")
 	}
@@ -267,8 +263,8 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Linux_NotJSON(t *testing.T) {
 	}
 
 	info := newSELinuxInfo()
-	diags := info.populateSelinuxInfo(osInfo, mockTransport)
 
+	diags := info.populateSelinuxInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatalf("expected errors, got none")
 	}
@@ -310,7 +306,6 @@ func TestSelinuxInfo_PopulateSelinuxInfo_Linux_NotJSON(t *testing.T) {
 }
 
 func TestSelinuxInfo_ToMapOfCtyValues_Supported(t *testing.T) {
-
 	info := &SELinuxInfo{
 		supported:   true,
 		installed:   true,
@@ -341,7 +336,6 @@ func TestSelinuxInfo_ToMapOfCtyValues_Supported(t *testing.T) {
 }
 
 func TestSelinuxInfo_ToMapOfCtyValues_NotInstalled(t *testing.T) {
-
 	info := &SELinuxInfo{
 		supported:   true,
 		installed:   false,
@@ -367,7 +361,6 @@ func TestSelinuxInfo_ToMapOfCtyValues_NotInstalled(t *testing.T) {
 }
 
 func TestSelinuxInfo_ToMapOfCtyValues_NotSupported(t *testing.T) {
-
 	info := &SELinuxInfo{
 		supported:   false,
 		installed:   true,                    // Value doesn't matter here and should be ignored

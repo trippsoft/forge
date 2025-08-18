@@ -10,19 +10,16 @@ import (
 )
 
 func TestNewSet(t *testing.T) {
-	// Test empty set
 	s := NewSet[int]()
 	if s.Size() != 0 {
 		t.Errorf("Expected empty set size 0, got %d", s.Size())
 	}
 
-	// Test set with items
 	s2 := NewSet(1, 2, 3)
 	if s2.Size() != 3 {
 		t.Errorf("Expected set size 3, got %d", s2.Size())
 	}
 
-	// Test set with duplicate items
 	s3 := NewSet(1, 2, 2, 3)
 	if s3.Size() != 3 {
 		t.Errorf("Expected set size 3 (duplicates removed), got %d", s3.Size())
@@ -40,7 +37,6 @@ func TestAdd(t *testing.T) {
 		t.Errorf("Expected size 1, got %d", s.Size())
 	}
 
-	// Add duplicate
 	s.Add(1)
 	if s.Size() != 1 {
 		t.Errorf("Expected size to remain 1 after adding duplicate, got %d", s.Size())
@@ -59,11 +55,11 @@ func TestRemove(t *testing.T) {
 	if s.Contains(2) {
 		t.Error("Expected item 2 to be removed")
 	}
+
 	if s.Size() != 2 {
 		t.Errorf("Expected size 2, got %d", s.Size())
 	}
 
-	// Remove non-existing item
 	s.Remove(5)
 	if s.Size() != 2 {
 		t.Errorf("Expected size to remain 2 after removing non-existing item, got %d", s.Size())
@@ -76,9 +72,11 @@ func TestContains(t *testing.T) {
 	if !s.Contains("a") {
 		t.Error("Expected set to contain 'a'")
 	}
+
 	if !s.Contains("b") {
 		t.Error("Expected set to contain 'b'")
 	}
+
 	if s.Contains("d") {
 		t.Error("Expected set not to contain 'd'")
 	}
@@ -90,10 +88,26 @@ func TestSize(t *testing.T) {
 		items    []int
 		expected int
 	}{
-		{"empty set", []int{}, 0},
-		{"single item", []int{1}, 1},
-		{"multiple items", []int{1, 2, 3}, 3},
-		{"duplicates", []int{1, 1, 2, 2}, 2},
+		{
+			name:     "empty set",
+			items:    []int{},
+			expected: 0,
+		},
+		{
+			name:     "single item",
+			items:    []int{1},
+			expected: 1,
+		},
+		{
+			name:     "multiple items",
+			items:    []int{1, 2, 3},
+			expected: 3,
+		},
+		{
+			name:     "duplicates",
+			items:    []int{1, 1, 2, 2},
+			expected: 2,
+		},
 	}
 
 	for _, tt := range tests {
@@ -107,17 +121,16 @@ func TestSize(t *testing.T) {
 }
 
 func TestItems(t *testing.T) {
-	// Test empty set
 	s := NewSet[int]()
 	items := s.Items()
 	if len(items) != 0 {
 		t.Errorf("Expected empty slice, got %v", items)
 	}
 
-	// Test populated set
 	s2 := NewSet(3, 1, 2)
 	items2 := s2.Items()
-	sort.Ints(items2) // Sort for consistent comparison
+	sort.Ints(items2)
+
 	expected := []int{1, 2, 3}
 	if !reflect.DeepEqual(items2, expected) {
 		t.Errorf("Expected %v, got %v", expected, items2)
@@ -131,6 +144,7 @@ func TestClear(t *testing.T) {
 	if !s.IsEmpty() {
 		t.Error("Expected set to be empty after clear")
 	}
+
 	if s.Size() != 0 {
 		t.Errorf("Expected size 0 after clear, got %d", s.Size())
 	}
@@ -154,23 +168,21 @@ func TestIsEmpty(t *testing.T) {
 }
 
 func TestUnion(t *testing.T) {
-	// Test empty sets
 	result := Union[int]()
 	if !result.IsEmpty() {
 		t.Error("Expected union of no sets to be empty")
 	}
 
-	// Test single set
 	s1 := NewSet(1, 2, 3)
 	result = Union(s1)
 	if result.Size() != 3 {
 		t.Errorf("Expected union size 3, got %d", result.Size())
 	}
 
-	// Test multiple sets
 	s2 := NewSet(3, 4, 5)
 	s3 := NewSet(5, 6, 7)
 	result = Union(s1, s2, s3)
+
 	expected := []int{1, 2, 3, 4, 5, 6, 7}
 	items := result.Items()
 	sort.Ints(items)
@@ -180,31 +192,28 @@ func TestUnion(t *testing.T) {
 }
 
 func TestIntersection(t *testing.T) {
-	// Test empty input
 	result := Intersection[int]()
 	if !result.IsEmpty() {
 		t.Error("Expected intersection of no sets to be empty")
 	}
 
-	// Test single set
 	s1 := NewSet(1, 2, 3)
 	result = Intersection(s1)
 	if result.Size() != 3 {
 		t.Errorf("Expected intersection size 3, got %d", result.Size())
 	}
 
-	// Test multiple sets with overlap
 	s2 := NewSet(2, 3, 4)
 	s3 := NewSet(3, 4, 5)
 	result = Intersection(s1, s2, s3)
 	if !result.Contains(3) {
 		t.Error("Expected intersection to contain 3")
 	}
+
 	if result.Size() != 1 {
 		t.Errorf("Expected intersection size 1, got %d", result.Size())
 	}
 
-	// Test disjoint sets
 	s4 := NewSet(1, 2)
 	s5 := NewSet(3, 4)
 	result = Intersection(s4, s5)
@@ -225,7 +234,6 @@ func TestDifference(t *testing.T) {
 		t.Errorf("Expected %v, got %v", expected, items)
 	}
 
-	// Test with empty sets
 	empty := NewSet[int]()
 	result = Difference(s1, empty)
 	if result.Size() != s1.Size() {
@@ -245,6 +253,7 @@ func TestSetWithStrings(t *testing.T) {
 	if !s.Contains("hello") {
 		t.Error("Expected set to contain 'hello'")
 	}
+
 	if s.Size() != 3 {
 		t.Errorf("Expected size 3, got %d", s.Size())
 	}

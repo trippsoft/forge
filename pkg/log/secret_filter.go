@@ -51,7 +51,6 @@ func (f *secretFilter) SetOutput(writer io.Writer) {
 }
 
 func (f *secretFilter) Write(p []byte) (n int, err error) {
-
 	for _, secret := range f.secrets.Items() {
 		if secret != "" {
 			p = bytes.ReplaceAll(p, []byte(secret), []byte("<redacted>"))

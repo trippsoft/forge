@@ -72,7 +72,6 @@ func (t *textFormat) WithForegroundColor(color ForegroundColor) *textFormat {
 }
 
 func (t *textFormat) WithStyle(style TextStyle) *textFormat {
-
 	if t.styles == nil {
 		t.styles = []TextStyle{}
 	}
@@ -161,7 +160,6 @@ func (t *uiText) WithRightMargin(margin int) *uiText {
 }
 
 func (t *uiText) WithFormat(format *textFormat) *uiText {
-
 	if format != nil {
 		t.textFormat = format.Clone()
 	} else {

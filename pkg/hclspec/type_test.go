@@ -15,7 +15,7 @@ func TestStringCtyType(t *testing.T) {
 	expected := cty.String
 	actual := String.CtyType()
 	if !actual.Equals(expected) {
-		t.Errorf("expected %q, got %q", expected.FriendlyName(), actual.FriendlyName())
+		t.Errorf("expected %q from CtyType(), got %q", expected.FriendlyName(), actual.FriendlyName())
 	}
 }
 
@@ -60,7 +60,6 @@ func TestStringConvert_Success(t *testing.T) {
 }
 
 func TestStringConvert_UnknownValue(t *testing.T) {
-
 	tests := []struct {
 		name  string
 		input cty.Value
@@ -83,7 +82,6 @@ func TestStringConvert_UnknownValue(t *testing.T) {
 }
 
 func TestStringConvert_InvalidValues(t *testing.T) {
-
 	tests := []struct {
 		name  string
 		input cty.Value
@@ -141,7 +139,6 @@ func TestStringConvert_InvalidValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			expectedError := fmt.Sprintf(
 				"cannot convert %q to %q",
 				tt.input.Type().FriendlyName(),
@@ -190,7 +187,7 @@ func TestStringValidate_Pass(t *testing.T) {
 func TestStringValidateSpec_Pass(t *testing.T) {
 	err := String.ValidateSpec()
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("expected no error from ValidateSpec(), got %q", err.Error())
 	}
 }
 
@@ -198,7 +195,7 @@ func TestNumberCtyType(t *testing.T) {
 	expected := cty.Number
 	actual := Number.CtyType()
 	if !actual.Equals(expected) {
-		t.Errorf("expected CtyType() to be %q, got %q",
+		t.Errorf("expected %q from CtyType(), got %q",
 			expected.FriendlyName(),
 			actual.FriendlyName())
 	}
@@ -261,8 +258,7 @@ func TestNumberConvert_UnknownValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			expectedError := "cannot convert unknown value"
-			verifyFailedConversion(t, Number, tt.input, expectedError)
+			verifyFailedConversion(t, Number, tt.input, "cannot convert unknown value")
 		})
 	}
 }
@@ -331,7 +327,6 @@ func TestNumberConvert_InvalidValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			var expectedError string
 			if tt.conversionError != "" {
 				expectedError = fmt.Sprintf(
@@ -388,7 +383,7 @@ func TestNumberValidate_Pass(t *testing.T) {
 func TestNumberValidateSpec_Pass(t *testing.T) {
 	err := Number.ValidateSpec()
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("expected no error from ValidateSpec(), got %q", err)
 	}
 }
 
@@ -396,14 +391,14 @@ func TestBoolCtyType(t *testing.T) {
 	expected := cty.Bool
 	actual := Bool.CtyType()
 	if !actual.Equals(expected) {
-		t.Errorf("expected CtyType() to be %q, got %q",
+		t.Errorf("expected %q from CtyType(), got %q",
 			expected.FriendlyName(),
-			actual.FriendlyName())
+			actual.FriendlyName(),
+		)
 	}
 }
 
 func TestBoolConvert_Success(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		input    cty.Value
@@ -449,7 +444,6 @@ func TestBoolConvert_Success(t *testing.T) {
 }
 
 func TestBoolConvert_UnknownValue(t *testing.T) {
-
 	tests := []struct {
 		name  string
 		input cty.Value
@@ -466,14 +460,12 @@ func TestBoolConvert_UnknownValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			expectedError := "cannot convert unknown value"
-			verifyFailedConversion(t, Bool, tt.input, expectedError)
+			verifyFailedConversion(t, Bool, tt.input, "cannot convert unknown value")
 		})
 	}
 }
 
 func TestBoolConvert_InvalidValues(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		input           cty.Value
@@ -541,7 +533,6 @@ func TestBoolConvert_InvalidValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			var expectedError string
 			if tt.conversionError != "" {
 				expectedError = fmt.Sprintf(
@@ -562,7 +553,6 @@ func TestBoolConvert_InvalidValues(t *testing.T) {
 }
 
 func TestBoolValidate_Pass(t *testing.T) {
-
 	tests := []struct {
 		name  string
 		input cty.Value
@@ -603,78 +593,84 @@ func TestBoolValidate_Pass(t *testing.T) {
 func TestBoolValidateSpec_Pass(t *testing.T) {
 	err := Bool.ValidateSpec()
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("expected no error from ValidateSpec(), got %q", err.Error())
 	}
 }
 
 func TestPrimitiveTypeCtyType_Nil(t *testing.T) {
 	var primitiveType *primitiveType
+
 	actual := primitiveType.CtyType()
 	if !actual.Equals(cty.NilType) {
-		t.Errorf("expected %q, got %q", cty.NilType.FriendlyName(), actual.FriendlyName())
+		t.Errorf("expected %q from CtyType(), got %q", cty.NilType.FriendlyName(), actual.FriendlyName())
 	}
 }
 
 func TestPrimitiveTypeConvert_Nil(t *testing.T) {
 	var primitiveType *primitiveType
+
+	expectedError := "primitive type is nil"
 	converted, err := primitiveType.Convert(cty.StringVal("test"))
 	if err == nil {
-		t.Errorf("expected error, got nil")
+		t.Errorf("expected error %q from Convert(), got none", expectedError)
 	}
 
 	if !converted.Equals(cty.NilVal).True() {
-		t.Errorf("expected nil value, got %q", util.FormatCtyValueToString(converted, 0, 0))
+		t.Errorf("expected nil value from Convert(), got %s", util.FormatCtyValueToString(converted, 0, 0))
 	}
 
-	expectedError := "primitive type is nil"
 	if err.Error() != expectedError {
-		t.Errorf("expected %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from Convert(), got %q", expectedError, err.Error())
 	}
 }
 
 func TestPrimitiveTypeValidate_Nil(t *testing.T) {
 	var primitiveType *primitiveType
+
 	err := primitiveType.Validate(cty.StringVal("test"))
 	if err != nil {
-		t.Errorf("expected nil, got %q", err.Error())
+		t.Errorf("expected no error from Validate(), got %q", err.Error())
 	}
 }
 
 func TestPrimitiveTypeValidateSpec_Nil(t *testing.T) {
 	var primitiveType *primitiveType
-	err := primitiveType.ValidateSpec()
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
 
 	expectedError := "primitive type is nil"
+	err := primitiveType.ValidateSpec()
+	if err == nil {
+		t.Errorf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
 func TestPrimitiveTypeValidateSpec_NilType(t *testing.T) {
 	primitiveType := &primitiveType{}
-	err := primitiveType.ValidateSpec()
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
 
 	expectedError := "primitive type is nil"
+	err := primitiveType.ValidateSpec()
+	if err == nil {
+		t.Errorf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }
 
 func TestPrimitiveTypeValidateSpec_NonPrimitive(t *testing.T) {
 	primitiveType := &primitiveType{cty.List(cty.String)}
-	err := primitiveType.ValidateSpec()
-	if err == nil {
-		t.Errorf("expected error, got nil")
-	}
 
 	expectedError := `Type "list of string" is not a primitive type`
+	err := primitiveType.ValidateSpec()
+	if err == nil {
+		t.Errorf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
 	if err.Error() != expectedError {
-		t.Errorf("expected %q, got %q", expectedError, err.Error())
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }

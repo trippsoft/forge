@@ -9,10 +9,8 @@ import (
 )
 
 func TestDiagError(t *testing.T) {
-
 	summary := "Test error"
 	detail := "This is a test error detail."
-
 	diag := &Diag{
 		Severity: DiagError,
 		Summary:  summary,
@@ -26,7 +24,6 @@ func TestDiagError(t *testing.T) {
 }
 
 func TestDiagsError(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		diags    Diags
@@ -388,7 +385,6 @@ func TestDiagsAppend(t *testing.T) {
 }
 
 func TestDiagsAppend_Null(t *testing.T) {
-
 	diag := &Diag{
 		Severity: DiagError,
 		Summary:  "Error",

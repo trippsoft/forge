@@ -14,22 +14,20 @@ import (
 )
 
 func TestModuleInputSpec(t *testing.T) {
-
 	module := &Module{}
 
 	spec := module.InputSpec()
 	if spec == nil {
-		t.Fatal("Expected non-nil input spec")
+		t.Fatal("Expected non-nil input spec from InputSpec(), got nil")
 	}
 
 	err := spec.ValidateSpec()
 	if err != nil {
-		t.Errorf("expected no errors from ValidateSpec(), got: %v", err)
+		t.Errorf("expected no errors from ValidateSpec(), got: %q", err.Error())
 	}
 }
 
 func TestModuleValidate(t *testing.T) {
-
 	m := &Module{}
 
 	input := map[string]cty.Value{
@@ -49,18 +47,13 @@ func TestModuleValidate(t *testing.T) {
 
 	err := m.Validate(config)
 	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
+		t.Fatalf("Expected no error from Validate(), got: %q", err.Error())
 	}
 }
 
 func TestModuleRun(t *testing.T) {
-
-	expectedMessage := "Hello, World!"
-
 	mockTransport := transport.NewMockTransport()
-
 	escalateConfig := inventory.NewEscalateConfig("")
-
 	host := inventory.NewHost("linux", mockTransport, escalateConfig, map[string]cty.Value{})
 
 	p := &Module{}
@@ -77,9 +70,8 @@ func TestModuleRun(t *testing.T) {
 	}
 
 	result := p.Run(context.Background(), config)
-
 	if result.Err != nil {
-		t.Fatalf("Expected no error, got: %v", result.Err)
+		t.Fatalf("Expected no error from Run(), got: %q", result.Err.Error())
 	}
 
 	if result.Changed {
@@ -87,9 +79,10 @@ func TestModuleRun(t *testing.T) {
 	}
 
 	if result.Output == nil {
-		t.Fatal("Expected non-nil output")
+		t.Fatal("Expected non-nil output from Run(), got nil")
 	}
 
+	expectedMessage := "Hello, World!"
 	if result.Message != expectedMessage {
 		t.Fatalf("Expected message %q, got %q", expectedMessage, result.Message)
 	}

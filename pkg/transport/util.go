@@ -11,7 +11,6 @@ import (
 )
 
 func encodePowerShellAsUTF16LEBase64(powershell string) (string, error) {
-
 	if powershell == "" {
 		return "", errors.New("input PowerShell command cannot be empty")
 	}

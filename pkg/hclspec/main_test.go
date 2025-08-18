@@ -12,6 +12,8 @@ import (
 )
 
 func verifySuccessfulConversion(t *testing.T, ty Type, input, expected cty.Value) {
+	t.Helper()
+
 	actual, err := ty.Convert(input)
 	if err != nil {
 		t.Fatalf("expected no error from Convert(), got %v", err)
@@ -26,13 +28,14 @@ func verifySuccessfulConversion(t *testing.T, ty Type, input, expected cty.Value
 
 	if actual.Equals(expected) != cty.True {
 		t.Errorf(
-			"expected Convert() to produce value %q, got %q",
+			"expected Convert() to produce value %s, got %s",
 			util.FormatCtyValueToString(expected, 0, 0),
 			util.FormatCtyValueToString(actual, 0, 0))
 	}
 }
 
 func verifyFailedConversion(t *testing.T, ty Type, input cty.Value, expectedError string) {
+	t.Helper()
 
 	_, err := ty.Convert(input)
 	if err == nil {
@@ -40,7 +43,6 @@ func verifyFailedConversion(t *testing.T, ty Type, input cty.Value, expectedErro
 	}
 
 	errs := errorwrap.UnwrapErrors(err)
-
 	for _, e := range errs {
 		if e.Error() == expectedError {
 			return
@@ -51,6 +53,8 @@ func verifyFailedConversion(t *testing.T, ty Type, input cty.Value, expectedErro
 }
 
 func verifySuccessfulValidation(t *testing.T, ty Type, input cty.Value) {
+	t.Helper()
+
 	converted, err := ty.Convert(input)
 	if err != nil {
 		t.Fatalf("expected no error from Convert(), got %v", err)
@@ -63,6 +67,7 @@ func verifySuccessfulValidation(t *testing.T, ty Type, input cty.Value) {
 }
 
 func verifyFailedValidation(t *testing.T, ty Type, input cty.Value, expectedError string) {
+	t.Helper()
 
 	converted, err := ty.Convert(input)
 	if err != nil {
@@ -75,7 +80,6 @@ func verifyFailedValidation(t *testing.T, ty Type, input cty.Value, expectedErro
 	}
 
 	errs := errorwrap.UnwrapErrors(err)
-
 	for _, e := range errs {
 		if e.Error() == expectedError {
 			return

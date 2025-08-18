@@ -51,7 +51,6 @@ func (w *MockWinTransport) Close() error {
 }
 
 func (w *MockWinTransport) NewCommand(command string, escalateConfig Escalation) (Cmd, error) {
-
 	if cmd, exists := w.CommandResults[command]; exists {
 		cmd.completed = false // Reset completion status for reuse
 		cmd.stdin = nil       // Reset stdin for new command execution
@@ -64,7 +63,6 @@ func (w *MockWinTransport) NewCommand(command string, escalateConfig Escalation)
 }
 
 func (w *MockWinTransport) NewPowerShellCommand(command string, escalateConfig Escalation) (Cmd, error) {
-
 	if cmd, exists := w.PowerShellResults[command]; exists {
 		cmd.completed = false // Reset completion status for reuse
 		cmd.stdin = nil       // Reset stdin for new command execution
@@ -78,7 +76,6 @@ func (w *MockWinTransport) NewPowerShellCommand(command string, escalateConfig E
 
 // Stat implements Transport.
 func (w *MockWinTransport) Stat(path string) (os.FileInfo, error) {
-
 	if err, exists := w.ErrorPaths[path]; exists {
 		return nil, err
 	}
@@ -99,7 +96,6 @@ func (w *MockWinTransport) Stat(path string) (os.FileInfo, error) {
 
 // Create implements Transport.
 func (w *MockWinTransport) Create(path string) (File, error) {
-
 	if err, exists := w.ErrorPaths[path]; exists {
 		return nil, err
 	}
@@ -124,7 +120,6 @@ func (w *MockWinTransport) Create(path string) (File, error) {
 
 // Open implements Transport.
 func (w *MockWinTransport) Open(path string) (File, error) {
-
 	if err, exists := w.ErrorPaths[path]; exists {
 		return nil, err
 	}
@@ -145,7 +140,6 @@ func (w *MockWinTransport) Open(path string) (File, error) {
 
 // Mkdir implements Transport.
 func (w *MockWinTransport) Mkdir(path string) error {
-
 	if err, exists := w.ErrorPaths[path]; exists {
 		return err
 	}
@@ -165,6 +159,7 @@ func (w *MockWinTransport) Mkdir(path string) error {
 		ModifiedTime: time.Now(),
 		IsDirectory:  true,
 	}
+
 	return nil
 }
 
@@ -175,7 +170,6 @@ func (w *MockWinTransport) MkdirAll(path string) error {
 
 // Remove implements Transport.
 func (w *MockWinTransport) Remove(path string) error {
-
 	if err, exists := w.ErrorPaths[path]; exists {
 		return err
 	}
@@ -210,7 +204,6 @@ func (w *MockWinTransport) Remove(path string) error {
 
 // RemoveAll implements Transport.
 func (w *MockWinTransport) RemoveAll(path string) error {
-
 	if err, exists := w.ErrorPaths[path]; exists {
 		return err
 	}
@@ -252,7 +245,6 @@ func (w *MockWinTransport) RemoveAll(path string) error {
 
 // Join implements Transport.
 func (w *MockWinTransport) Join(elem ...string) string {
-
 	stringBuilder := &strings.Builder{}
 	for i, e := range elem {
 		if i > 0 {
@@ -271,7 +263,6 @@ func (w *MockWinTransport) TempDir() (string, error) {
 
 // CreateTemp implements Transport.
 func (w *MockWinTransport) CreateTemp(dir string, pattern string) (File, error) {
-
 	if dir == "" {
 		dir, _ = w.TempDir()
 	}
@@ -305,7 +296,6 @@ func (w *MockWinTransport) CreateTemp(dir string, pattern string) (File, error) 
 
 // MkdirTemp implements Transport.
 func (w *MockWinTransport) MkdirTemp(dir string, pattern string) (string, error) {
-
 	if dir == "" {
 		dir, _ = w.TempDir()
 	}
@@ -344,7 +334,6 @@ func (w *MockWinTransport) MkdirTemp(dir string, pattern string) (string, error)
 
 // Symlink implements Transport.
 func (w *MockWinTransport) Symlink(target string, path string) error {
-
 	if err, exists := w.ErrorPaths[path]; exists {
 		return err
 	}
@@ -368,6 +357,7 @@ func (w *MockWinTransport) Symlink(target string, path string) error {
 		},
 		Content: nil,
 	}
+
 	return nil
 }
 
@@ -384,7 +374,6 @@ func (w *MockWinTransport) ReadLink(path string) (string, error) {
 
 // RealPath implements Transport.
 func (w *MockWinTransport) RealPath(path string) (string, error) {
-
 	if _, exists := w.Files[path]; exists {
 		return path, nil // Return the path as is for mock transport
 	}

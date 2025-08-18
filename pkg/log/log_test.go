@@ -49,18 +49,15 @@ func TestTrace(t *testing.T) {
 	}
 
 	expected := "TRACE:\tThis is a trace message"
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			Init(&buf)
-
 			Verbosity = tt.verbosity
 
 			Trace(tt.logMessage)
 
 			actual := buf.String()
-
 			if tt.shouldContain && !strings.Contains(actual, expected) {
 				t.Errorf("Expected trace message not found in output: %s", actual)
 			} else if !tt.shouldContain && strings.Contains(actual, expected) {
@@ -165,13 +162,11 @@ func TestTracef(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			Init(&buf)
-
 			Verbosity = tt.verbosity
 
 			Tracef(tt.logTemplate, tt.args...)
 
 			actual := buf.String()
-
 			if tt.shouldContain && !strings.Contains(actual, tt.expected) {
 				t.Errorf("Expected trace message not found in output: %s", actual)
 			} else if !tt.shouldContain && strings.Contains(actual, tt.expected) {
@@ -221,17 +216,15 @@ func TestDebug(t *testing.T) {
 	}
 
 	expected := "DEBUG:\tThis is a debug message"
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			Init(&buf)
-
 			Verbosity = tt.verbosity
 
 			Debug(tt.logMessage)
-			actual := buf.String()
 
+			actual := buf.String()
 			if tt.shouldContain && !strings.Contains(actual, expected) {
 				t.Errorf("Expected debug message not found in output: %s", actual)
 			} else if !tt.shouldContain && strings.Contains(actual, expected) {
@@ -336,13 +329,11 @@ func TestDebugf(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			Init(&buf)
-
 			Verbosity = tt.verbosity
 
 			Debugf(tt.logTemplate, tt.args...)
 
 			actual := buf.String()
-
 			if tt.shouldContain && !strings.Contains(actual, tt.expected) {
 				t.Errorf("Expected debug message not found in output: %s", actual)
 			} else if !tt.shouldContain && strings.Contains(actual, tt.expected) {
@@ -392,19 +383,15 @@ func TestInfo(t *testing.T) {
 	}
 
 	expected := "INFO :\tThis is an info message"
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			var buf bytes.Buffer
 			Init(&buf)
-
 			Verbosity = tt.verbosity
 
 			Info(tt.logMessage)
 
 			actual := buf.String()
-
 			if tt.shouldContain && !strings.Contains(actual, expected) {
 				t.Errorf("Expected info message not found in output: %s", actual)
 			} else if !tt.shouldContain && strings.Contains(actual, expected) {
@@ -507,16 +494,13 @@ func TestInfof(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			var buf bytes.Buffer
 			Init(&buf)
-
 			Verbosity = tt.verbosity
 
 			Infof(tt.logTemplate, tt.args...)
 
 			actual := buf.String()
-
 			if tt.shouldContain && !strings.Contains(actual, tt.expected) {
 				t.Errorf("Expected info message not found in output: %s", actual)
 			} else if !tt.shouldContain && strings.Contains(actual, tt.expected) {
@@ -566,18 +550,15 @@ func TestWarn(t *testing.T) {
 	}
 
 	expected := "WARN :\tThis is a warning message"
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			Init(&buf)
-
 			Verbosity = tt.verbosity
 
 			Warn(tt.logMessage)
 
 			actual := buf.String()
-
 			if tt.shouldContain && !strings.Contains(actual, expected) {
 				t.Errorf("Expected warning message not found in output: %s", actual)
 			} else if !tt.shouldContain && strings.Contains(actual, expected) {
@@ -680,16 +661,13 @@ func TestWarnf(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			var buf bytes.Buffer
 			Init(&buf)
-
 			Verbosity = tt.verbosity
 
 			Warnf(tt.logTemplate, tt.args...)
 
 			actual := buf.String()
-
 			if tt.shouldContain && !strings.Contains(actual, tt.expected) {
 				t.Errorf("Expected warning message not found in output: %s", actual)
 			} else if !tt.shouldContain && strings.Contains(actual, tt.expected) {
@@ -733,19 +711,15 @@ func TestError(t *testing.T) {
 	}
 
 	expected := "ERROR:\tThis is an error message"
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			var buf bytes.Buffer
 			Init(&buf)
-
 			Verbosity = tt.verbosity
 
 			Error(tt.logMessage)
 
 			actual := buf.String()
-
 			if !strings.Contains(actual, expected) {
 				t.Errorf("Expected error message not found in output: %s", actual)
 			}
@@ -835,16 +809,13 @@ func TestErrorf(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			var buf bytes.Buffer
 			Init(&buf)
-
 			Verbosity = tt.verbosity
 
 			Errorf(tt.logTemplate, tt.args...)
 
 			actual := buf.String()
-
 			if !strings.Contains(actual, tt.expected) {
 				t.Errorf("Expected error message not found in output: %s", actual)
 			}

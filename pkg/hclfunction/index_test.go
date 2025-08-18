@@ -86,12 +86,9 @@ func getIndexTestCases() []struct {
 
 func TestIndex(t *testing.T) {
 	tests := getIndexTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			actual, err := Index(tt.list, tt.value)
-
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
@@ -102,7 +99,6 @@ func TestIndex(t *testing.T) {
 }
 
 func TestIndex_ValueNotFound(t *testing.T) {
-
 	list := cty.ListVal([]cty.Value{cty.StringVal("a"), cty.StringVal("b"), cty.StringVal("c")})
 	value := cty.StringVal("not_in_list")
 
@@ -133,12 +129,9 @@ func TestIndex_EmptyList(t *testing.T) {
 }
 
 func TestIndexFunc(t *testing.T) {
-
 	tests := getIndexTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			actual, err := IndexFunc.Call([]cty.Value{tt.list, tt.value})
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
@@ -150,7 +143,6 @@ func TestIndexFunc(t *testing.T) {
 }
 
 func TestIndexFunc_ValueNotFound(t *testing.T) {
-
 	list := cty.ListVal([]cty.Value{cty.StringVal("a"), cty.StringVal("b"), cty.StringVal("c")})
 	value := cty.StringVal("not_in_list")
 

@@ -55,7 +55,6 @@ func (u *UserInfo) Gecos() string {
 }
 
 func (u *UserInfo) populateUserInfo(osInfo *OSInfo, transport transport.Transport) util.Diags {
-
 	if osInfo == nil || osInfo.id == "" {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagWarning,
@@ -80,7 +79,6 @@ func (u *UserInfo) populateUserInfo(osInfo *OSInfo, transport transport.Transpor
 }
 
 func (u *UserInfo) populatePosixUserInfo(t transport.Transport) util.Diags {
-
 	cmd, err := t.NewCommand(userPosixDiscoveryScript, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
@@ -92,15 +90,18 @@ func (u *UserInfo) populatePosixUserInfo(t transport.Transport) util.Diags {
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return util.Diags{&util.Diag{
-			Severity: util.DiagError,
-			Summary:  "Failed to get user information",
-			Detail:   fmt.Sprintf("Error getting user information on POSIX host: %v", err),
-		}, &util.Diag{
-			Severity: util.DiagDebug,
-			Summary:  "Discovery command stderr",
-			Detail:   fmt.Sprintf("stderr: %s", stderr),
-		}}
+		return util.Diags{
+			&util.Diag{
+				Severity: util.DiagError,
+				Summary:  "Failed to get user information",
+				Detail:   fmt.Sprintf("Error getting user information on POSIX host: %v", err),
+			},
+			&util.Diag{
+				Severity: util.DiagDebug,
+				Summary:  "Discovery command stderr",
+				Detail:   fmt.Sprintf("stderr: %s", stderr),
+			},
+		}
 	}
 
 	discoveredData := make(map[string]string)
@@ -124,7 +125,6 @@ func (u *UserInfo) populatePosixUserInfo(t transport.Transport) util.Diags {
 }
 
 func (u *UserInfo) populateWindowsUserInfo(t transport.Transport) util.Diags {
-
 	cmd, err := t.NewPowerShellCommand(userWindowsDiscoveryScript, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
@@ -136,15 +136,18 @@ func (u *UserInfo) populateWindowsUserInfo(t transport.Transport) util.Diags {
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return util.Diags{&util.Diag{
-			Severity: util.DiagError,
-			Summary:  "Failed to get user information",
-			Detail:   fmt.Sprintf("Error getting user information on Windows host: %v", err),
-		}, &util.Diag{
-			Severity: util.DiagDebug,
-			Summary:  "Discovery command stderr",
-			Detail:   fmt.Sprintf("stderr: %s", stderr),
-		}}
+		return util.Diags{
+			&util.Diag{
+				Severity: util.DiagError,
+				Summary:  "Failed to get user information",
+				Detail:   fmt.Sprintf("Error getting user information on Windows host: %v", err),
+			},
+			&util.Diag{
+				Severity: util.DiagDebug,
+				Summary:  "Discovery command stderr",
+				Detail:   fmt.Sprintf("stderr: %s", stderr),
+			},
+		}
 	}
 
 	discoveredData := make(map[string]string)

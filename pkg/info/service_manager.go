@@ -36,7 +36,6 @@ func (s *ServiceManagerInfo) Name() string {
 }
 
 func (s *ServiceManagerInfo) populateServiceManagerInfo(osInfo *OSInfo, transport transport.Transport) util.Diags {
-
 	if osInfo == nil || osInfo.ID() == "" {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagWarning,
@@ -66,7 +65,6 @@ func (s *ServiceManagerInfo) populateServiceManagerInfo(osInfo *OSInfo, transpor
 }
 
 func (s *ServiceManagerInfo) populateDarwinServiceManagerInfo(osInfo *OSInfo) util.Diags {
-
 	s.name = "launchd" // Default to launchd for macOS
 
 	majorVersion, err := strconv.Atoi(osInfo.MajorVersion())
@@ -116,7 +114,6 @@ func (s *ServiceManagerInfo) populateDarwinServiceManagerInfo(osInfo *OSInfo) ut
 }
 
 func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transport) util.Diags {
-
 	cmd, err := t.NewCommand(serviceManagerLinuxDiscoveryScript, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
@@ -128,15 +125,18 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transpo
 
 	stdout, stderr, err := cmd.OutputWithError(context.Background())
 	if err != nil {
-		return util.Diags{&util.Diag{
-			Severity: util.DiagError,
-			Summary:  "Failed to execute service manager discovery script",
-			Detail:   fmt.Sprintf("Error executing service manager discovery script: %v", err),
-		}, &util.Diag{
-			Severity: util.DiagDebug,
-			Summary:  "Discovery command stderr",
-			Detail:   fmt.Sprintf("stderr: %s", stderr),
-		}}
+		return util.Diags{
+			&util.Diag{
+				Severity: util.DiagError,
+				Summary:  "Failed to execute service manager discovery script",
+				Detail:   fmt.Sprintf("Error executing service manager discovery script: %v", err),
+			},
+			&util.Diag{
+				Severity: util.DiagDebug,
+				Summary:  "Discovery command stderr",
+				Detail:   fmt.Sprintf("stderr: %s", stderr),
+			},
+		}
 	}
 
 	discoveredData := make(map[string]string)
@@ -150,27 +150,21 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transpo
 	}
 
 	systemctlExists, _ := discoveredData["systemctl_exists"]
-
 	hasSystemctl := systemctlExists == "1"
-
 	if hasSystemctl {
-
 		runSystemdSystemExists, _ := discoveredData["run_systemd_system_exists"]
-
 		if runSystemdSystemExists == "1" {
 			s.name = "systemd"
 			return util.Diags{}
 		}
 
 		devRunSystemdExists, _ := discoveredData["dev_run_systemd_exists"]
-
 		if devRunSystemdExists == "1" {
 			s.name = "systemd"
 			return util.Diags{}
 		}
 
 		devSystemdExists, _ := discoveredData["dev_systemd_exists"]
-
 		if devSystemdExists == "1" {
 			s.name = "systemd"
 			return util.Diags{}
@@ -178,10 +172,8 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transpo
 	}
 
 	initctlExists, _ := discoveredData["initctl_exists"]
-
 	if initctlExists == "1" {
 		etcInitExists, _ := discoveredData["etc_init_exists"]
-
 		if etcInitExists == "1" {
 			s.name = "upstart"
 			return util.Diags{}
@@ -189,14 +181,12 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transpo
 	}
 
 	openrcExists, _ := discoveredData["openrc_exists"]
-
 	if openrcExists == "1" {
 		s.name = "openrc"
 		return util.Diags{}
 	}
 
 	initLinkTarget, _ := discoveredData["init_link_target"]
-
 	initLinkTargetParts := strings.Split(initLinkTarget, "/")
 	initLinkTarget = initLinkTargetParts[len(initLinkTargetParts)-1] // Get the last part of the path
 	if initLinkTarget == "systemd" {
@@ -205,14 +195,12 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transpo
 	}
 
 	etcInitDExists, _ := discoveredData["etc_init_d_exists"]
-
 	if etcInitDExists == "1" {
 		s.name = "sysvinit"
 		return util.Diags{}
 	}
 
 	proc1Comm, _ := discoveredData["proc1_comm"]
-
 	if proc1Comm != "" && proc1Comm != "COMMAND" && proc1Comm != "init" && !strings.HasSuffix(proc1Comm, "sh") {
 		if serviceManager, ok := proc1CommMap[proc1Comm]; ok {
 			s.name = serviceManager
@@ -241,7 +229,6 @@ func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transpo
 }
 
 func (s *ServiceManagerInfo) toMapOfCtyValues() map[string]cty.Value {
-
 	if s.name == "" {
 		return map[string]cty.Value{
 			"service_manager": cty.NullVal(cty.String),
@@ -256,7 +243,6 @@ func (s *ServiceManagerInfo) toMapOfCtyValues() map[string]cty.Value {
 // String returns a string representation of the service manager information.
 // This is useful for logging or debugging purposes.
 func (s *ServiceManagerInfo) String() string {
-
 	if s.name == "" {
 		return "service_manager: unknown"
 	}

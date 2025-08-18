@@ -53,7 +53,6 @@ type Type interface {
 	ValidateSpec() error
 }
 
-// primitiveType represents a non-iterable cty.Type with no additional validation.
 type primitiveType struct {
 	t cty.Type
 }
@@ -103,7 +102,6 @@ func (p *primitiveType) String() string {
 	return p.t.FriendlyName()
 }
 
-// durationType represents a time.Duration represented in HCL as a string.
 type durationType struct{}
 
 // CtyType implements Type.
@@ -144,7 +142,6 @@ func (d *durationType) String() string {
 	return "duration"
 }
 
-// sensitiveStringType represents a sensitive string type.
 type sensitiveStringType struct{}
 
 // CtyType implements Type.
@@ -162,6 +159,7 @@ func (s *sensitiveStringType) Convert(value cty.Value) (cty.Value, error) {
 	if err == nil {
 		s.AddToFilter(v)
 	}
+
 	return v, err
 }
 
@@ -196,7 +194,6 @@ func (s *sensitiveStringType) AddToFilter(value cty.Value) {
 	}
 }
 
-// listType represents a list of elements of a specific type.
 type listType struct {
 	elementType Type // The type of elements in the list.
 }
@@ -222,7 +219,6 @@ func (l *listType) Convert(value cty.Value) (cty.Value, error) {
 	}
 
 	converted, err := convertCtyType(value, l.CtyType())
-
 	if err != nil {
 		var e error
 		converted, e = l.elementType.Convert(value)
@@ -298,7 +294,6 @@ func (l *listType) String() string {
 	return l.CtyType().FriendlyName()
 }
 
-// mapType represents a map of string keys to values of a specific type.
 type mapType struct {
 	valueType Type // The type of values in the map.
 }
@@ -329,7 +324,6 @@ func (m *mapType) Convert(value cty.Value) (cty.Value, error) {
 	}
 
 	sensitiveString, ok := m.valueType.(*sensitiveStringType)
-
 	if converted.IsNull() || !ok {
 		return converted, nil // A null is presumed valid.
 	}
@@ -406,7 +400,6 @@ func (s *setType) Convert(value cty.Value) (cty.Value, error) {
 	}
 
 	converted, err := convertCtyType(value, s.CtyType())
-
 	if err != nil {
 		var e error
 		converted, e = s.elementType.Convert(value)

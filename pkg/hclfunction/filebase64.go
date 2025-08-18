@@ -26,7 +26,6 @@ var (
 			return rb.NotNull()
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-
 			path := args[0].AsString()
 			content, err := os.ReadFile(path)
 			if err != nil {

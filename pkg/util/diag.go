@@ -52,7 +52,6 @@ type Diags []*Diag
 // Error returns a formatted string representation of the diagnostics.
 // It summarizes the diagnostics, indicating how many there are and providing details for each.
 func (d Diags) Error() string {
-
 	length := len(d)
 
 	switch length {
@@ -144,5 +143,6 @@ func (d Diags) AppendAll(diags Diags) Diags {
 	if diags == nil {
 		return d
 	}
+
 	return append(d, diags...)
 }

@@ -21,12 +21,12 @@ func NewWorkflow(processes ...*Process) *Workflow {
 // This is used primarily for testing purposes.
 func (w *Workflow) Processes() []*Process {
 	processes := slices.Clone(w.processes)
+
 	return processes
 }
 
 // Run executes the workflow.
 func (w *Workflow) Run(ctx *workflowContext) error {
-
 	ctx.inventory.ClearSteps() // Clear any existing steps before running the workflow.
 
 	var err error

@@ -63,9 +63,7 @@ func getAllTrueTestCases() []struct {
 }
 
 func TestAllTrue(t *testing.T) {
-
 	tests := getAllTrueTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
@@ -80,9 +78,7 @@ func TestAllTrue(t *testing.T) {
 }
 
 func TestAllTrueFunc(t *testing.T) {
-
 	tests := getAllTrueTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 

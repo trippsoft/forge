@@ -60,10 +60,8 @@ func getEnvTestCases() []struct {
 
 func TestEnv(t *testing.T) {
 	tests := getEnvTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			originalValue, wasSet := os.LookupEnv(tt.envVar)
 			os.Setenv(tt.envVar, tt.envValue)
 			defer func() {
@@ -87,12 +85,9 @@ func TestEnv(t *testing.T) {
 }
 
 func TestEnvFunc(t *testing.T) {
-
 	tests := getEnvTestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			originalValue, wasSet := os.LookupEnv(tt.envVar)
 			os.Setenv(tt.envVar, tt.envValue)
 			defer func() {

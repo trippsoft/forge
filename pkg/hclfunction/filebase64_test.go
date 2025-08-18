@@ -13,7 +13,6 @@ import (
 )
 
 func setupTempDir(t *testing.T) string {
-
 	tempDir, err := os.MkdirTemp("", "filebase64_test*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
@@ -49,7 +48,6 @@ func getFileBase64TestCases() []struct {
 }
 
 func createTempFile(t *testing.T, dir string, content []byte) string {
-
 	file, err := os.CreateTemp(dir, "testfile_*")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
@@ -79,15 +77,12 @@ func encodeExpectedAsBase64(content []byte) cty.Value {
 }
 
 func TestFileBase64(t *testing.T) {
-
 	tempDir := setupTempDir(t)
 	defer os.RemoveAll(tempDir)
 
 	tests := getFileBase64TestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			path := createTempFile(t, tempDir, tt.content)
 
 			expected := encodeExpectedAsBase64(tt.content)
@@ -103,7 +98,6 @@ func TestFileBase64(t *testing.T) {
 }
 
 func TestFileBase64_NonExistentFile(t *testing.T) {
-
 	// Test with a non-existent file
 	_, err := FileBase64(cty.StringVal("non_existent_file.txt"))
 	if err == nil {
@@ -117,15 +111,12 @@ func TestFileBase64_NonExistentFile(t *testing.T) {
 }
 
 func TestFileBase64Func(t *testing.T) {
-
 	tempDir := setupTempDir(t)
 	defer os.RemoveAll(tempDir)
 
 	tests := getFileBase64TestCases()
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			path := createTempFile(t, tempDir, tt.content)
 
 			expected := encodeExpectedAsBase64(tt.content)
@@ -141,7 +132,6 @@ func TestFileBase64Func(t *testing.T) {
 }
 
 func TestFileBase64Func_NonExistentFile(t *testing.T) {
-
 	// Test with a non-existent file
 	_, err := FileBase64Func.Call([]cty.Value{cty.StringVal("non_existent_file.txt")})
 	if err == nil {

@@ -31,13 +31,9 @@ func (s *Module) Validate(config *module.RunConfig) error {
 
 // Run implements module.Module.
 func (s *Module) Run(ctx context.Context, config *module.RunConfig) *module.Result {
-
 	message := config.Input["message"].AsString()
-
 	output := map[string]cty.Value{}
-
 	result := module.NewSuccess(false, output)
-
 	result.Message = message
 
 	return result

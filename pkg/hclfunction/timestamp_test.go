@@ -11,7 +11,6 @@ import (
 )
 
 func TestTimestamp(t *testing.T) {
-
 	actual, err := Timestamp()
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -22,6 +21,7 @@ func TestTimestamp(t *testing.T) {
 	}
 
 	timestamp := actual.AsString()
+
 	// Verify the timestamp is in RFC3339 format by parsing it
 	_, err = time.Parse(time.RFC3339, timestamp)
 	if err != nil {
@@ -32,17 +32,14 @@ func TestTimestamp(t *testing.T) {
 	parsedTime, _ := time.Parse(time.RFC3339, timestamp)
 	now := time.Now().UTC()
 	diff := now.Sub(parsedTime)
-
 	if diff > time.Minute || diff < -time.Minute {
 		t.Errorf("Timestamp() returned time %v, which is not recent (diff: %v)", parsedTime, diff)
 	}
 }
 
 func TestTimestamp_Consistency(t *testing.T) {
-
 	result1, err1 := Timestamp()
 	result2, err2 := Timestamp()
-
 	if err1 != nil {
 		t.Fatalf("expected no error on first call, got %v", err1)
 	}
@@ -73,7 +70,6 @@ func TestTimestamp_Consistency(t *testing.T) {
 }
 
 func TestTimestampFunc(t *testing.T) {
-
 	actual, err := TimestampFunc.Call([]cty.Value{})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -94,17 +90,14 @@ func TestTimestampFunc(t *testing.T) {
 	parsedTime, _ := time.Parse(time.RFC3339, timestamp)
 	now := time.Now().UTC()
 	diff := now.Sub(parsedTime)
-
 	if diff > time.Minute || diff < -time.Minute {
 		t.Errorf("Timestamp() returned time %v, which is not recent (diff: %v)", parsedTime, diff)
 	}
 }
 
 func TestTimestampFunc_Consistency(t *testing.T) {
-
 	result1, err1 := TimestampFunc.Call([]cty.Value{})
 	result2, err2 := TimestampFunc.Call([]cty.Value{})
-
 	if err1 != nil {
 		t.Fatalf("expected no error on first call, got %v", err1)
 	}

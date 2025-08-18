@@ -39,7 +39,6 @@ func TestLogSecretFilter_SetOutput(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	filter.SetOutput(buf)
-
 	if filter.writer != buf {
 		t.Error("Expected writer to be set")
 	}
@@ -57,7 +56,6 @@ func TestLogSecretFilter_Write(t *testing.T) {
 
 	input := []byte("User logged in with password secret123")
 	n, err := filter.Write(input)
-
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -83,7 +81,6 @@ func TestLogSecretFilter_Filter(t *testing.T) {
 
 	input := "API call with token123 and mysecret values"
 	result := filter.Filter(input)
-
 	expected := "API call with <redacted> and <redacted> values"
 	if result != expected {
 		t.Errorf("Expected %q, got %q", expected, result)
@@ -99,7 +96,7 @@ func TestLogSecretFilter_ConcurrentAccess(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Concurrent writes
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -108,7 +105,7 @@ func TestLogSecretFilter_ConcurrentAccess(t *testing.T) {
 	}
 
 	// Concurrent filters
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -127,7 +124,6 @@ func TestLogSecretFilter_EmptySecrets(t *testing.T) {
 
 	input := "No secrets here"
 	result := filter.Filter(input)
-
 	if result != input {
 		t.Errorf("Expected %q, got %q", input, result)
 	}

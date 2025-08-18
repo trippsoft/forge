@@ -16,7 +16,6 @@ import (
 
 // ConvertHCLAttributeToString converts an HCL attribute to a string value.
 func ConvertHCLAttributeToString(attribute *hcl.Attribute, evalCtx *hcl.EvalContext) (string, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 
 	value, moreDiags := attribute.Expr.Value(evalCtx)
@@ -34,12 +33,12 @@ func ConvertHCLAttributeToString(attribute *hcl.Attribute, evalCtx *hcl.EvalCont
 			Detail:   fmt.Sprintf("The value for '%s' could not be converted to a string: %v", attribute.Name, err),
 		})
 	}
+
 	return str, diags
 }
 
 // ConvertHCLAttributeToUint16 converts an HCL attribute to a uint16 value.
 func ConvertHCLAttributeToUint16(attribute *hcl.Attribute, evalCtx *hcl.EvalContext) (uint16, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 
 	value, moreDiags := attribute.Expr.Value(evalCtx)
@@ -57,12 +56,12 @@ func ConvertHCLAttributeToUint16(attribute *hcl.Attribute, evalCtx *hcl.EvalCont
 			Detail:   fmt.Sprintf("The value for '%s' could not be converted to a uint16: %v", attribute.Name, err),
 		})
 	}
+
 	return num, diags
 }
 
 // ConvertHCLAttributeToBool converts an HCL attribute to a bool value.
 func ConvertHCLAttributeToBool(attribute *hcl.Attribute, evalCtx *hcl.EvalContext) (bool, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 
 	value, moreDiags := attribute.Expr.Value(evalCtx)
@@ -80,12 +79,12 @@ func ConvertHCLAttributeToBool(attribute *hcl.Attribute, evalCtx *hcl.EvalContex
 			Detail:   fmt.Sprintf("The value for '%s' could not be converted to a bool: %v", attribute.Name, err),
 		})
 	}
+
 	return b, diags
 }
 
 // ConvertHCLAttributeToDuration converts an HCL attribute to a duration value.
 func ConvertHCLAttributeToDuration(attribute *hcl.Attribute, evalCtx *hcl.EvalContext) (time.Duration, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 
 	value, moreDiags := attribute.Expr.Value(evalCtx)
@@ -118,7 +117,6 @@ func ConvertHCLAttributeToDuration(attribute *hcl.Attribute, evalCtx *hcl.EvalCo
 
 // GetAllCtyStrings returns all string values found within a cty.Value.
 func GetAllCtyStrings(value cty.Value) []string {
-
 	results := []string{}
 
 	switch {
@@ -152,7 +150,6 @@ func GetAllCtyStrings(value cty.Value) []string {
 
 // ModifyUnexpectedElementDiags modifies diagnostics for unexpected elements to be more specific and be of warning severity.
 func ModifyUnexpectedElementDiags(diags hcl.Diagnostics, location string) hcl.Diagnostics {
-
 	if diags == nil {
 		return nil
 	}
@@ -173,7 +170,6 @@ func ModifyUnexpectedElementDiags(diags hcl.Diagnostics, location string) hcl.Di
 }
 
 func FormatCtyValueToString(value cty.Value, currentIndent int, indentSize int) string {
-
 	if value.IsNull() || !value.IsWhollyKnown() {
 		return "null"
 	}
@@ -187,7 +183,6 @@ func FormatCtyValueToString(value cty.Value, currentIndent int, indentSize int) 
 		converted, _ := convert.Convert(value, cty.String)
 		return converted.AsString()
 	case value.Type().IsListType() || value.Type().IsSetType() || value.Type().IsTupleType():
-
 		length := value.LengthInt()
 		if length == 0 {
 			return "[]"
@@ -197,13 +192,10 @@ func FormatCtyValueToString(value cty.Value, currentIndent int, indentSize int) 
 		it := value.ElementIterator()
 		stringBuilder.WriteString("[\n")
 		i := 0
-
 		for it.Next() {
-
 			stringBuilder.WriteString(strings.Repeat(" ", currentIndent+indentSize))
 			_, elemValue := it.Element()
 			stringBuilder.WriteString(FormatCtyValueToString(elemValue, currentIndent+indentSize, indentSize))
-
 			if i < length-1 {
 				stringBuilder.WriteString(",\n")
 			}
@@ -214,10 +206,10 @@ func FormatCtyValueToString(value cty.Value, currentIndent int, indentSize int) 
 		stringBuilder.WriteString("\n")
 		stringBuilder.WriteString(strings.Repeat(" ", currentIndent))
 		stringBuilder.WriteString("]")
+
 		return stringBuilder.String()
 
 	case value.Type().IsMapType() || value.Type().IsObjectType():
-
 		length := value.LengthInt()
 		if length == 0 {
 			return "{}"
@@ -227,21 +219,24 @@ func FormatCtyValueToString(value cty.Value, currentIndent int, indentSize int) 
 		it := value.ElementIterator()
 		stringBuilder.WriteString("{\n")
 		i := 0
-
 		for it.Next() {
-
 			stringBuilder.WriteString(strings.Repeat(" ", currentIndent+indentSize))
 			key, elemValue := it.Element()
 			fmt.Fprintf(stringBuilder, "%q: %s", key.AsString(), FormatCtyValueToString(elemValue, currentIndent+indentSize, indentSize))
+
 			if i < length-1 {
 				stringBuilder.WriteString(",\n")
 			}
+
 			i++
 		}
+
 		stringBuilder.WriteString("\n")
 		stringBuilder.WriteString(strings.Repeat(" ", currentIndent))
 		stringBuilder.WriteString("}")
+
 		return stringBuilder.String()
+
 	default:
 		return "unsupported type"
 	}

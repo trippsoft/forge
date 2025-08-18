@@ -11,14 +11,12 @@ import (
 )
 
 func TestServiceManagerInfo_PopulateServiceManagerInfo_NoOS(t *testing.T) {
-
 	osInfo := newOSInfo()
-
 	mockTransport := transport.NewMockTransport()
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
@@ -48,7 +46,6 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_NoOS(t *testing.T) {
 }
 
 func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		majorVersion string
@@ -95,7 +92,6 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			osInfo := newOSInfo()
 			osInfo.families.Add("darwin") // macOS
 			osInfo.id = "macos"
@@ -105,8 +101,8 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin(t *testing.T) {
 			mockTransport := transport.NewMockTransport()
 
 			info := newServiceManagerInfo()
-			diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
+			diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
@@ -123,7 +119,6 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin(t *testing.T) {
 }
 
 func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_InvalidMajorVersion(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.families.Add("darwin") // macOS
 	osInfo.id = "macos"
@@ -132,8 +127,8 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_InvalidMajorVersio
 	mockTransport := transport.NewMockTransport()
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
 	}
@@ -164,7 +159,6 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_InvalidMajorVersio
 }
 
 func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_NotEnoughVersionParts(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.families.Add("darwin") // macOS
 	osInfo.id = "macos"
@@ -174,8 +168,8 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_NotEnoughVersionPa
 	mockTransport := transport.NewMockTransport()
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
 	}
@@ -206,7 +200,6 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_NotEnoughVersionPa
 }
 
 func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_InvalidVersion(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.families.Add("darwin") // macOS
 	osInfo.id = "macos"
@@ -216,8 +209,8 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_InvalidVersion(t *
 	mockTransport := transport.NewMockTransport()
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
 	}
@@ -248,7 +241,6 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Darwin_InvalidVersion(t *
 }
 
 func TestServiceManagerInfo_PopulateServiceManagerInfo_Windows(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.families.Add("windows")
 	osInfo.id = "windows"
@@ -256,8 +248,8 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Windows(t *testing.T) {
 	mockTransport := transport.NewMockTransport()
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 	if diags.HasErrors() {
 		t.Fatalf("expected no errors, got: %v", diags.Errors())
 	}
@@ -273,7 +265,6 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Windows(t *testing.T) {
 }
 
 func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		output   string
@@ -460,7 +451,6 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			osInfo := newOSInfo()
 			osInfo.families.Add("linux")
 			osInfo.id = "ubuntu"
@@ -471,8 +461,8 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux(t *testing.T) {
 			}
 
 			info := newServiceManagerInfo()
-			diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
+			diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 			if diags.HasErrors() {
 				t.Fatalf("expected no errors, got: %v", diags.Errors())
 			}
@@ -489,7 +479,6 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux(t *testing.T) {
 }
 
 func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_Error(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.families.Add("linux")
 	osInfo.id = "ubuntu"
@@ -500,8 +489,8 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_Error(t *testing.T)
 	}
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
 	}
@@ -531,7 +520,6 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_Error(t *testing.T)
 }
 
 func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_NoOutput(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.families.Add("linux")
 	osInfo.id = "ubuntu"
@@ -542,8 +530,8 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_NoOutput(t *testing
 	}
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
 	}
@@ -573,7 +561,6 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_NoOutput(t *testing
 }
 
 func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_NoServiceManager(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.families.Add("linux")
 	osInfo.id = "ubuntu"
@@ -596,8 +583,8 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_NoServiceManager(t 
 	}
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
 	}
@@ -627,15 +614,14 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_Linux_NoServiceManager(t 
 }
 
 func TestServiceManagerInfo_PopulateServiceManagerInfo_UnknownOS(t *testing.T) {
-
 	osInfo := newOSInfo()
 	osInfo.id = "generic"
 
 	mockTransport := transport.NewMockTransport()
 
 	info := newServiceManagerInfo()
-	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 
+	diags := info.populateServiceManagerInfo(osInfo, mockTransport)
 	if !diags.HasErrors() {
 		t.Fatal("expected errors, got none")
 	}
@@ -665,7 +651,6 @@ func TestServiceManagerInfo_PopulateServiceManagerInfo_UnknownOS(t *testing.T) {
 }
 
 func TestServiceManagerInfo_ToMapOfCtyValues(t *testing.T) {
-
 	tests := []struct {
 		name        string
 		serviceName string
@@ -686,12 +671,10 @@ func TestServiceManagerInfo_ToMapOfCtyValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			info := newServiceManagerInfo()
 			info.name = tt.serviceName
 
 			values := info.toMapOfCtyValues()
-
 			if tt.serviceName != values["service_manager"].AsString() {
 				t.Errorf("expected service_manager to be %q, got: %q", tt.serviceName, values["service_manager"].AsString())
 			}
@@ -700,11 +683,9 @@ func TestServiceManagerInfo_ToMapOfCtyValues(t *testing.T) {
 }
 
 func TestServiceManagerInfo_ToMapOfCtyValues_Empty(t *testing.T) {
-
 	info := newServiceManagerInfo()
 
 	values := info.toMapOfCtyValues()
-
 	if !values["service_manager"].IsNull() {
 		t.Error("expected service_manager to be null, got a value")
 	}
