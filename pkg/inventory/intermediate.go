@@ -23,8 +23,7 @@ type intermediateHost struct {
 	transport *intermediateTransport
 	escalate  *intermediateEscalate
 
-	parentGroup string
-
+	groups    []string
 	allGroups []string
 
 	hclRange *hcl.Range
@@ -33,9 +32,7 @@ type intermediateHost struct {
 type intermediateGroup struct {
 	name string
 
-	parent         string
-	childHosts     map[string]*intermediateHost
-	hostReferences []string
+	parent string
 
 	vars      map[string]*hcl.Attribute
 	transport *intermediateTransport
@@ -51,6 +48,4 @@ type intermediateInventory struct {
 
 	groups map[string]*intermediateGroup
 	hosts  map[string]*intermediateHost
-
-	allHosts map[string]*intermediateHost
 }

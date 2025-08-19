@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"slices"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -24,7 +23,6 @@ var (
 )
 
 func resolveIntermediate(intermediate *intermediateInventory) (*Inventory, hcl.Diagnostics) {
-
 	diags := validateIntermediateInventory(intermediate)
 	if diags.HasErrors() {
 		return nil, diags
@@ -60,11 +58,9 @@ func resolveIntermediate(intermediate *intermediateInventory) (*Inventory, hcl.D
 }
 
 func validateIntermediateInventory(intermediate *intermediateInventory) hcl.Diagnostics {
-
 	diags := hcl.Diagnostics{}
 
 	for groupName, group := range intermediate.groups {
-
 		if groupName == "" {
 			diags = diags.Append(&hcl.Diagnostic{
 				Severity: hcl.DiagError,
@@ -115,14 +111,10 @@ func validateIntermediateInventory(intermediate *intermediateInventory) hcl.Diag
 		return diags
 	}
 
-	moreDiags = validateReferences(intermediate)
-	diags = diags.Extend(moreDiags)
-
 	return diags
 }
 
 func hasCircularReference(groupName string, intermediate *intermediateInventory, visited *util.Set[string]) bool {
-
 	if visited.Contains(groupName) {
 		return true // Circular reference detected
 	}
@@ -143,116 +135,23 @@ func hasCircularReference(groupName string, intermediate *intermediateInventory,
 }
 
 func validateNoNameConflicts(intermediate *intermediateInventory) hcl.Diagnostics {
-
 	diags := hcl.Diagnostics{}
 
-	allHostNames := make(map[string][]*intermediateHost)
-
-	for hostName, host := range intermediate.hosts {
-		if _, exists := allHostNames[hostName]; !exists {
-			allHostNames[hostName] = make([]*intermediateHost, 0)
-		}
-
-		allHostNames[hostName] = append(allHostNames[hostName], host)
-	}
-
-	for _, group := range intermediate.groups {
-		for hostName, host := range group.childHosts {
-			if _, exists := allHostNames[hostName]; !exists {
-				allHostNames[hostName] = make([]*intermediateHost, 0)
-			}
-
-			allHostNames[hostName] = append(allHostNames[hostName], host)
-		}
-	}
-
 	for groupName, group := range intermediate.groups {
-		if hosts, exists := allHostNames[groupName]; exists {
+		if host, exists := intermediate.hosts[groupName]; exists {
 			diags = diags.Append(&hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  "Name conflict",
-				Detail:   fmt.Sprintf("The group name '%s' conflicts with a host name.", groupName),
+				Detail:   fmt.Sprintf("The group name %q conflicts with a host name.", groupName),
 				Subject:  group.hclRange,
 			})
 
-			for _, host := range hosts {
-				diags = diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "Name conflict",
-					Detail:   fmt.Sprintf("The group name '%s' conflicts with a host name defined at %s.", groupName, host.hclRange),
-					Subject:  host.hclRange,
-				})
-			}
-		}
-	}
-
-	for hostName, hosts := range allHostNames {
-		if len(hosts) > 1 {
-			for i, host := range hosts {
-				if i == 0 {
-					diags = diags.Append(&hcl.Diagnostic{
-						Severity: hcl.DiagError,
-						Summary:  "Name conflict",
-						Detail:   fmt.Sprintf("The host name '%s' is defined multiple times.", hostName),
-						Subject:  host.hclRange,
-					})
-				} else {
-					diags = diags.Append(&hcl.Diagnostic{
-						Severity: hcl.DiagError,
-						Summary:  "Name conflict",
-						Detail:   fmt.Sprintf("The host name '%s' is also defined at %s.", hostName, host.hclRange),
-						Subject:  host.hclRange,
-					})
-				}
-			}
-		} else {
-			intermediate.allHosts[hostName] = hosts[0]
-		}
-	}
-
-	return diags
-}
-
-func validateReferences(intermediate *intermediateInventory) hcl.Diagnostics {
-
-	diags := hcl.Diagnostics{}
-
-	for groupName, group := range intermediate.groups {
-
-		for _, hostRef := range group.hostReferences {
-			if _, exists := intermediate.allHosts[hostRef]; !exists {
-				diags = diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "Invalid host reference",
-					Detail:   fmt.Sprintf("The host '%s' referenced in group '%s' does not exist.", hostRef, groupName),
-					Subject:  group.hclRange,
-				})
-			}
-		}
-
-		for hostName := range group.childHosts {
-
-			if hostName == "" {
-				diags = diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "Invalid host name",
-					Detail:   fmt.Sprintf("The host name in group '%s' cannot be empty.", groupName),
-					Subject:  group.hclRange,
-				})
-				continue
-			}
-		}
-
-		for _, hostRef := range group.hostReferences {
-
-			if _, exists := intermediate.allHosts[hostRef]; !exists {
-				diags = diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "Invalid host reference",
-					Detail:   fmt.Sprintf("The host '%s' referenced in group '%s' does not exist.", hostRef, groupName),
-					Subject:  group.hclRange,
-				})
-			}
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "Name conflict",
+				Detail:   fmt.Sprintf("The group name %q conflicts with a host name defined at %q.", groupName, host.hclRange),
+				Subject:  host.hclRange,
+			})
 		}
 	}
 
@@ -260,27 +159,18 @@ func validateReferences(intermediate *intermediateInventory) hcl.Diagnostics {
 }
 
 func resolveGroupMemberships(intermediate *intermediateInventory) {
-	for hostName, host := range intermediate.allHosts {
+	for hostName, host := range intermediate.hosts {
 		resolveHostGroupMembershipWithBFS(hostName, host, intermediate)
 	}
 }
 
 func resolveHostGroupMembershipWithBFS(hostName string, host *intermediateHost, intermediate *intermediateInventory) {
-
 	queue := []string{}
-
-	if host.parentGroup != "" {
-		queue = append(queue, host.parentGroup)
-	}
-
-	for groupName, group := range intermediate.groups {
-		if slices.Contains(group.hostReferences, hostName) {
-			queue = append(queue, groupName)
-		}
+	for _, groupName := range host.groups {
+		queue = append(queue, groupName)
 	}
 
 	visited := util.NewSet[string]()
-
 	for len(queue) > 0 {
 		currentGroup := queue[0]
 		queue = queue[1:]
@@ -306,17 +196,15 @@ func resolveHostGroupMembershipWithBFS(hostName string, host *intermediateHost, 
 }
 
 func resolveAllHostVars(intermediate *intermediateInventory) (map[string]map[string]cty.Value, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 	vars := make(map[string]map[string]cty.Value)
-
-	for hostName, host := range intermediate.allHosts {
-
+	for hostName, host := range intermediate.hosts {
 		hostVars, moreDiags := resolveHostVars(hostName, host, intermediate)
 		diags = diags.Extend(moreDiags)
 		if moreDiags.HasErrors() {
 			continue // Skip on errors
 		}
+
 		vars[hostName] = hostVars
 	}
 
@@ -324,7 +212,6 @@ func resolveAllHostVars(intermediate *intermediateInventory) (map[string]map[str
 }
 
 func resolveHostVars(hostName string, host *intermediateHost, intermediate *intermediateInventory) (map[string]cty.Value, hcl.Diagnostics) {
-
 	inheritanceChain, diags := buildVarInheritanceChain(hostName, host, intermediate)
 	if diags.HasErrors() {
 		return nil, diags // Return on errors
@@ -342,7 +229,6 @@ func resolveHostVars(hostName string, host *intermediateHost, intermediate *inte
 }
 
 func buildVarInheritanceChain(hostName string, host *intermediateHost, intermediate *intermediateInventory) ([]map[string]*hcl.Attribute, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 	chain := []map[string]*hcl.Attribute{}
 
@@ -375,9 +261,7 @@ func buildVarInheritanceChain(hostName string, host *intermediateHost, intermedi
 }
 
 func combineVarsFromChain(chain []map[string]*hcl.Attribute) map[string]*hcl.Attribute {
-
 	combined := make(map[string]*hcl.Attribute)
-
 	for _, attrs := range chain {
 		for name, attr := range attrs {
 			if _, exists := combined[name]; !exists {
@@ -390,9 +274,7 @@ func combineVarsFromChain(chain []map[string]*hcl.Attribute) map[string]*hcl.Att
 }
 
 func evaluateVarsIteratively(vars map[string]*hcl.Attribute) (map[string]cty.Value, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
-
 	evaluatedVars := make(map[string]cty.Value)
 	pendingVars := maps.Clone(vars)
 	newlyEvaluated := util.NewSet[string]()
@@ -401,12 +283,9 @@ func evaluateVarsIteratively(vars map[string]*hcl.Attribute) (map[string]cty.Val
 	i := 0
 
 	for len(pendingVars) > 0 && i < max {
-
 		i++
 		progressMade := false
-
 		for name, attr := range pendingVars {
-
 			if attr == nil {
 				diags = diags.Append(&hcl.Diagnostic{
 					Severity: hcl.DiagError,
@@ -492,12 +371,9 @@ func containsDependencyError(diags hcl.Diagnostics) bool {
 }
 
 func resolveAllHostTransports(intermediate *intermediateInventory, hostVars map[string]map[string]cty.Value) (map[string]transport.Transport, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 	transports := make(map[string]transport.Transport)
-
-	for hostName, host := range intermediate.allHosts {
-
+	for hostName, host := range intermediate.hosts {
 		vars, exists := hostVars[hostName]
 		if !exists {
 			vars = make(map[string]cty.Value)
@@ -516,14 +392,12 @@ func resolveAllHostTransports(intermediate *intermediateInventory, hostVars map[
 }
 
 func resolveHostTransport(hostName string, host *intermediateHost, intermediate *intermediateInventory, vars map[string]cty.Value) (transport.Transport, hcl.Diagnostics) {
-
 	inheritanceChain, diags := buildTransportInheritanceChain(hostName, host, intermediate)
 	if diags.HasErrors() {
 		return nil, diags // Return on errors
 	}
 
 	combinedTransport := combineTransportsFromChain(inheritanceChain)
-
 	if combinedTransport == nil {
 		return transport.TransportNone, diags
 	}
@@ -538,10 +412,8 @@ func resolveHostTransport(hostName string, host *intermediateHost, intermediate 
 }
 
 func buildTransportInheritanceChain(hostName string, host *intermediateHost, intermediate *intermediateInventory) ([]*intermediateTransport, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 	chain := []*intermediateTransport{}
-
 	if host.transport != nil {
 		chain = append(chain, host.transport)
 	}
@@ -571,7 +443,6 @@ func buildTransportInheritanceChain(hostName string, host *intermediateHost, int
 }
 
 func combineTransportsFromChain(chain []*intermediateTransport) *intermediateTransport {
-
 	if len(chain) == 0 {
 		return nil
 	}
@@ -600,7 +471,6 @@ func combineTransportsFromChain(chain []*intermediateTransport) *intermediateTra
 }
 
 func createTransportFromConfig(intermediate *intermediateTransport, vars map[string]cty.Value) (transport.Transport, hcl.Diagnostics) {
-
 	switch intermediate.name {
 	case string(transport.TransportTypeNone):
 		return transport.TransportNone, hcl.Diagnostics{}
@@ -618,7 +488,6 @@ func createTransportFromConfig(intermediate *intermediateTransport, vars map[str
 }
 
 func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]cty.Value) (transport.Transport, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 	var moreDiags hcl.Diagnostics
 
@@ -659,6 +528,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 			Summary:  "Missing SSH host",
 			Detail:   "The 'host' attribute is required for SSH transport.",
 		})
+
 		return nil, diags // Return early if the host is missing
 	}
 
@@ -684,6 +554,7 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 			Summary:  "Missing SSH user",
 			Detail:   "The 'user' attribute is required for SSH transport.",
 		})
+
 		return nil, diags // Return early if the user is missing
 	}
 
@@ -804,12 +675,9 @@ func createSSHTransport(transportSSH map[string]*hcl.Attribute, vars map[string]
 }
 
 func resolveAllHostEscalateConfigs(intermediate *intermediateInventory, hostVars map[string]map[string]cty.Value) (map[string]*EscalateConfig, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 	escalateConfigs := make(map[string]*EscalateConfig)
-
-	for hostName, host := range intermediate.allHosts {
-
+	for hostName, host := range intermediate.hosts {
 		vars, exists := hostVars[hostName]
 		if !exists {
 			vars = make(map[string]cty.Value)
@@ -828,14 +696,12 @@ func resolveAllHostEscalateConfigs(intermediate *intermediateInventory, hostVars
 }
 
 func resolveHostEscalateConfig(hostName string, host *intermediateHost, intermediate *intermediateInventory, vars map[string]cty.Value) (*EscalateConfig, hcl.Diagnostics) {
-
 	inheritanceChain, diags := buildEscalateConfigInheritanceChain(hostName, host, intermediate)
 	if diags.HasErrors() {
 		return nil, diags // Return on errors
 	}
 
 	combinedEscalate := combineEscalateConfigsFromChain(inheritanceChain)
-
 	if combinedEscalate == nil {
 		return &EscalateConfig{}, diags
 	}
@@ -850,10 +716,8 @@ func resolveHostEscalateConfig(hostName string, host *intermediateHost, intermed
 }
 
 func buildEscalateConfigInheritanceChain(hostName string, host *intermediateHost, intermediate *intermediateInventory) ([]*intermediateEscalate, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 	chain := []*intermediateEscalate{}
-
 	if host.escalate != nil {
 		chain = append(chain, host.escalate)
 	}
@@ -883,13 +747,11 @@ func buildEscalateConfigInheritanceChain(hostName string, host *intermediateHost
 }
 
 func combineEscalateConfigsFromChain(inheritanceChain []*intermediateEscalate) *intermediateEscalate {
-
 	if len(inheritanceChain) == 0 {
 		return nil
 	}
 
 	combined := &intermediateEscalate{}
-
 	for _, escalate := range inheritanceChain {
 		if combined.password == nil {
 			combined.password = escalate.password
@@ -901,7 +763,6 @@ func combineEscalateConfigsFromChain(inheritanceChain []*intermediateEscalate) *
 }
 
 func createEscalateConfigFromCombined(combinedEscalate *intermediateEscalate, vars map[string]cty.Value) (*EscalateConfig, hcl.Diagnostics) {
-
 	if combinedEscalate.password == nil {
 		return nil, hcl.Diagnostics{}
 	}
@@ -930,6 +791,7 @@ func createEscalateConfigFromCombined(combinedEscalate *intermediateEscalate, va
 			Detail:   "The escalate password must be a string.",
 			Subject:  &password.Range,
 		})
+
 		return nil, diags // Return on type error
 	}
 
@@ -945,13 +807,9 @@ func buildFinalInventory(
 	hostEscalateConfigs map[string]*EscalateConfig) (*Inventory, hcl.Diagnostics) {
 
 	diags := hcl.Diagnostics{}
-
 	inventory := NewInventory(map[string]*Host{}, map[string][]*Host{}, map[string][]*Host{})
-
-	inventory.targets["all"] = make([]*Host, 0, len(intermediate.allHosts))
-
-	for hostName, intermediateHost := range intermediate.allHosts {
-
+	inventory.targets["all"] = make([]*Host, 0, len(intermediate.hosts))
+	for hostName, intermediateHost := range intermediate.hosts {
 		vars, exists := hostVars[hostName]
 		if !exists {
 			vars = make(map[string]cty.Value)
@@ -981,6 +839,7 @@ func buildFinalInventory(
 			if _, exists := inventory.groups[groupName]; !exists {
 				inventory.groups[groupName] = make([]*Host, 0)
 			}
+
 			if _, exists := inventory.targets[groupName]; !exists {
 				inventory.targets[groupName] = make([]*Host, 0)
 			}

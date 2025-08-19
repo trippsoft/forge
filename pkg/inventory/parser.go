@@ -28,13 +28,9 @@ func (f *InventoryFile) Path() string {
 // structs, each containing the file path and its content. If an error occurs during
 // reading the files, it returns an error.
 func DiscoverInventoryFiles(paths ...string) ([]*InventoryFile, error) {
-
 	inventoryFiles := make([]*InventoryFile, 0, len(paths))
-
 	for _, path := range paths {
-
 		err := filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
-
 			if err != nil {
 				return err
 			}
@@ -67,16 +63,12 @@ func DiscoverInventoryFiles(paths ...string) ([]*InventoryFile, error) {
 // ParseInventoryFiles parses the content of the inventory files and returns the
 // parsed inventory.
 func ParseInventoryFiles(files []*InventoryFile) (*Inventory, hcl.Diagnostics) {
-
 	parser := hclparse.NewParser()
 	diags := hcl.Diagnostics{}
 	hclFiles := make([]*hcl.File, 0, len(files))
-
 	for _, file := range files {
-
 		hclFile, moreDiags := parser.ParseHCL(file.content, file.path)
 		diags = diags.Extend(moreDiags)
-
 		if moreDiags.HasErrors() {
 			continue // Skip files with parsing errors
 		}
@@ -96,7 +88,6 @@ func ParseInventoryFiles(files []*InventoryFile) (*Inventory, hcl.Diagnostics) {
 }
 
 func parseHCLBody(body hcl.Body) (*Inventory, hcl.Diagnostics) {
-
 	intermediate, diags := parseHCLBodyToIntermediate(body)
 	if diags.HasErrors() {
 		return nil, diags
@@ -112,10 +103,7 @@ func parseHCLBody(body hcl.Body) (*Inventory, hcl.Diagnostics) {
 }
 
 func parseHCLBodyToIntermediate(body hcl.Body) (*intermediateInventory, hcl.Diagnostics) {
-
-	intermediate := &intermediateInventory{
-		allHosts: make(map[string]*intermediateHost),
-	}
+	intermediate := &intermediateInventory{}
 	diags := hcl.Diagnostics{}
 
 	content, moreDiags := body.Content(inventoryBodySchema)
@@ -185,20 +173,25 @@ func parseHCLBodyToIntermediate(body hcl.Body) (*intermediateInventory, hcl.Diag
 		intermediate.hosts = hosts
 	}
 
+	for _, host := range intermediate.hosts {
+		for _, groupName := range host.groups {
+			if _, exists := intermediate.groups[groupName]; !exists {
+				intermediate.groups[groupName] = &intermediateGroup{name: groupName} // Add groups referenced by hosts
+			}
+		}
+	}
+
 	return intermediate, diags
 }
 
 func parseVarsBlocksToIntermediate(blocks []*hcl.Block) (map[string]*hcl.Attribute, hcl.Diagnostics) {
-
 	if len(blocks) == 0 {
 		return map[string]*hcl.Attribute{}, hcl.Diagnostics{}
 	}
 
 	vars := make(map[string]*hcl.Attribute)
 	diags := hcl.Diagnostics{}
-
 	for _, block := range blocks {
-
 		blockVars, moreDiags := parseVarsBlockToIntermediate(block)
 		diags = diags.Extend(moreDiags)
 		if moreDiags.HasErrors() {
@@ -206,7 +199,6 @@ func parseVarsBlocksToIntermediate(blocks []*hcl.Block) (map[string]*hcl.Attribu
 		}
 
 		for name, attr := range blockVars {
-
 			if _, exists := vars[name]; exists {
 				diags = diags.Append(&hcl.Diagnostic{
 					Severity: hcl.DiagError,
@@ -229,20 +221,17 @@ func parseVarsBlocksToIntermediate(blocks []*hcl.Block) (map[string]*hcl.Attribu
 }
 
 func parseVarsBlockToIntermediate(block *hcl.Block) (map[string]*hcl.Attribute, hcl.Diagnostics) {
-
 	vars := make(map[string]*hcl.Attribute)
 	diags := hcl.Diagnostics{}
 
 	attributes, moreDiags := block.Body.JustAttributes()
 	hclutil.ModifyUnexpectedElementDiags(moreDiags, "in a vars block")
 	diags = diags.Extend(moreDiags)
-
 	if moreDiags.HasErrors() {
 		return nil, diags
 	}
 
 	for name, attr := range attributes {
-
 		if _, exists := vars[name]; exists {
 			diags = diags.Append(&hcl.Diagnostic{
 				Severity: hcl.DiagError,
@@ -264,19 +253,15 @@ func parseVarsBlockToIntermediate(block *hcl.Block) (map[string]*hcl.Attribute, 
 }
 
 func parseTransportBlocksToIntermediate(blocks []*hcl.Block) (*intermediateTransport, hcl.Diagnostics) {
-
 	if len(blocks) == 0 {
 		return nil, hcl.Diagnostics{}
 	}
 
 	diags := hcl.Diagnostics{}
 	var transport *intermediateTransport
-
 	for _, block := range blocks {
-
 		t, moreDiags := parseTransportBlockToIntermediate(block)
 		diags = diags.Extend(moreDiags)
-
 		if moreDiags.HasErrors() {
 			continue // Skip blocks with errors
 		}
@@ -319,18 +304,6 @@ func parseTransportBlocksToIntermediate(blocks []*hcl.Block) (*intermediateTrans
 }
 
 func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport, hcl.Diagnostics) {
-
-	if block.Type != "transport" {
-		return nil, hcl.Diagnostics{
-			&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Invalid block type",
-				Detail:   fmt.Sprintf("Expected 'transport' block, but found '%s'.", block.Type),
-				Subject:  &block.DefRange,
-			},
-		}
-	}
-
 	transportType := block.Labels[0]
 
 	diags := hcl.Diagnostics{}
@@ -342,7 +315,6 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 		body, moreDiags = block.Body.Content(transportNoneSchema)
 		hclutil.ModifyUnexpectedElementDiags(moreDiags, "in a transport \"none\" block")
 		diags = diags.Extend(moreDiags)
-
 		if moreDiags.HasErrors() {
 			return nil, diags
 		}
@@ -352,13 +324,11 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 		body, moreDiags = block.Body.Content(transportSSHSchema)
 		hclutil.ModifyUnexpectedElementDiags(moreDiags, "in a transport \"ssh\" block")
 		diags = diags.Extend(moreDiags)
-
 		if moreDiags.HasErrors() {
 			return nil, diags
 		}
 
 	default:
-
 		return nil, diags.Append(&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  "Invalid transport type",
@@ -389,7 +359,6 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 }
 
 func parseEscalateBlocksToIntermediate(blocks []*hcl.Block) (*intermediateEscalate, hcl.Diagnostics) {
-
 	if len(blocks) == 0 {
 		return nil, hcl.Diagnostics{}
 	}
@@ -398,10 +367,8 @@ func parseEscalateBlocksToIntermediate(blocks []*hcl.Block) (*intermediateEscala
 	var escalate *intermediateEscalate
 
 	for _, block := range blocks {
-
 		e, moreDiags := parseEscalateBlockToIntermediate(block)
 		diags = diags.Extend(moreDiags)
-
 		if moreDiags.HasErrors() {
 			continue // Skip blocks with errors
 		}
@@ -434,19 +401,16 @@ func parseEscalateBlocksToIntermediate(blocks []*hcl.Block) (*intermediateEscala
 }
 
 func parseEscalateBlockToIntermediate(block *hcl.Block) (*intermediateEscalate, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 
 	body, moreDiags := block.Body.Content(escalateBlockSchema)
 	hclutil.ModifyUnexpectedElementDiags(moreDiags, "in an escalate block")
 	diags = diags.Extend(moreDiags)
-
 	if moreDiags.HasErrors() {
 		return nil, diags
 	}
 
 	escalate := &intermediateEscalate{}
-
 	for _, attr := range body.Attributes {
 		switch attr.Name {
 		case "password":
@@ -458,12 +422,9 @@ func parseEscalateBlockToIntermediate(block *hcl.Block) (*intermediateEscalate, 
 }
 
 func parseGroupBlocksToIntermediate(blocks []*hcl.Block) (map[string]*intermediateGroup, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 	groups := make(map[string]*intermediateGroup)
-
 	for _, block := range blocks {
-
 		group, moreDiags := parseGroupBlockToIntermediate(block)
 		diags = diags.Extend(moreDiags)
 		if moreDiags.HasErrors() {
@@ -501,11 +462,9 @@ func parseGroupBlocksToIntermediate(blocks []*hcl.Block) (map[string]*intermedia
 }
 
 func parseGroupBlockToIntermediate(block *hcl.Block) (*intermediateGroup, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 
 	groupName := block.Labels[0]
-
 	if groupName == "" {
 		return nil, hcl.Diagnostics{&hcl.Diagnostic{
 			Severity: hcl.DiagError,
@@ -516,10 +475,8 @@ func parseGroupBlockToIntermediate(block *hcl.Block) (*intermediateGroup, hcl.Di
 	}
 
 	group := &intermediateGroup{
-		name:           groupName,
-		childHosts:     make(map[string]*intermediateHost),
-		hostReferences: []string{},
-		vars:           make(map[string]*hcl.Attribute),
+		name: groupName,
+		vars: make(map[string]*hcl.Attribute),
 	}
 
 	content, moreDiags := block.Body.Content(groupBlockSchema)
@@ -533,7 +490,6 @@ func parseGroupBlockToIntermediate(block *hcl.Block) (*intermediateGroup, hcl.Di
 	varsBlocks := []*hcl.Block{}
 	transportBlocks := []*hcl.Block{}
 	escalateBlocks := []*hcl.Block{}
-	hostBlocks := []*hcl.Block{}
 
 	for _, block := range content.Blocks {
 		switch block.Type {
@@ -543,8 +499,6 @@ func parseGroupBlockToIntermediate(block *hcl.Block) (*intermediateGroup, hcl.Di
 			transportBlocks = append(transportBlocks, block)
 		case "escalate":
 			escalateBlocks = append(escalateBlocks, block)
-		case "host":
-			hostBlocks = append(hostBlocks, block)
 		}
 	}
 
@@ -564,16 +518,6 @@ func parseGroupBlockToIntermediate(block *hcl.Block) (*intermediateGroup, hcl.Di
 	diags = diags.Extend(moreDiags)
 	if !moreDiags.HasErrors() {
 		group.escalate = escalate
-	}
-
-	childHosts, moreDiags := parseHostBlocksToIntermediate(hostBlocks)
-	diags = diags.Extend(moreDiags)
-	if !moreDiags.HasErrors() {
-		group.childHosts = childHosts
-	}
-
-	for _, host := range group.childHosts {
-		host.parentGroup = group.name
 	}
 
 	for _, attr := range content.Attributes {
@@ -606,58 +550,6 @@ func parseGroupBlockToIntermediate(block *hcl.Block) (*intermediateGroup, hcl.Di
 			}
 
 			group.parent = value.AsString()
-
-		case "hosts":
-			if len(group.hostReferences) > 0 {
-				diags = diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "Duplicate hosts attribute",
-					Detail:   fmt.Sprintf("The 'hosts' attribute is defined multiple times in the 'group' block for group '%s'. Each group can have at most one 'hosts' attribute.", group.name),
-					Subject:  &attr.Range,
-				})
-				continue // Skip this attribute if it is duplicated
-			}
-
-			value, moreDiags := attr.Expr.Value(nil)
-			diags = diags.Extend(moreDiags)
-			if moreDiags.HasErrors() {
-				continue // Skip this attribute if there are errors
-			}
-
-			if value.Type() != cty.List(cty.String) && value.Type() != cty.Set(cty.String) && !value.Type().IsTupleType() {
-				diags = diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "Invalid hosts attribute type",
-					Detail:   fmt.Sprintf("The 'hosts' attribute in the 'group' block for group '%s' must be a list of strings, but got '%s'.", group.name, value.Type().FriendlyName()),
-					Subject:  &attr.Range,
-				})
-				continue // Skip this attribute if the type is incorrect
-			}
-
-			for _, elem := range value.AsValueSlice() {
-				if elem.Type() != cty.String {
-					diags = diags.Append(&hcl.Diagnostic{
-						Severity: hcl.DiagError,
-						Summary:  "Invalid host reference type",
-						Detail:   fmt.Sprintf("Each element in the 'hosts' list for group '%s' must be a string, but got '%s'.", group.name, elem.Type().FriendlyName()),
-						Subject:  &attr.Range,
-					})
-					continue // Skip this element if the type is incorrect
-				}
-
-				hostName := elem.AsString()
-				if hostName == "" {
-					diags = diags.Append(&hcl.Diagnostic{
-						Severity: hcl.DiagError,
-						Summary:  "Empty host reference",
-						Detail:   fmt.Sprintf("The 'hosts' list for group '%s' contains an empty string. Each host reference must be a non-empty string.", group.name),
-						Subject:  &attr.Range,
-					})
-					continue // Skip empty host references
-				}
-
-				group.hostReferences = append(group.hostReferences, hostName)
-			}
 		}
 	}
 
@@ -669,12 +561,10 @@ func parseGroupBlockToIntermediate(block *hcl.Block) (*intermediateGroup, hcl.Di
 }
 
 func parseHostBlocksToIntermediate(blocks []*hcl.Block) (map[string]*intermediateHost, hcl.Diagnostics) {
-
 	diags := hcl.Diagnostics{}
 	hosts := make(map[string]*intermediateHost)
 
 	for _, block := range blocks {
-
 		host, moreDiags := parseHostBlockToIntermediate(block)
 		diags = diags.Extend(moreDiags)
 
@@ -704,9 +594,7 @@ func parseHostBlocksToIntermediate(blocks []*hcl.Block) (map[string]*intermediat
 }
 
 func parseHostBlockToIntermediate(block *hcl.Block) (*intermediateHost, hcl.Diagnostics) {
-
 	hostName := block.Labels[0]
-
 	if hostName == "" {
 		return nil, hcl.Diagnostics{
 			&hcl.Diagnostic{
@@ -729,7 +617,6 @@ func parseHostBlockToIntermediate(block *hcl.Block) (*intermediateHost, hcl.Diag
 	content, moreDiags := block.Body.Content(hostBlockSchema)
 	hclutil.ModifyUnexpectedElementDiags(moreDiags, "in a host block")
 	diags = diags.Extend(moreDiags)
-
 	if moreDiags.HasErrors() {
 		return nil, diags
 	}
@@ -765,6 +652,52 @@ func parseHostBlockToIntermediate(block *hcl.Block) (*intermediateHost, hcl.Diag
 	diags = diags.Extend(moreDiags)
 	if !moreDiags.HasErrors() {
 		host.escalate = escalate
+	}
+
+	for name, attr := range content.Attributes {
+		switch name {
+		case "groups":
+			value, moreDiags := attr.Expr.Value(nil)
+			diags = diags.Extend(moreDiags)
+			if moreDiags.HasErrors() {
+				continue // Skip this attribute if there are errors
+			}
+
+			if value.Type() != cty.List(cty.String) && value.Type() != cty.Set(cty.String) && !value.Type().IsTupleType() {
+				diags = diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "Invalid groups attribute type",
+					Detail:   fmt.Sprintf(`The "groups" attribute in the "host" block for host %q must be a list of strings, but got %q.`, host.name, value.Type().FriendlyName()),
+					Subject:  &attr.Range,
+				})
+				continue // Skip this attribute if the type is incorrect
+			}
+
+			for _, elem := range value.AsValueSlice() {
+				if elem.Type() != cty.String {
+					diags = diags.Append(&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "Invalid group reference type",
+						Detail:   fmt.Sprintf(`Each element in the "groups" list for host %q must be a string, but got %q.`, host.name, elem.Type().FriendlyName()),
+						Subject:  &attr.Range,
+					})
+					continue // Skip this element if the type is incorrect
+				}
+
+				hostName := elem.AsString()
+				if hostName == "" {
+					diags = diags.Append(&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "Empty group reference",
+						Detail:   fmt.Sprintf(`The "groups" list for host %q contains an empty string. Each group reference must be a non-empty string.`, host.name),
+						Subject:  &attr.Range,
+					})
+					continue // Skip empty group references
+				}
+
+				host.groups = append(host.groups, hostName)
+			}
+		}
 	}
 
 	if diags.HasErrors() {

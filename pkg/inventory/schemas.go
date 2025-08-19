@@ -79,18 +79,10 @@ var (
 				Type:       "escalate",
 				LabelNames: []string{},
 			},
-			{
-				Type:       "host",
-				LabelNames: []string{"name"},
-			},
 		},
 		Attributes: []hcl.AttributeSchema{
 			{
 				Name:     "parent",
-				Required: false,
-			},
-			{
-				Name:     "hosts",
 				Required: false,
 			},
 		},
@@ -108,6 +100,12 @@ var (
 			{
 				Type:       "escalate",
 				LabelNames: []string{},
+			},
+		},
+		Attributes: []hcl.AttributeSchema{
+			{
+				Name:     "groups",
+				Required: false,
 			},
 		},
 	}

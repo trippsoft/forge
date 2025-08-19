@@ -2201,44 +2201,6 @@ func TestInvalidParentReferenceParsing(t *testing.T) {
 	}
 }
 
-func TestMissingHostReferenceParsing(t *testing.T) {
-
-	path := filepath.Join("corpus", "error-cases", "missing-host.hcl")
-
-	files, err := inventory.DiscoverInventoryFiles(path)
-	if err != nil {
-		t.Fatalf("Failed to discover inventory files: %v", err)
-	}
-
-	if len(files) != 1 {
-		t.Fatalf("Expected 1 inventory file, got %d", len(files))
-	}
-
-	inventory, diags := inventory.ParseInventoryFiles(files)
-	if !diags.HasErrors() {
-		t.Fatal("Expected parsing to fail due to missing host reference")
-	}
-
-	expectedDiags := hcl.Diagnostics{
-		&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "Invalid host reference",
-			Detail:   "The host 'nonexistent_host' referenced in group 'frontend' does not exist.",
-		},
-		&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "Invalid host reference",
-			Detail:   "The host 'nonexistent_host' referenced in group 'frontend' does not exist.",
-		},
-	}
-
-	verifyDiagnostics(t, expectedDiags, diags)
-
-	if inventory != nil {
-		t.Fatal("Inventory should be nil for invalid configuration")
-	}
-}
-
 func TestReservedGroupNameParsing(t *testing.T) {
 
 	path := filepath.Join("corpus", "error-cases", "reserved-name.hcl")
@@ -2342,12 +2304,12 @@ func TestNameConflictsParsing(t *testing.T) {
 		&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  "Name conflict",
-			Detail:   "The group name 'server1' conflicts with a host name.",
+			Detail:   `The group name "server1" conflicts with a host name.`,
 		},
 		&hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  "Name conflict",
-			Detail:   fmt.Sprintf("The group name 'server1' conflicts with a host name defined at %s:17,1-15.", path),
+			Detail:   fmt.Sprintf(`The group name "server1" conflicts with a host name defined at "%s:21,1-15".`, path),
 		},
 	}
 
