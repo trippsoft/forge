@@ -9,7 +9,6 @@ import (
 func TestUnwrapErrors_Nil(t *testing.T) {
 	var err error
 	result := UnwrapErrors(err)
-
 	if result != nil {
 		t.Errorf("expected nil, got %v", result)
 	}
@@ -18,7 +17,6 @@ func TestUnwrapErrors_Nil(t *testing.T) {
 func TestUnwrapErrors_SingleError(t *testing.T) {
 	err := errors.New("single error")
 	result := UnwrapErrors(err)
-
 	if len(result) != 1 {
 		t.Fatalf("expected 1 error, got %d", len(result))
 	}
@@ -34,9 +32,7 @@ func TestUnwrapErrors_MultipleErrors(t *testing.T) {
 	err3 := errors.New("error 3")
 
 	err := errors.Join(err1, err2, err3)
-
 	result := UnwrapErrors(err)
-
 	if len(result) != 3 {
 		t.Fatalf("expected 3 errors, got %d", len(result))
 	}
@@ -61,9 +57,7 @@ func TestUnwrapErrors_NestedErrorJoins(t *testing.T) {
 	err4 := errors.New("error 4")
 
 	err := errors.Join(err1, errors.Join(err2, errors.Join(err3, err4)))
-
 	result := UnwrapErrors(err)
-
 	if len(result) != 4 {
 		t.Fatalf("expected 4 errors, got %d", len(result))
 	}
