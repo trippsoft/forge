@@ -19,10 +19,10 @@ func verifySuccessfulConversion(t *testing.T, ty Type, input, expected cty.Value
 		t.Fatalf("expected no error from Convert(), got %v", err)
 	}
 
-	if !actual.Type().Equals(ty.CtyType()) {
+	if !actual.Type().Equals(expected.Type()) {
 		t.Errorf(
 			"expected Convert() to produce type %q, got %q",
-			ty.CtyType().FriendlyName(),
+			expected.Type().FriendlyName(),
 			actual.Type().FriendlyName())
 	}
 
