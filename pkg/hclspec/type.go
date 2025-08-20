@@ -24,6 +24,8 @@ var (
 	Bool Type = &primitiveType{t: cty.Bool}
 	// Duration is a cty.String that is expected to be a duration string (e.g. 1m30s).
 	Duration Type = &durationType{}
+	// Raw is a cty.DynamicPseudoType that does not perform any conversion or validation.
+	Raw Type = &rawType{}
 )
 
 // Type represents a data type within an argument spec.
@@ -374,7 +376,6 @@ func (m *mapType) String() string {
 	return m.CtyType().FriendlyName()
 }
 
-// setType represents a set of unique elements of a specific type.
 type setType struct {
 	elementType Type // The type of elements in the set.
 }
@@ -472,6 +473,41 @@ func (s *setType) ValidateSpec() error {
 // String represents the set type as a friendly string.
 func (s *setType) String() string {
 	return s.CtyType().FriendlyName()
+}
+
+type rawType struct{}
+
+// CtyType implements Type.
+func (r *rawType) CtyType() cty.Type {
+	return cty.DynamicPseudoType
+}
+
+// Convert implements Type.
+func (r *rawType) Convert(value cty.Value) (cty.Value, error) {
+	if !value.IsWhollyKnown() {
+		return cty.NilVal, errors.New("cannot convert unknown value")
+	}
+
+	return value, nil // No conversion for raw type.
+}
+
+// Validate implements Type.
+func (r *rawType) Validate(value cty.Value) error {
+	return nil
+}
+
+// ValidateSpec implements Type.
+func (r *rawType) ValidateSpec() error {
+	if r == nil {
+		return errors.New("raw type is nil")
+	}
+
+	return nil
+}
+
+// String represents the raw type as a friendly string.
+func (r *rawType) String() string {
+	return r.CtyType().FriendlyName()
 }
 
 func convertCtyType(value cty.Value, targetType cty.Type) (cty.Value, error) {
