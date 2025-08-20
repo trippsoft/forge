@@ -92,6 +92,10 @@ var (
 				Name:     "exec_timeout",
 				Required: false,
 			},
+			{
+				Name:     "what_if",
+				Required: false,
+			},
 		},
 	}
 	escalateBlockSchema = &hcl.BodySchema{

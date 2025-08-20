@@ -16,15 +16,17 @@ import (
 type workflowContext struct {
 	ui          ui.UI                      // ui represents the user interface used by the workflow.
 	inventory   *inventory.Inventory       // inventory represents the inventory used by the workflow.
+	debug       bool                       // debug indicates whether debug mode is enabled.
 	hostVars    map[string]cty.Value       // hostVars holds the variables for each host.
 	failedHosts *util.Set[*inventory.Host] // failedHosts holds the hosts that have failed.
 }
 
 // WorkflowContext creates a new workflowContext.
-func WorkflowContext(ui ui.UI, i *inventory.Inventory) *workflowContext {
+func WorkflowContext(ui ui.UI, i *inventory.Inventory, debug bool) *workflowContext {
 	return &workflowContext{
 		ui:          ui,
 		inventory:   i,
+		debug:       debug,
 		failedHosts: util.NewSet[*inventory.Host](),
 	}
 }

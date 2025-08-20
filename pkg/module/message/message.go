@@ -33,7 +33,7 @@ func (s *Module) Validate(config *module.RunConfig) error {
 
 // Run implements module.Module.
 func (s *Module) Run(ctx context.Context, config *module.RunConfig) *module.Result {
-	message := hclutil.FormatCtyValueToIndentedString(config.Input["message"], 4, 4)
+	message := hclutil.FormatCtyValueToIndentedString(config.Input["message"], 0, 4)
 	output := map[string]cty.Value{}
 	result := module.NewSuccess(false, output)
 	result.Message = message

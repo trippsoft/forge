@@ -25,7 +25,10 @@ const (
 
 // Step abstracts a single Step or a procedure in a process.
 type Step interface {
-	Run(ctx *workflowContext) error // Run executes the step with the given workflow context.
+	// Targets returns the targets of the step.
+	Targets() []*inventory.Host
+	// Run executes the step with the given workflow context.
+	Run(ctx *workflowContext) error
 }
 
 type StepCommonConfig struct {
@@ -156,6 +159,11 @@ type SingleStep struct {
 // This is used primarily for testing.
 func (s *SingleStep) Common() *StepCommonConfig {
 	return s.common
+}
+
+// Targets returns the targets of the step.
+func (s *SingleStep) Targets() []*inventory.Host {
+	return s.common.targets
 }
 
 // Escalation returns the escalation configuration for the step.

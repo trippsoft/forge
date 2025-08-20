@@ -513,11 +513,11 @@ func (s *sshTransport) NewPythonCommand(interpreter, command string, escalateCon
 		return nil, fmt.Errorf("failed to encode Python command: %w", err)
 	}
 
-	if interpreter != "" {
+	if interpreter == "" {
 		interpreter = s.platform.pythonInterpreterPath()
 	}
 
-	command = fmt.Sprintf("%s -c \"import base64; exec(base64.b64decode('%s'))\"", interpreter, encodedCommand)
+	command = fmt.Sprintf("%s -c 'import base64; exec(base64.b64decode(%q))'", interpreter, encodedCommand)
 
 	return s.platform.newCommand(command, escalateConfig)
 }

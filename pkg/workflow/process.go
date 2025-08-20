@@ -17,16 +17,18 @@ import (
 
 // Process represents a series of steps in a workflow.
 type Process struct {
-	name       string // name represents the name of the process.
-	gatherInfo bool   // gatherInfo indicates whether to gather information during the process.
-	steps      []Step // steps represents the list of steps in the process.
+	name       string
+	gatherInfo bool
+	allTargets []*inventory.Host
+	steps      []Step
 }
 
 // NewProcess creates a new Process.
-func NewProcess(name string, gatherInfo bool, steps ...Step) *Process {
+func NewProcess(name string, gatherInfo bool, allTargets []*inventory.Host, steps ...Step) *Process {
 	return &Process{
 		name:       name,
 		gatherInfo: gatherInfo,
+		allTargets: allTargets,
 		steps:      steps,
 	}
 }
@@ -64,8 +66,7 @@ func (p *Process) Run(ctx *workflowContext) error {
 
 		errChannel := make(chan error)
 
-		hosts := ctx.inventory.Hosts()
-		for _, host := range hosts {
+		for _, host := range p.allTargets {
 			go func(host *inventory.Host) {
 				t := host.Transport()
 
@@ -104,7 +105,7 @@ func (p *Process) Run(ctx *workflowContext) error {
 			}(host)
 		}
 
-		for range hosts {
+		for range p.allTargets {
 			e := <-errChannel
 			err = errors.Join(err, e)
 		}

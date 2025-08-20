@@ -142,6 +142,7 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 	}
 
 	steps := []Step{}
+	allTargets := util.NewSet[*inventory.Host]()
 
 	for _, block := range content.Blocks {
 		switch block.Type {
@@ -153,6 +154,10 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 			}
 
 			steps = append(steps, step)
+
+			for _, target := range step.Targets() {
+				allTargets.Add(target)
+			}
 
 		case "procedure":
 			diags = diags.Append(&hcl.Diagnostic{
@@ -190,7 +195,7 @@ func (p *parser) parseProcessBlock(block *hcl.Block) (*Process, hcl.Diagnostics)
 		return nil, diags
 	}
 
-	process := NewProcess(common.name, intermediate.gatherInfo, steps...)
+	process := NewProcess(common.name, intermediate.gatherInfo, allTargets.Items(), steps...)
 
 	return process, diags
 }

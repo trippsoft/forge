@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/hashicorp/hcl/v2"
@@ -41,9 +42,10 @@ var (
 		stepResultNotChanged: ui.TextFormat().WithForegroundColor(ui.ForegroundGreen).WithStyle(ui.StyleBold),
 	}
 
-	stepErrorFormat   = ui.TextFormat().WithForegroundColor(ui.ForegroundRed).WithStyle(ui.StyleBold).WithStyle(ui.StyleItalic)
-	stepWarningFormat = ui.TextFormat().WithForegroundColor(ui.ForegroundYellow).WithStyle(ui.StyleBold).WithStyle(ui.StyleItalic)
-	stepMessageFormat = ui.TextFormat().WithForegroundColor(ui.ForegroundGreen).WithStyle(ui.StyleBold).WithStyle(ui.StyleItalic)
+	stepErrorFormat       = ui.TextFormat().WithForegroundColor(ui.ForegroundRed).WithStyle(ui.StyleBold).WithStyle(ui.StyleItalic)
+	stepErrorDetailFormat = ui.TextFormat().WithForegroundColor(ui.ForegroundBlack).WithStyle(ui.StyleItalic)
+	stepWarningFormat     = ui.TextFormat().WithForegroundColor(ui.ForegroundYellow).WithStyle(ui.StyleBold).WithStyle(ui.StyleItalic)
+	stepMessageFormat     = ui.TextFormat().WithForegroundColor(ui.ForegroundGreen).WithStyle(ui.StyleBold).WithStyle(ui.StyleItalic)
 )
 
 type iterationResult struct {
@@ -367,6 +369,7 @@ func (s *SingleStep) handleHostResult(ctx *hostWorkflowContext, result *module.R
 	}
 
 	errMessage := s.formatHostError(ctx, result.Err)
+	errMessage += s.formatHostErrorDetail(ctx, result.ErrDetail)
 	outMessage := s.formatHostResult(ctx, result)
 
 	ctx.ui.Print(outMessage)
@@ -384,6 +387,7 @@ func (s *SingleStep) handleHostIterationResult(ctx *hostWorkflowContext, iterati
 	}
 
 	errMessage := s.formatHostError(ctx, result.Err)
+	errMessage += s.formatHostErrorDetail(ctx, result.ErrDetail)
 	outMessage := s.formatHostIterationResult(ctx, iteration, result)
 
 	ctx.ui.Print(outMessage)
@@ -399,8 +403,23 @@ func (s *SingleStep) formatHostError(ctx *hostWorkflowContext, err error) string
 		return ""
 	}
 
-	message := fmt.Sprintf("ERROR:   %v\n", err)
+	errMessage := strings.ReplaceAll(err.Error(), "\n", "\n     ")
+
+	message := fmt.Sprintf("ERROR:   %s\n", errMessage)
 	messageText := ui.Text(message).WithFormat(stepErrorFormat).WithLeftMargin(4)
+
+	return ctx.ui.Format(messageText)
+}
+
+func (s *SingleStep) formatHostErrorDetail(ctx *hostWorkflowContext, errDetail string) string {
+	if errDetail == "" || !ctx.debug {
+		return ""
+	}
+
+	errDetail = strings.ReplaceAll(errDetail, "\n", "\n       ")
+
+	message := fmt.Sprintf("DETAIL:  %s\n", errDetail)
+	messageText := ui.Text(message).WithFormat(stepErrorDetailFormat).WithLeftMargin(6)
 
 	return ctx.ui.Format(messageText)
 }
@@ -409,6 +428,8 @@ func (s *SingleStep) formatHostWarning(ctx *hostWorkflowContext, warning string)
 	if warning == "" {
 		return ""
 	}
+
+	warning = strings.ReplaceAll(warning, "\n", "\n     ")
 
 	message := fmt.Sprintf("WARNING: %s\n", warning)
 	messageText := ui.Text(message).WithFormat(stepWarningFormat).WithLeftMargin(4)
@@ -420,6 +441,8 @@ func (s *SingleStep) formatHostMessage(ctx *hostWorkflowContext, message string)
 	if message == "" {
 		return ""
 	}
+
+	message = strings.ReplaceAll(message, "\n", "\n     ")
 
 	message = fmt.Sprintf("MESSAGE: %s\n", message)
 	messageText := ui.Text(message).WithFormat(stepMessageFormat).WithLeftMargin(4)

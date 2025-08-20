@@ -14,7 +14,7 @@ func RemoveEmptyLinesAndComments(script string) string {
 	filteredLines := []string{}
 	for _, line := range lines {
 		line = strings.TrimRightFunc(line, unicode.IsSpace)
-		if strings.HasPrefix(line, "#") || line == "" {
+		if strings.HasPrefix(strings.TrimSpace(line), "#") || line == "" {
 			continue
 		}
 

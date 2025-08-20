@@ -15,7 +15,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-func TestPluginRun_Linux(t *testing.T) {
+func TestShellRun_Linux(t *testing.T) {
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -88,7 +88,7 @@ func TestPluginRun_Linux(t *testing.T) {
 	}
 }
 
-func TestPluginRun_Linux_SudoPassword(t *testing.T) {
+func TestShellRun_Linux_SudoPassword(t *testing.T) {
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -156,7 +156,7 @@ func TestPluginRun_Linux_SudoPassword(t *testing.T) {
 	}
 }
 
-func TestPluginRun_Linux_NoSudoPassword(t *testing.T) {
+func TestShellRun_Linux_NoSudoPassword(t *testing.T) {
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()
@@ -230,7 +230,7 @@ func TestPluginRun_Linux_NoSudoPassword(t *testing.T) {
 	}
 }
 
-func TestPluginRun_Windows_SSH_PowerShell(t *testing.T) {
+func TestShellRun_Windows_SSH_PowerShell(t *testing.T) {
 	setupVagrantEnvironment(t)
 
 	builder, err := transport.NewSSHBuilder()

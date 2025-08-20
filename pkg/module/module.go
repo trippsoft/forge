@@ -37,19 +37,21 @@ func (c *RunConfig) FormatInputForPython() string {
 	}
 
 	stringBuilder := &strings.Builder{}
-	stringBuilder.WriteString("ARGS = {")
+	stringBuilder.WriteString(`ARGS = {"what_if":`)
 
-	i := 0
+	if c.WhatIf {
+		stringBuilder.WriteString("True")
+	} else {
+		stringBuilder.WriteString("False")
+	}
+
 	for key, value := range c.Input {
-		if i > 0 {
-			stringBuilder.WriteString(",")
-		}
-
+		stringBuilder.WriteString(",")
 		fmt.Fprintf(stringBuilder, "%q:%s", key, c.formatCtyValueForPython(value))
-		i++
 	}
 
 	stringBuilder.WriteString("}")
+
 	return stringBuilder.String()
 }
 
