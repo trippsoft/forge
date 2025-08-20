@@ -14,6 +14,7 @@ import (
 	"github.com/trippsoft/forge/pkg/module"
 	"github.com/trippsoft/forge/pkg/module/assert"
 	"github.com/trippsoft/forge/pkg/module/message"
+	"github.com/trippsoft/forge/pkg/module/pkg"
 	"github.com/trippsoft/forge/pkg/module/shell"
 	"github.com/trippsoft/forge/pkg/ui"
 	"github.com/trippsoft/forge/pkg/workflow"
@@ -27,6 +28,7 @@ const (
 var (
 	inventoryPaths []string
 	workflowPath   string
+	debug          bool
 
 	UI          = ui.StdUI()
 	ErrorFormat = ui.TextFormat().WithStyle(ui.StyleBold)
@@ -38,7 +40,6 @@ func main() {
 		Short: "Parse and display HCL inventory",
 		Long:  "Parses HCL inventory files and displays the inventory of managed hosts.",
 		Run: func(cmd *cobra.Command, args []string) {
-
 			i, err := parseInventory()
 			if err != nil {
 				return
@@ -53,7 +54,6 @@ func main() {
 		Short: "Run a workflow against an inventory",
 		Long:  "Parses and runs a workflow file against the parsed inventory.",
 		Run: func(cmd *cobra.Command, args []string) {
-
 			i, err := parseInventory()
 			if err != nil {
 				UI.Print("Error parsing inventory files. Closing...\n")
@@ -74,7 +74,7 @@ func main() {
 			}
 
 			UI.Print("Successfully parsed workflow file.\n")
-			workflowContext := workflow.WorkflowContext(UI, i)
+			workflowContext := workflow.WorkflowContext(UI, i, debug)
 
 			err = w.Run(workflowContext)
 
@@ -106,6 +106,7 @@ func main() {
 
 	runCmd.Flags().StringSliceVarP(&inventoryPaths, "inventory", "i", []string{}, "Path to the HCL inventory file(s)")
 	runCmd.Flags().StringVarP(&workflowPath, "workflow", "w", "", "Path to the HCL workflow file")
+	runCmd.Flags().BoolVarP(&debug, "debug", "d", false, "Enable debug mode")
 
 	err := rootCmd.Execute()
 	if err != nil {
@@ -114,7 +115,6 @@ func main() {
 }
 
 func parseInventory() (*inventory.Inventory, error) {
-
 	UI.Print("\nDiscovering inventory files...\n\n")
 
 	inventoryFiles, err := inventory.DiscoverInventoryFiles(inventoryPaths...)
@@ -144,14 +144,16 @@ func parseInventory() (*inventory.Inventory, error) {
 }
 
 func registerLocalModules(moduleRegistry *module.Registry) {
-
 	moduleRegistry.Register("assert", module.NewLocal(&assert.Module{}))
+	moduleRegistry.Register("dnf", module.NewLocal(&pkg.DNFModule{}))
+	moduleRegistry.Register("dnf_info", module.NewLocal(&pkg.DNFInfoModule{}))
 	moduleRegistry.Register("message", module.NewLocal(&message.Module{}))
+	moduleRegistry.Register("pkg", module.NewLocal(&pkg.PkgModule{}))
+	moduleRegistry.Register("pkg_info", module.NewLocal(&pkg.PkgInfoModule{}))
 	moduleRegistry.Register("shell", module.NewLocal(&shell.Module{}))
 }
 
 func parseWorkflow(inventory *inventory.Inventory, moduleRegistry *module.Registry) (*workflow.Workflow, error) {
-
 	UI.Print("Parsing workflow file...\n\n")
 
 	content, err := os.ReadFile(workflowPath)
@@ -172,7 +174,6 @@ func parseWorkflow(inventory *inventory.Inventory, moduleRegistry *module.Regist
 }
 
 func printInventoryTargets(i *inventory.Inventory) {
-
 	UI.Print("Inventory targets:\n\n")
 
 	allHosts := i.Hosts()
@@ -193,9 +194,7 @@ func printInventoryTargets(i *inventory.Inventory) {
 	groups := i.Groups()
 
 	for name, hosts := range groups {
-
 		group := ui.Text(name).WithStyle(ui.StyleBold).WithForegroundColor(ui.ForegroundCyan)
-
 		message := fmt.Sprintf("%s:\n", UI.Format(group))
 
 		UI.Print(message)
@@ -205,12 +204,12 @@ func printInventoryTargets(i *inventory.Inventory) {
 			hostMessage := fmt.Sprintf("  - %s\n", UI.Format(hostText))
 			UI.Print(hostMessage)
 		}
+
 		UI.Print("\n")
 	}
 }
 
 func printInventoryVars(i *inventory.Inventory) {
-
 	UI.Print("Inventory variables:\n\n")
 
 	hosts := i.Hosts()
@@ -239,7 +238,6 @@ func printHCLDiags(diags hcl.Diagnostics) {
 	}
 
 	for _, diag := range diags {
-
 		severityMessage := ""
 		if diag.Severity == hcl.DiagError {
 			severityText := ui.Text("ERROR").WithForegroundColor(ui.ForegroundRed).WithStyle(ui.StyleBold)
