@@ -28,3 +28,16 @@ func encodePowerShellAsUTF16LEBase64(powershell string) (string, error) {
 
 	return base64Encoded, nil
 }
+
+func encodePythonAsBase64(python string) (string, error) {
+	if python == "" {
+		return "", errors.New("input Python command cannot be empty")
+	}
+
+	base64Encoded := base64.StdEncoding.EncodeToString([]byte(python))
+	if base64Encoded == "" {
+		return "", errors.New("failed to encode Python command to base64")
+	}
+
+	return base64Encoded, nil
+}

@@ -826,6 +826,144 @@ func TestSSHTransportPowerShell_WinCmd(t *testing.T) {
 	}
 }
 
+func TestSSHTransportPython_Linux(t *testing.T) {
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(linuxHost).
+		Port(linuxPort).
+		User(linuxUser).
+		PasswordAuth(linuxPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+
+	defer sshTransport.Close()
+
+	cmd, err := sshTransport.NewPythonCommand("/usr/bin/python3", "print('Hello from Python')", nil)
+	if err != nil {
+		t.Fatalf("NewPythonCommand failed: %v", err)
+	}
+
+	stdout, err := cmd.Output(context.Background())
+	if err != nil {
+		t.Fatalf("ExecutePython failed: %v", err)
+	}
+
+	expectedStdout := "Hello from Python"
+	if stdout != expectedStdout {
+		t.Errorf("Expected Python output to be %q, got %q", expectedStdout, stdout)
+	}
+}
+
+func TestSSHTransportPython_WinPowerShell(t *testing.T) {
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(windowsHost).
+		Port(windowsPort).
+		User(windowsUser).
+		PasswordAuth(windowsPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+
+	defer sshTransport.Close()
+
+	cmd, err := sshTransport.NewPythonCommand("", "Write-Host 'Hello from PowerShell'", nil)
+	if err == nil {
+		t.Fatal("Expected error for NewPythonCommand on Windows, but got none")
+	}
+
+	if cmd != nil {
+		t.Fatal("Expected nil command for NewPythonCommand on Windows, but got a command")
+	}
+
+	expectedErr := "Python is not available on the remote system"
+	if err == nil {
+		t.Fatal("Expected Python command to fail on Windows, but it succeeded")
+	}
+
+	if !strings.Contains(err.Error(), expectedErr) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedErr, err.Error())
+	}
+}
+
+func TestSSHTransportPython_WinCmd(t *testing.T) {
+	setupVagrantEnvironment(t)
+
+	builder, err := transport.NewSSHBuilder()
+	if err != nil {
+		t.Fatalf("NewSSHBuilder failed: %v", err)
+	}
+
+	sshTransport, err := builder.
+		Host(cmdHost).
+		Port(cmdPort).
+		User(cmdUser).
+		PasswordAuth(cmdPassword).
+		DontUseKnownHosts().
+		ConnectionTimeout(30 * time.Second).
+		Build()
+
+	if err != nil {
+		t.Fatalf("Failed to build SSH transport: %v", err)
+	}
+
+	err = sshTransport.Connect()
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+
+	defer sshTransport.Close()
+
+	cmd, err := sshTransport.NewPythonCommand("", "Write-Host 'Hello from PowerShell'", nil)
+	if err == nil {
+		t.Fatal("Expected error for NewPythonCommand on Windows, but got none")
+	}
+
+	if cmd != nil {
+		t.Fatal("Expected nil command for NewPythonCommand on Windows, but got a command")
+	}
+
+	expectedErr := "Python is not available on the remote system"
+	if err == nil {
+		t.Fatal("Expected Python command to fail on Windows, but it succeeded")
+	}
+
+	if !strings.Contains(err.Error(), expectedErr) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedErr, err.Error())
+	}
+}
+
 func TestSSHTransportStat_Linux(t *testing.T) {
 	setupVagrantEnvironment(t)
 

@@ -4,6 +4,7 @@
 package transport
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -72,6 +73,10 @@ func (w *MockWinTransport) NewPowerShellCommand(command string, escalateConfig E
 	return &MockCmd{
 		Err: fmt.Errorf("PowerShell command not found in mock transport: %s", command),
 	}, nil
+}
+
+func (w *MockWinTransport) NewPythonCommand(interpreter, command string, escalateConfig Escalation) (Cmd, error) {
+	return nil, errors.New("Python execution not supported in mock transport")
 }
 
 // Stat implements Transport.

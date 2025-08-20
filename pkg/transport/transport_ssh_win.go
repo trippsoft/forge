@@ -22,6 +22,16 @@ func (s *sshWindowsInfo) canRunPowerShell() bool {
 	return true
 }
 
+// canRunPython implements sshPlatformInfo.
+func (s *sshWindowsInfo) canRunPython() bool {
+	return false
+}
+
+// pythonInterpreterPath implements sshPlatformInfo.
+func (s *sshWindowsInfo) pythonInterpreterPath() string {
+	return ""
+}
+
 // pathSeparator implements sshPlatformInfo.
 func (s *sshWindowsInfo) pathSeparator() rune {
 	return '\\'

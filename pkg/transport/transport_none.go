@@ -29,14 +29,19 @@ func (n *noneTransport) Close() error {
 	return nil
 }
 
-// NewCommand creates a new command to be executed on the managed system.
+// NewCommand implements Transport.
 func (n *noneTransport) NewCommand(command string, escalateConfig Escalation) (Cmd, error) {
 	return nil, errors.New("no transport available for command execution")
 }
 
-// NewPowerShellCommand creates a new PowerShell command to be executed on the managed system.
+// NewPowerShellCommand implements Transport.
 func (n *noneTransport) NewPowerShellCommand(command string, escalateConfig Escalation) (Cmd, error) {
 	return nil, errors.New("no transport available for PowerShell execution")
+}
+
+// NewPythonCommand implements Transport.
+func (n *noneTransport) NewPythonCommand(interpreter, command string, escalateConfig Escalation) (Cmd, error) {
+	return nil, errors.New("no transport available for Python execution")
 }
 
 // Stat implements Transport.

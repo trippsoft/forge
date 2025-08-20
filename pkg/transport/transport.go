@@ -30,6 +30,10 @@ type Transport interface {
 	NewCommand(command string, escalateConfig Escalation) (Cmd, error)
 	// NewPowerShellCommand creates a new PowerShell command to be executed on the managed system.
 	NewPowerShellCommand(command string, escalateConfig Escalation) (Cmd, error)
+	// NewPythonCommand creates a new Python command to be executed on the managed system.
+	//
+	// If the interpreter is not specified, it defaults to the default interpreter on the system.
+	NewPythonCommand(interpreter, command string, escalateConfig Escalation) (Cmd, error)
 
 	// Stat retrieves the file information for the given path on the managed system.
 	Stat(path string) (os.FileInfo, error)

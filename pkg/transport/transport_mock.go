@@ -105,7 +105,6 @@ type MockCmd struct {
 
 // OutputWithError implements Cmd.
 func (m *MockCmd) OutputWithError(ctx context.Context) (stdout string, stderr string, err error) {
-
 	if m.completed {
 		return "", "", fmt.Errorf("command already completed")
 	}
@@ -124,7 +123,6 @@ func (m *MockCmd) OutputWithError(ctx context.Context) (stdout string, stderr st
 
 // Output implements Cmd.
 func (m *MockCmd) Output(ctx context.Context) (string, error) {
-
 	if m.completed {
 		return "", fmt.Errorf("command already completed")
 	}
@@ -142,7 +140,6 @@ func (m *MockCmd) Output(ctx context.Context) (string, error) {
 
 // Run implements Cmd.
 func (m *MockCmd) Run(ctx context.Context) error {
-
 	if m.completed {
 		return fmt.Errorf("command already completed")
 	}
@@ -160,6 +157,7 @@ type MockTransport struct {
 	TransportType TransportType
 
 	CommandResults map[string]*MockCmd
+	PythonResults  map[string]*MockCmd
 
 	ErrorPaths map[string]error
 	Files      map[string]*MockFile
@@ -170,6 +168,7 @@ func NewMockTransport() *MockTransport {
 	return &MockTransport{
 		TransportType:  TransportTypeSSH,
 		CommandResults: make(map[string]*MockCmd),
+		PythonResults:  make(map[string]*MockCmd),
 		ErrorPaths:     make(map[string]error),
 		Files:          make(map[string]*MockFile),
 		Dirs:           make(map[string]*MockFileInfo),
@@ -189,7 +188,6 @@ func (w *MockTransport) Close() error {
 }
 
 func (w *MockTransport) NewCommand(command string, escalateConfig Escalation) (Cmd, error) {
-
 	cmd, exists := w.CommandResults[command]
 	if exists {
 		cmd.completed = false // Reset completed state for reuse
@@ -206,9 +204,21 @@ func (w *MockTransport) NewPowerShellCommand(command string, escalateConfig Esca
 	return nil, errors.New("PowerShell execution not supported in mock transport")
 }
 
+func (w *MockTransport) NewPythonCommand(interpreter, command string, escalateConfig Escalation) (Cmd, error) {
+	cmd, exists := w.PythonResults[command]
+	if exists {
+		cmd.completed = false // Reset completed state for reuse
+		cmd.stdin = nil
+		return cmd, nil
+	}
+
+	return &MockCmd{
+		Err: fmt.Errorf("command not found in mock transport: %s", command),
+	}, nil
+}
+
 // Stat implements Transport.
 func (w *MockTransport) Stat(path string) (os.FileInfo, error) {
-
 	if err, exists := w.ErrorPaths[path]; exists {
 		return nil, err
 	}
@@ -229,7 +239,6 @@ func (w *MockTransport) Stat(path string) (os.FileInfo, error) {
 
 // Create implements Transport.
 func (w *MockTransport) Create(path string) (File, error) {
-
 	if err, exists := w.ErrorPaths[path]; exists {
 		return nil, err
 	}
@@ -246,13 +255,13 @@ func (w *MockTransport) Create(path string) (File, error) {
 		},
 		Content: nil,
 	}
+
 	w.Files[path] = file
 	return file, nil
 }
 
 // Open implements Transport.
 func (w *MockTransport) Open(path string) (File, error) {
-
 	if err, exists := w.ErrorPaths[path]; exists {
 		return nil, err
 	}
@@ -274,7 +283,6 @@ func (w *MockTransport) Open(path string) (File, error) {
 
 // Mkdir implements Transport.
 func (w *MockTransport) Mkdir(path string) error {
-
 	if err, exists := w.ErrorPaths[path]; exists {
 		return err
 	}
@@ -294,6 +302,7 @@ func (w *MockTransport) Mkdir(path string) error {
 		ModifiedTime: time.Now(),
 		IsDirectory:  true,
 	}
+
 	return nil
 }
 
@@ -304,13 +313,11 @@ func (w *MockTransport) MkdirAll(path string) error {
 
 // Remove implements Transport.
 func (w *MockTransport) Remove(path string) error {
-
 	if err, exists := w.ErrorPaths[path]; exists {
 		return err
 	}
 
 	_, dirExists := w.Dirs[path]
-
 	if dirExists {
 		for filePath := range w.Files {
 			if strings.HasPrefix(filePath, path+"/") {
@@ -339,13 +346,11 @@ func (w *MockTransport) Remove(path string) error {
 
 // RemoveAll implements Transport.
 func (w *MockTransport) RemoveAll(path string) error {
-
 	if err, exists := w.ErrorPaths[path]; exists {
 		return err
 	}
 
 	_, dirExists := w.Dirs[path]
-
 	if dirExists {
 		toDelete := make([]string, 0)
 		for filePath := range w.Files {
@@ -353,6 +358,7 @@ func (w *MockTransport) RemoveAll(path string) error {
 				toDelete = append(toDelete, filePath)
 			}
 		}
+
 		for _, filePath := range toDelete {
 			delete(w.Files, filePath)
 		}
@@ -363,9 +369,11 @@ func (w *MockTransport) RemoveAll(path string) error {
 				toDelete = append(toDelete, dirPath)
 			}
 		}
+
 		for _, dirPath := range toDelete {
 			delete(w.Dirs, dirPath)
 		}
+
 		delete(w.Dirs, path)
 
 		return nil
@@ -381,12 +389,12 @@ func (w *MockTransport) RemoveAll(path string) error {
 
 // Join implements Transport.
 func (w *MockTransport) Join(elem ...string) string {
-
 	stringBuilder := &strings.Builder{}
 	for i, e := range elem {
 		if i > 0 {
 			stringBuilder.WriteString("/")
 		}
+
 		stringBuilder.WriteString(strings.Trim(e, "/"))
 	}
 
@@ -400,7 +408,6 @@ func (w *MockTransport) TempDir() (string, error) {
 
 // CreateTemp implements Transport.
 func (w *MockTransport) CreateTemp(dir string, pattern string) (File, error) {
-
 	if dir == "" {
 		dir, _ = w.TempDir()
 	}
@@ -434,7 +441,6 @@ func (w *MockTransport) CreateTemp(dir string, pattern string) (File, error) {
 
 // MkdirTemp implements Transport.
 func (w *MockTransport) MkdirTemp(dir string, pattern string) (string, error) {
-
 	if dir == "" {
 		dir, _ = w.TempDir()
 	}
@@ -473,7 +479,6 @@ func (w *MockTransport) MkdirTemp(dir string, pattern string) (string, error) {
 
 // Symlink implements Transport.
 func (w *MockTransport) Symlink(target string, path string) error {
-
 	if err, exists := w.ErrorPaths[path]; exists {
 		return err
 	}
@@ -497,6 +502,7 @@ func (w *MockTransport) Symlink(target string, path string) error {
 		},
 		Content: nil,
 	}
+
 	return nil
 }
 
@@ -506,14 +512,15 @@ func (w *MockTransport) ReadLink(path string) (string, error) {
 		if file.Info.Target != "" {
 			return file.Info.Target, nil // Return the target of the symlink
 		}
+
 		return "", os.ErrInvalid // Not a symlink
 	}
+
 	return "", os.ErrNotExist
 }
 
 // RealPath implements Transport.
 func (w *MockTransport) RealPath(path string) (string, error) {
-
 	if _, exists := w.Files[path]; exists {
 		return path, nil // Return the path as is for mock transport
 	}
@@ -527,9 +534,11 @@ func (w *MockTransport) RealPath(path string) (string, error) {
 		if err, exists := w.ErrorPaths[newPath]; exists {
 			return "", err // Return error if path is in error map
 		}
+
 		if _, exists := w.Files[newPath]; exists {
 			return newPath, nil // Return the first matching path
 		}
+
 		if _, exists := w.Dirs[newPath]; exists {
 			return newPath, nil // Return the first matching directory
 		}

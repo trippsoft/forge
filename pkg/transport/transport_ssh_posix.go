@@ -225,12 +225,23 @@ func (s *sshSudoCmd) createSession(ctx context.Context) error {
 
 type sshPosixInfo struct {
 	transport          *sshTransport
+	pythonInterpreter  string
 	cachedPathPrefixes []string
 }
 
 // canRunPowerShell implements sshPlatformInfo.
 func (s *sshPosixInfo) canRunPowerShell() bool {
 	return false
+}
+
+// canRunPython implements sshPlatformInfo.
+func (s *sshPosixInfo) canRunPython() bool {
+	return s.pythonInterpreter != ""
+}
+
+// pythonInterpreterPath implements sshPlatformInfo.
+func (s *sshPosixInfo) pythonInterpreterPath() string {
+	return s.pythonInterpreter
 }
 
 // pathSeparator implements sshPlatformInfo.

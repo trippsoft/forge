@@ -351,7 +351,11 @@ func (s *sshCmd) createSession(ctx context.Context) error {
 type sshPlatformInfo interface {
 	// canRunPowerShell indicates if PowerShell is available on the platform.
 	canRunPowerShell() bool
+	// canRunPython indicates if Python is available on the platform.
+	canRunPython() bool
 
+	// pythonInterpreterPath returns the path to the Python interpreter for the platform.
+	pythonInterpreterPath() string
 	// pathSeparator returns the path separator for the platform.
 	pathSeparator() rune
 	// pathListSeparator returns the path list separator for the platform.
@@ -410,14 +414,32 @@ func (s *sshTransport) Connect() error {
 			return fmt.Errorf("failed to create SSH session for uname check: %w", unameErr)
 		}
 
-		defer session.Close()
-
 		unameErr = session.Run("uname -s")
+		session.Close()
 		if unameErr != nil {
 			return fmt.Errorf("failed to check for PowerShell or uname command; PowerShell Error: %w; uname Error: %w", psErr, unameErr)
 		}
 
-		s.platform = &sshPosixInfo{transport: s} // For now, we will assume non-Windows is POSIX.
+		session, err := s.client.NewSession()
+		if err != nil {
+			return fmt.Errorf("failed to create SSH session for python check: %w", err)
+		}
+
+		defer session.Close()
+
+		outBuf := &bytes.Buffer{}
+
+		session.Stdout = outBuf
+
+		err = session.Run("which python3 2>/dev/null || which python 2>/dev/null")
+		if err != nil {
+			s.platform = &sshPosixInfo{transport: s} // No python interpreter found
+			return nil
+		}
+
+		pythonInterpreter := strings.TrimSpace(outBuf.String())
+
+		s.platform = &sshPosixInfo{transport: s, pythonInterpreter: pythonInterpreter}
 		return nil
 	}
 
@@ -471,6 +493,31 @@ func (s *sshTransport) NewPowerShellCommand(command string, escalateConfig Escal
 	}
 
 	command = fmt.Sprintf("powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand %s", encodedCommand)
+
+	return s.platform.newCommand(command, escalateConfig)
+}
+
+// NewPythonCommand implements Transport.
+func (s *sshTransport) NewPythonCommand(interpreter, command string, escalateConfig Escalation) (Cmd, error) {
+	err := s.Connect() // Connect to ensure that the platform detection is done
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect: %w", err)
+	}
+
+	if !s.platform.canRunPython() {
+		return nil, errors.New("Python is not available on the remote system")
+	}
+
+	encodedCommand, err := encodePythonAsBase64(command)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode Python command: %w", err)
+	}
+
+	if interpreter != "" {
+		interpreter = s.platform.pythonInterpreterPath()
+	}
+
+	command = fmt.Sprintf("%s -c \"import base64; exec(base64.b64decode('%s'))\"", interpreter, encodedCommand)
 
 	return s.platform.newCommand(command, escalateConfig)
 }
