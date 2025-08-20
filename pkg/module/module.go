@@ -7,12 +7,14 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"strings"
 	"time"
 
 	"github.com/trippsoft/forge/pkg/hclspec"
 	"github.com/trippsoft/forge/pkg/info"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/convert"
 )
 
 const (
@@ -26,6 +28,117 @@ type RunConfig struct {
 	Escalation transport.Escalation // Privilege escalation configuration for the host.
 	WhatIf     bool                 // If true, the module should not make any changes.
 	Input      map[string]cty.Value // Input variables for the module.
+}
+
+// FormatInputForPython formats the input for use in a Python script.
+func (c *RunConfig) FormatInputForPython() string {
+	if c == nil {
+		return ""
+	}
+
+	stringBuilder := &strings.Builder{}
+	stringBuilder.WriteString("ARGS = {")
+
+	i := 0
+	for key, value := range c.Input {
+		if i > 0 {
+			stringBuilder.WriteString(",")
+		}
+
+		fmt.Fprintf(stringBuilder, "%q:%s", key, c.formatCtyValueForPython(value))
+		i++
+	}
+
+	stringBuilder.WriteString("}")
+	return stringBuilder.String()
+}
+
+func (c *RunConfig) formatCtyValueForPython(value cty.Value) string {
+	if !value.IsWhollyKnown() || value.IsNull() {
+		return "None"
+	}
+
+	switch {
+	case !value.IsWhollyKnown() || value.IsNull():
+		return "None"
+	case value.Type().Equals(cty.String):
+		return fmt.Sprintf("%q", value.AsString())
+	case value.Type().Equals(cty.Bool) && value.True():
+		return "True"
+	case value.Type().Equals(cty.Bool) && !value.True():
+		return "False"
+	case value.Type().Equals(cty.Number):
+		converted, err := convert.Convert(value, cty.String)
+		if err != nil {
+			return "None"
+		}
+
+		return fmt.Sprintf("%s", converted.AsString())
+
+	case value.Type().IsListType() || value.Type().IsTupleType():
+		stringBuilder := &strings.Builder{}
+		stringBuilder.WriteString("[")
+
+		i := 0
+		it := value.ElementIterator()
+		for it.Next() {
+			_, elem := it.Element()
+			if i > 0 {
+				stringBuilder.WriteString(",")
+			}
+
+			stringBuilder.WriteString(c.formatCtyValueForPython(elem))
+			i++
+		}
+
+		stringBuilder.WriteString("]")
+
+		return stringBuilder.String()
+
+	case value.Type().IsSetType():
+		stringBuilder := &strings.Builder{}
+		stringBuilder.WriteString("{")
+
+		i := 0
+		it := value.ElementIterator()
+		for it.Next() {
+			_, elem := it.Element()
+			if i > 0 {
+				stringBuilder.WriteString(",")
+			}
+
+			stringBuilder.WriteString(c.formatCtyValueForPython(elem))
+			i++
+		}
+
+		stringBuilder.WriteString("}")
+
+		return stringBuilder.String()
+
+	case value.Type().IsMapType() || value.Type().IsObjectType():
+		stringBuilder := &strings.Builder{}
+		stringBuilder.WriteString("{")
+
+		i := 0
+		it := value.ElementIterator()
+		for it.Next() {
+			key, elem := it.Element()
+			if i > 0 {
+				stringBuilder.WriteString(",")
+			}
+
+			stringBuilder.WriteString(c.formatCtyValueForPython(key))
+			stringBuilder.WriteString(":")
+			stringBuilder.WriteString(c.formatCtyValueForPython(elem))
+			i++
+		}
+
+		stringBuilder.WriteString("}")
+
+		return stringBuilder.String()
+	default:
+		return "None"
+	}
 }
 
 // Module defines the interface for a module in the system.

@@ -18,6 +18,7 @@ var (
 	_ module.Module = (*Module)(nil)
 )
 
+// Module defines the shell module that executes shell commands.
 type Module struct{}
 
 // InputSpec implements module.Module.

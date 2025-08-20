@@ -27,6 +27,7 @@ var (
 	_ module.Module = (*Module)(nil)
 )
 
+// Module defines the assert module that checks conditions.
 type Module struct{}
 
 // InputSpec implements module.Module.
