@@ -18,6 +18,8 @@ import (
 //go:embed dnf_info.py
 var dnfInfoScript string
 
+var fullDnfInfoScript string
+
 var (
 	_ module.Module = (*DNFInfoModule)(nil)
 )
@@ -39,7 +41,8 @@ func (d *DNFInfoModule) Validate(config *module.RunConfig) error {
 func (d *DNFInfoModule) Run(ctx context.Context, config *module.RunConfig) *module.Result {
 	t := config.Transport
 
-	cmd, err := t.NewPythonCommand("", dnfInfoScript, config.Escalation)
+	script := fmt.Sprintf("%s\n%s", config.FormatInputForPython(), fullDnfInfoScript)
+	cmd, err := t.NewPythonCommand("", script, config.Escalation)
 	if err != nil {
 		return module.NewFailure(err, "failed to create DNF info command")
 	}

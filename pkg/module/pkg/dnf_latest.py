@@ -5,94 +5,6 @@
 # This script is used by the dnf module to apply the package changes.
 # ARGS will be replaced by the module arguments.
 
-import json
-import traceback
-
-try:
-    import dnf
-    import dnf.base
-    import dnf.exceptions
-    import dnf.subject
-    import dnf.util
-    HAS_DNF = True
-    DNF_TRACEBACK = None
-except ImportError:
-    HAS_DNF = False
-    DNF_TRACEBACK = traceback.format_exc()
-
-ARGS = {}
-
-def fail(base, error, detail = ""):
-    if base is not None:
-        try:
-            base.close()
-        except Exception:
-            pass
-
-    output = {
-        "error": error,
-        "error_detail": detail,
-        "changed": False,
-        "installed_packages": [],
-        "removed_packages": [],
-    }
-    print(json.dumps(output), flush=True)
-    exit(0)
-
-def succeed(base, installed, removed):
-    if base is not None:
-        try:
-            base.close()
-        except Exception:
-            pass
-
-    output = {
-        "error": None,
-        "error_detail": None,
-        "changed": len(installed) > 0 or len(removed) > 0,
-        "installed_packages": installed,
-        "removed_packages": removed,
-    }
-    print(json.dumps(output), flush=True)
-    exit(0)
-
-def setup_base():
-    # TODO - Configure DNF (GPG checking, disable/enable repo, SSL verification)
-    base = dnf.base.Base()
-    base.conf.read()
-    base.conf.debuglevel = 0
-    base.conf.assumeyes = True
-    base.conf.substitutions.update_from_etc(base.conf.installroot)
-
-    try:
-        base.setup_loggers()
-    except AttributeError:
-        pass
-
-    try:
-        # TODO - Add/remove plugins
-        base.init_plugins()
-        base.pre_configure_plugins()
-    except AttributeError:
-        pass
-
-    base.read_all_repos()
-
-    try:
-        base.configure_plugins()
-    except AttributeError:
-        pass
-
-    try:
-        if ARGS["update_cache"]:
-            _ = base.update_cache()
-
-        _ = base.fill_sack()
-    except dnf.exceptions.RepoError as e:
-        fail(base, f"Repository error: {str(e)}", traceback.format_exc())
-
-    return base
-
 def packages_to_be_processed(base, packages):
     to_be_installed = []
     to_be_updated = []
@@ -179,57 +91,68 @@ def main():
 
         to_be_installed, to_be_updated, update_all = packages_to_be_processed(base, package_names)
         if len(to_be_installed) == 0 and len(to_be_updated) == 0 and not update_all:
-            succeed(base, [], [])
+            dnf_success(base, {"installed": [], "removed": []})
 
         if update_all:
             try:
                 _ = base.upgrade_all()
             except dnf.exceptions.DepsolveError as e:
-                fail(base, f"Dependency error for package upgrades: {str(e)}", traceback.format_exc())
+                import traceback
+                dnf_fail(base, f"Dependency error for package upgrades: {str(e)}", traceback.format_exc())
             except dnf.exceptions.Error as e:
-                fail(base, f"Error processing package upgrades: {str(e)}", traceback.format_exc())
+                import traceback
+                dnf_fail(base, f"Error processing package upgrades: {str(e)}", traceback.format_exc())
 
         for name in to_be_installed:
             try:
                 _ = base.install(name, strict=base.conf.strict)
             except dnf.exceptions.MarkingError as e:
-                fail(base, f"Package {name} not found: {str(e)}", traceback.format_exc())
+                import traceback
+                dnf_fail(base, f"Package {name} not found: {str(e)}", traceback.format_exc())
             except dnf.exceptions.DepsolveError as e:
-                fail(base, f"Dependency error for package {name}: {str(e)}", traceback.format_exc())
+                import traceback
+                dnf_fail(base, f"Dependency error for package {name}: {str(e)}", traceback.format_exc())
             except dnf.exceptions.Error as e:
-                fail(base, f"Error processing package {name}: {str(e)}", traceback.format_exc())
+                import traceback
+                dnf_fail(base, f"Error processing package {name}: {str(e)}", traceback.format_exc())
 
         for name in to_be_updated:
             try:
                 _ = base.upgrade(name)
             except dnf.exceptions.MarkingError as e:
-                fail(base, f"Package {name} not found: {str(e)}", traceback.format_exc())
+                import traceback
+                dnf_fail(base, f"Package {name} not found: {str(e)}", traceback.format_exc())
             except dnf.exceptions.DepsolveError as e:
-                fail(base, f"Dependency error for package {name}: {str(e)}", traceback.format_exc())
+                import traceback
+                dnf_fail(base, f"Dependency error for package {name}: {str(e)}", traceback.format_exc())
             except dnf.exceptions.Error as e:
-                fail(base, f"Error processing package {name}: {str(e)}", traceback.format_exc())
+                import traceback
+                dnf_fail(base, f"Error processing package {name}: {str(e)}", traceback.format_exc())
 
         # TODO - Add allow erasing as input
         try:
             if not base.resolve(allow_erasing=False):
-                succeed(base, [], [])
+                dnf_success(base, {"installed": [], "removed": []})
         except dnf.exceptions.DepsolveError as e:
-            fail(base, f"Dependency resolution failed: {str(e)}", traceback.format_exc())
+            import traceback
+            dnf_fail(base, f"Dependency resolution failed: {str(e)}", traceback.format_exc())
         except dnf.exceptions.Error as e:
-            fail(base, f"Error creating transaction: {str(e)}", traceback.format_exc())
+            import traceback
+            dnf_fail(base, f"Error creating transaction: {str(e)}", traceback.format_exc())
 
         transaction = base.transaction
         if transaction is None:
-            succeed(base, [], [])
+            dnf_success(base, {"installed": [], "removed": []})
 
         installed, removed = get_output_from_transaction(transaction)
         if ARGS["what_if"] or (len(installed) == 0 and len(removed) == 0):
-            succeed(base, installed, removed)
+            dnf_success(base, {"installed": installed, "removed": removed})
 
         try:
             base.download_packages(base.transaction.install_set)
         except dnf.exceptions.DownloadError as e:
-            fail(base, f"Download error: {str(e)}", traceback.format_exc())
+            import traceback
+            dnf_fail(base, f"Download error: {str(e)}", traceback.format_exc())
 
         # TODO - Configure disable GPG check
         for pkg in base.transaction.install_set:
@@ -243,31 +166,32 @@ def main():
                     base._get_key_for_package(pkg)
                     continue
                 except dnf.exceptions.Error as e:
-                    fail(base, f"GPG key error for package {pkg.name}: {str(e)}", traceback.format_exc())
+                    import traceback
+                    dnf_fail(base, f"GPG key error for package {pkg.name}: {str(e)}", traceback.format_exc())
 
-            fail(base, f"GPG check failed for package {pkg.name}: {gpg_error}")
+            dnf_fail(base, f"GPG check failed for package {pkg.name}: {gpg_error}")
 
         try:
             tid = base.do_transaction()
         except dnf.exceptions.Error as e:
-            fail(base, f"Transaction failed: {str(e)}", traceback.format_exc())
+            import traceback
+            dnf_fail(base, f"Transaction failed: {str(e)}", traceback.format_exc())
 
         if tid is None:
-            succeed(base, [], [])
+            dnf_success(base, {"installed": [], "removed": []})
 
         if ARGS["autoremove"]:
             try:
                 base.autoremove()
             except dnf.exceptions.Error as e:
-                fail(base, f"Autoremove failed: {str(e)}", traceback.format_exc())
+                import traceback
+                dnf_fail(base, f"Autoremove failed: {str(e)}", traceback.format_exc())
 
-        succeed(base, installed, removed)
+        dnf_success(base, {"installed": installed, "removed": removed})
 
     except Exception as e:
-        fail(base, f"Unknown error: {str(e)}", traceback.format_exc())
-
-if not HAS_DNF:
-    fail("dnf module is not available", DNF_TRACEBACK)
+        import traceback
+        dnf_fail(base, f"Unknown error: {str(e)}", traceback.format_exc())
 
 if not dnf.util.am_i_root():
     fail("This module must be run as root")

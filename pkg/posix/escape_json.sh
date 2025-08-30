@@ -7,10 +7,10 @@
 escape_json() {
     local string="$1"
 
-    string=$(printf '%s' "$string" | sed 's/\\/\\\\/g')
-    string=$(printf '%s' "$string" | sed 's/"/\\"/g') 
-    string=$(printf '%s' "$string" | sed 's/\n/\\n/g')
-    string=$(printf '%s' "$string" | sed 's/\r/\\r/g')
-    string=$(printf '%s' "$string" | sed 's/\t/\\t/g')
-    printf '%s' "$string"
+    string=$(printf "%s" "$string" | sed "s/\\\\/\\\\\\\\/g")
+    string=$(printf "%s" "$string" | sed "s/\"/\\\\\"/g")
+    string=$(printf "%s" "$string" | sed "s/\n/\\\\n/g")
+    string=$(printf "%s" "$string" | sed "s/\r/\\\\r/g")
+    string=$(printf "%s" "$string" | sed "s/\t/\\\\t/g")
+    printf "%s" "$string"
 }

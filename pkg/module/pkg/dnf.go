@@ -9,12 +9,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/trippsoft/forge/pkg/hclspec"
 	"github.com/trippsoft/forge/pkg/module"
 	"github.com/zclconf/go-cty/cty"
 )
+
+//go:embed dnf_setup.py
+var dnfSetupScript string
 
 //go:embed dnf_present.py
 var dnfPresentScript string
@@ -24,6 +26,12 @@ var dnfAbsentScript string
 
 //go:embed dnf_latest.py
 var dnfLatestScript string
+
+var (
+	fullDnfPresentScript string
+	fullDnfAbsentScript  string
+	fullDnfLatestScript  string
+)
 
 type DNFModule struct{}
 
@@ -45,18 +53,18 @@ func (m *DNFModule) Run(ctx context.Context, config *module.RunConfig) *module.R
 	var script string
 	switch state {
 	case "present":
-		script = dnfPresentScript
+		script = fullDnfPresentScript
 	case "absent":
-		script = dnfAbsentScript
+		script = fullDnfAbsentScript
 	case "latest":
-		script = dnfLatestScript
+		script = fullDnfLatestScript
 	}
 
 	if script == "" {
 		return module.NewFailure(fmt.Errorf("state %q is not valid", state), "")
 	}
 
-	script = strings.Replace(script, "ARGS = {}", config.FormatInputForPython(), 1)
+	script = fmt.Sprintf("%s\n%s", config.FormatInputForPython(), script)
 
 	cmd, err := t.NewPythonCommand("", script, config.Escalation)
 	if err != nil {
@@ -88,11 +96,10 @@ type DNFPackageInfo struct {
 
 // dnfResult represents the result of running the DNF python script.
 type dnfResult struct {
-	Err               string           `json:"error,omitempty"`
-	ErrDetail         string           `json:"error_detail,omitempty"`
-	Changed           bool             `json:"changed,omitempty"`
-	InstalledPackages []DNFPackageInfo `json:"installed_packages,omitempty"`
-	RemovedPackages   []DNFPackageInfo `json:"removed_packages,omitempty"`
+	Err       string           `json:"error,omitempty"`
+	ErrDetail string           `json:"error_detail,omitempty"`
+	Installed []DNFPackageInfo `json:"installed,omitempty"`
+	Removed   []DNFPackageInfo `json:"removed,omitempty"`
 }
 
 func (r *dnfResult) toModuleResult() *module.Result {
@@ -100,12 +107,17 @@ func (r *dnfResult) toModuleResult() *module.Result {
 		return module.NewFailure(errors.New(r.Err), r.ErrDetail)
 	}
 
-	return module.NewSuccess(r.Changed, r.createOutput())
+	changed := false
+	if len(r.Installed) > 0 || len(r.Removed) > 0 {
+		changed = true
+	}
+
+	return module.NewSuccess(changed, r.createOutput())
 }
 
 func (r *dnfResult) createOutput() map[string]cty.Value {
-	installedPackages := make([]cty.Value, 0, len(r.InstalledPackages))
-	for _, pkg := range r.InstalledPackages {
+	installedPackages := make([]cty.Value, 0, len(r.Installed))
+	for _, pkg := range r.Installed {
 		pkgMap := map[string]cty.Value{
 			"name":         cty.StringVal(pkg.Name),
 			"epoch":        cty.StringVal(pkg.Epoch),
@@ -118,8 +130,8 @@ func (r *dnfResult) createOutput() map[string]cty.Value {
 		installedPackages = append(installedPackages, cty.ObjectVal(pkgMap))
 	}
 
-	removedPackages := make([]cty.Value, 0, len(r.RemovedPackages))
-	for _, pkg := range r.RemovedPackages {
+	removedPackages := make([]cty.Value, 0, len(r.Removed))
+	for _, pkg := range r.Removed {
 		pkgMap := map[string]cty.Value{
 			"name":         cty.StringVal(pkg.Name),
 			"epoch":        cty.StringVal(pkg.Epoch),
@@ -135,15 +147,15 @@ func (r *dnfResult) createOutput() map[string]cty.Value {
 	output := map[string]cty.Value{}
 
 	if len(installedPackages) == 0 {
-		output["installed_packages"] = cty.ListValEmpty(cty.EmptyObject)
+		output["installed"] = cty.ListValEmpty(cty.EmptyObject)
 	} else {
-		output["installed_packages"] = cty.ListVal(installedPackages)
+		output["installed"] = cty.ListVal(installedPackages)
 	}
 
 	if len(removedPackages) == 0 {
-		output["removed_packages"] = cty.ListValEmpty(cty.EmptyObject)
+		output["removed"] = cty.ListValEmpty(cty.EmptyObject)
 	} else {
-		output["removed_packages"] = cty.ListVal(removedPackages)
+		output["removed"] = cty.ListVal(removedPackages)
 	}
 
 	return output

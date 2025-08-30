@@ -13,7 +13,7 @@ else
 	selinux_type=$(grep -E '^SELINUXTYPE=' /etc/selinux/config | cut -d '=' -f 2)
 fi
 
-printf '{"selinux_installed": "%s", "selinux_status": "%s", "selinux_type": "%s"}\n' \
+printf "{\"selinux_installed\": \"%s\", \"selinux_status\": \"%s\", \"selinux_type\": \"%s\"}\n" \
     "$selinux_installed" \
     "$selinux_status" \
     "$selinux_type"

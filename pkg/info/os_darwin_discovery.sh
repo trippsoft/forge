@@ -9,6 +9,6 @@
 os_arch="$(uname -m || echo \"\")"
 os_version="$(sw_vers -productVersion || echo \"\")"
 
-printf '{"os_arch": "%s", "os_version": "%s"}\n' \
+printf "{\"os_arch\": \"%s\", \"os_version\": \"%s\"}\n" \
     "$(escape_json "$os_arch")" \
     "$(escape_json "$os_version")"

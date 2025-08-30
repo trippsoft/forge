@@ -42,21 +42,27 @@ func (m *Module) Validate(config *module.RunConfig) error {
 
 // Run implements module.Module.
 func (m *Module) Run(ctx context.Context, config *module.RunConfig) *module.Result {
-	condition := config.Input["condition"].True()
-	message := ""
-	if !condition {
-		failureMessage, exists := config.Input["failure_message"]
-		if exists && failureMessage.IsWhollyKnown() && !failureMessage.IsNull() {
-			message = failureMessage.AsString()
-		} else {
-			message = defaultFailureMessage
-		}
-
-		return module.NewFailure(errors.New(message), message)
+	if config == nil {
+		return module.NewFailure(errors.New("config is nil"), "")
 	}
 
-	successMessage, exists := config.Input["success_message"]
-	if exists && successMessage.IsWhollyKnown() && !successMessage.IsNull() {
+	if config.Input == nil {
+		return module.NewFailure(errors.New("input is nil"), "")
+	}
+
+	condition := config.Input["condition"].True()
+	if !condition {
+		failureMessage, _ := config.Input["failure_message"]
+		if failureMessage.IsWhollyKnown() && !failureMessage.IsNull() {
+			return module.NewFailure(errors.New(failureMessage.AsString()), "")
+		}
+
+		return module.NewFailure(errors.New(defaultFailureMessage), "")
+	}
+
+	successMessage, _ := config.Input["success_message"]
+	var message string
+	if successMessage.IsWhollyKnown() && !successMessage.IsNull() {
 		message = successMessage.AsString()
 	} else {
 		message = defaultSuccessMessage

@@ -5,9 +5,12 @@ package pkg
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/trippsoft/forge/pkg/hclspec"
 	"github.com/trippsoft/forge/pkg/module"
+	"github.com/trippsoft/forge/pkg/python"
 	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -38,8 +41,15 @@ var (
 )
 
 func init() {
-	dnfInfoScript = util.RemoveEmptyLinesAndComments(dnfInfoScript)
-	dnfPresentScript = util.RemoveEmptyLinesAndComments(dnfPresentScript)
+	fullDnfInfoScript = fmt.Sprintf("%s\n%s\n%s\n%s", python.FailFunction, python.SuccessFunction, dnfSetupScript, dnfInfoScript)
+	fullDnfInfoScript = util.RemoveEmptyLinesAndComments(fullDnfInfoScript)
+
+	fullDnfAbsentScript = fmt.Sprintf("%s\n%s\n%s\n%s", python.FailFunction, python.SuccessFunction, dnfSetupScript, dnfAbsentScript)
+	fullDnfAbsentScript = util.RemoveEmptyLinesAndComments(fullDnfAbsentScript)
+	fullDnfPresentScript = fmt.Sprintf("%s\n%s\n%s\n%s", python.FailFunction, python.SuccessFunction, dnfSetupScript, dnfPresentScript)
+	fullDnfPresentScript = util.RemoveEmptyLinesAndComments(fullDnfPresentScript)
+	fullDnfLatestScript = fmt.Sprintf("%s\n%s\n%s\n%s", python.FailFunction, python.SuccessFunction, dnfSetupScript, dnfLatestScript)
+	fullDnfLatestScript = util.RemoveEmptyLinesAndComments(fullDnfLatestScript)
 }
 
 // PkgModule is a module for managing packages, selecting the
@@ -53,7 +63,13 @@ func (p *PkgModule) InputSpec() *hclspec.Spec {
 
 // Validate implements module.Module.
 func (p *PkgModule) Validate(config *module.RunConfig) error {
-	return nil
+	packageManagerName := config.HostInfo.PackageManagerInfo().Name()
+	mod, exists := packageManagerModules[packageManagerName]
+	if !exists {
+		return errors.New("unsupported package manager")
+	}
+
+	return mod.Validate(config)
 }
 
 // Run implements module.Module.

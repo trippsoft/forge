@@ -1,0 +1,14 @@
+#!/bin/sh
+# Copyright (c) Forge
+# SPDX-License-Identifier: MPL-2.0
+#
+# systemd_unmask.sh is used to unmask a systemd service.
+
+if [ "$PREVIOUS_IS_ENABLED" = "masked" ]; then
+    systemctl unmask "$FORGE_NAME" > /dev/null
+
+    if [ "$?" -ne 0 ]; then
+        printf "{\"error\": \"Failed to unmask service %s\"}\n" "$FORGE_NAME"
+        exit 0
+    fi
+fi

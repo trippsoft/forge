@@ -56,17 +56,17 @@ const ServiceManagerLinuxDiscoveryScript = `` +
     `if [ -f /proc/1/comm ]; then ` +
     `proc1_comm=$(cat /proc/1/comm); ` +
     `fi; ` +
-    `printf '{"systemctl_exists": "%s", "run_systemd_system_exists": "%s", "dev_run_systemd_exists": "%s", ' ` +
+    `printf "{\"systemctl_exists\": \"%s\", \"run_systemd_system_exists\": \"%s\", \"dev_run_systemd_exists\": \"%s\", " ` +
     `"$systemctl_exists" ` +
     `"$run_systemd_system_exists" ` +
     `"$dev_run_systemd_exists"; ` +
-    `printf '"dev_systemd_exists": "%s", "initctl_exists": "%s", "etc_init_exists": "%s", ' ` +
+    `printf "\"dev_systemd_exists\": \"%s\", \"initctl_exists\": \"%s\", \"etc_init_exists\": \"%s\", " ` +
     `"$dev_systemd_exists" ` +
     `"$initctl_exists" ` +
     `"$etc_init_exists"; ` +
-    `printf '"openrc_exists": "%s", "init_link_target": "%s", ' ` +
+    `printf "\"openrc_exists\": \"%s\", \"init_link_target\": \"%s\", " ` +
     `"$openrc_exists" ` +
     `"$init_link_target"; ` +
-    `printf '"etc_init_d_exists": "%s", "proc1_comm": "%s"}\n' ` +
+    `printf "\"etc_init_d_exists\": \"%s\", \"proc1_comm\": \"%s\"}\n" ` +
     `"$etc_init_d_exists" ` +
     `"$proc1_comm"`

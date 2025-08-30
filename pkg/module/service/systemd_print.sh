@@ -1,0 +1,13 @@
+#!/bin/sh
+# Copyright (c) Forge
+# SPDX-License-Identifier: MPL-2.0
+#
+# systemd_print.sh is used to print the status of a systemd service.
+# This script utilizes the systemd_shared.sh utility functions.
+# This is the last script run during the service management process.
+
+print_json_result \
+    "$PREVIOUS_IS_ACTIVE" \
+    "$PREVIOUS_IS_ENABLED"
+
+exit 0

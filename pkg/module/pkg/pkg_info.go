@@ -5,6 +5,7 @@ package pkg
 
 import (
 	"context"
+	"errors"
 
 	"github.com/trippsoft/forge/pkg/hclspec"
 	"github.com/trippsoft/forge/pkg/module"
@@ -31,7 +32,13 @@ func (m *PkgInfoModule) InputSpec() *hclspec.Spec {
 
 // Validate implements module.Module.
 func (m *PkgInfoModule) Validate(config *module.RunConfig) error {
-	return nil
+	packageManagerName := config.HostInfo.PackageManagerInfo().Name()
+	mod, exists := packageManagerInfoModules[packageManagerName]
+	if !exists {
+		return errors.New("unsupported package manager")
+	}
+
+	return mod.Validate(config)
 }
 
 // Run implements module.Module.

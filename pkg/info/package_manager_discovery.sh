@@ -121,40 +121,40 @@ if [ "$usr_bin_apt_get_exists" = "1" ] && [ -x /usr/bin/rpm ]; then
     apt_provided_by_rpm_package=$(/usr/bin/rpm -q --whatprovides /usr/bin/apt-get || echo "")
 fi
 
-printf '{"qopensys_pkgs_bin_yum_exists": "%s", "usr_bin_installp_exists": "%s", "usr_sbin_sorcery_exists": "%s", ' \
+printf "{\"qopensys_pkgs_bin_yum_exists\": \"%s\", \"usr_bin_installp_exists\": \"%s\", \"usr_sbin_sorcery_exists\": \"%s\", " \
 	"$qopensys_pkgs_bin_yum_exists" \
 	"$usr_bin_installp_exists" \
 	"$usr_sbin_sorcery_exists"
-printf '"usr_bin_swupd_exists": "%s", "usr_local_sbin_pkg_exists": "%s", "usr_bin_xbps_install_exists": "%s", ' \
+printf "\"usr_bin_swupd_exists\": \"%s\", \"usr_local_sbin_pkg_exists\": \"%s\", \"usr_bin_xbps_install_exists\": \"%s\", " \
 	"$usr_bin_swupd_exists" \
 	"$usr_local_sbin_pkg_exists" \
 	"$usr_bin_xbps_install_exists"
-printf '"usr_bin_pkg_exists": "%s", "usr_sbin_pkgadd_exists": "%s", "usr_bin_emerge_exists": "%s", ' \
+printf "\"usr_bin_pkg_exists\": \"%s\", \"usr_sbin_pkgadd_exists\": \"%s\", \"usr_bin_emerge_exists\": \"%s\", " \
 	"$usr_bin_pkg_exists" \
 	"$usr_sbin_pkgadd_exists" \
 	"$usr_bin_emerge_exists"
-printf '"usr_sbin_swlist_exists": "%s", "usr_sbin_pkg_exists": "%s", "sbin_apk_exists": "%s", ' \
+printf "\"usr_sbin_swlist_exists\": \"%s\", \"usr_sbin_pkg_exists\": \"%s\", \"sbin_apk_exists\": \"%s\", " \
 	"$usr_sbin_swlist_exists" \
 	"$usr_sbin_pkg_exists" \
 	"$sbin_apk_exists"
-printf '"opt_homebrew_bin_brew_exists": "%s", "usr_local_bin_brew_exists": "%s", "opt_local_bin_port_exists": "%s", ' \
+printf "\"opt_homebrew_bin_brew_exists\": \"%s\", \"usr_local_bin_brew_exists\": \"%s\", \"opt_local_bin_port_exists\": \"%s\", " \
 	"$opt_homebrew_bin_brew_exists" \
 	"$usr_local_bin_brew_exists" \
 	"$opt_local_bin_port_exists"
-printf '"opt_tools_bin_pkgin_exists": "%s", "opt_local_bin_pkgin_exists": "%s", "usr_pkg_bin_pkgin_exists": "%s", ' \
+printf "\"opt_tools_bin_pkgin_exists\": \"%s\", \"opt_local_bin_pkgin_exists\": \"%s\", \"usr_pkg_bin_pkgin_exists\": \"%s\", " \
 	"$opt_tools_bin_pkgin_exists" \
 	"$opt_local_bin_pkgin_exists" \
 	"$usr_pkg_bin_pkgin_exists"
-printf '"bin_opkg_exists": "%s", "usr_bin_pacman_exists": "%s", "usr_sbin_urpmi_exists": "%s", "usr_bin_zypper_exists": "%s", ' \
+printf "\"bin_opkg_exists\": \"%s\", \"usr_bin_pacman_exists\": \"%s\", \"usr_sbin_urpmi_exists\": \"%s\", \"usr_bin_zypper_exists\": \"%s\", " \
 	"$bin_opkg_exists" \
 	"$usr_bin_pacman_exists" \
 	"$usr_sbin_urpmi_exists" \
 	"$usr_bin_zypper_exists"
-printf '"usr_bin_apt_get_exists": "%s", "usr_bin_dnf5_exists": "%s", "usr_bin_dnf_3_exists": "%s", "usr_bin_dnf_exists": "%s", ' \
+printf "\"usr_bin_apt_get_exists\": \"%s\", \"usr_bin_dnf5_exists\": \"%s\", \"usr_bin_dnf_3_exists\": \"%s\", \"usr_bin_dnf_exists\": \"%s\", " \
 	"$usr_bin_apt_get_exists" \
 	"$usr_bin_dnf5_exists" \
 	"$usr_bin_dnf_3_exists" \
 	"$usr_bin_dnf_exists"
-printf '"usr_bin_yum_exists": "%s", "apt_provided_by_rpm_package": "%s"}\n' \
+printf "\"usr_bin_yum_exists\": \"%s\", \"apt_provided_by_rpm_package\": \"%s\"}\n" \
 	"$usr_bin_yum_exists" \
 	"$(escape_json "$apt_provided_by_rpm_package")"

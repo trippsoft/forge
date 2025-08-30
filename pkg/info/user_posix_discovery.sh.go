@@ -16,7 +16,7 @@ const UserPosixDiscoveryScript = `` +
     `user_home_dir="$HOME"; ` +
     `user_shell="$SHELL"; ` +
     `user_gecos=$(getent passwd $user_name | cut -d ':' -f 5); ` +
-    `printf '{"user_name": "%s", "user_id": "%s", "user_gid": "%s", "user_home_dir": "%s", "user_shell": "%s", "user_gecos": "%s"}\n' ` +
+    `printf "{\"user_name\": \"%s\", \"user_id\": \"%s\", \"user_gid\": \"%s\", \"user_home_dir\": \"%s\", \"user_shell\": \"%s\", \"user_gecos\": \"%s\"}\n" ` +
     `"$(escape_json "$user_name")" ` +
     `"$user_id" ` +
     `"$user_gid" ` +
