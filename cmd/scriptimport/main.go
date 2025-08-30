@@ -47,7 +47,7 @@ func main() {
 	scriptFileName := filepath.Base(scriptFilePath)
 	scriptExtension := filepath.Ext(scriptFileName)
 
-	variableName := fmt.Sprintf("%sScript", snakeCaseToCamelCase(strings.TrimSuffix(scriptFileName, scriptExtension)))
+	variableName := fmt.Sprintf("%sScript", snakeCaseToPascalCase(strings.TrimSuffix(scriptFileName, scriptExtension)))
 
 	destinationFilePath := fmt.Sprintf("%s.go", scriptFileName)
 
@@ -159,7 +159,7 @@ type parsedLine struct {
 	isLastNonCommentLine bool
 }
 
-func snakeCaseToCamelCase(input string) string {
+func snakeCaseToPascalCase(input string) string {
 	stringBuilder := &strings.Builder{}
 
 	capitalizeNext := false
@@ -176,11 +176,11 @@ func snakeCaseToCamelCase(input string) string {
 		}
 
 		if i == 0 {
-			stringBuilder.WriteString(strings.ToLower(string(r)))
+			stringBuilder.WriteString(strings.ToUpper(string(r)))
 			continue
 		}
 
-		stringBuilder.WriteString(string(r))
+		stringBuilder.WriteString(strings.ToLower(string(r)))
 	}
 
 	return stringBuilder.String()
