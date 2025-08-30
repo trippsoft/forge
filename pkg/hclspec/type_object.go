@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/trippsoft/forge/pkg/errorwrap"
 	"github.com/trippsoft/forge/pkg/hclutil"
@@ -338,19 +339,19 @@ func (c ObjectConstraints) ValidateSpec(t *objectType) error {
 	return err
 }
 
-type mutuallyExclusiveGroup struct {
+type mutuallyExclusiveConstraint struct {
 	fields []string // List of field names that are mutually exclusive.
 }
 
 // MutuallyExclusive creates a constraint requiring the specified fields to be mutually exclusive.
 func MutuallyExclusive(fields ...string) ObjectConstraint {
-	return &mutuallyExclusiveGroup{fields: fields}
+	return &mutuallyExclusiveConstraint{fields: fields}
 }
 
 // Validate implements ObjectConstraint.
-func (m *mutuallyExclusiveGroup) Validate(values map[string]cty.Value) error {
+func (m *mutuallyExclusiveConstraint) Validate(values map[string]cty.Value) error {
 	if m == nil {
-		return errors.New("mutually exclusive group is nil")
+		return errors.New("mutually exclusive constraint is nil")
 	}
 
 	var foundFields []string
@@ -381,9 +382,9 @@ func (m *mutuallyExclusiveGroup) Validate(values map[string]cty.Value) error {
 }
 
 // ValidateSpec implements ObjectConstraint.
-func (m *mutuallyExclusiveGroup) ValidateSpec(t *objectType) error {
+func (m *mutuallyExclusiveConstraint) ValidateSpec(t *objectType) error {
 	if m == nil {
-		return errors.New("mutually exclusive group is nil")
+		return errors.New("mutually exclusive constraint is nil")
 	}
 
 	var err error
@@ -396,19 +397,19 @@ func (m *mutuallyExclusiveGroup) ValidateSpec(t *objectType) error {
 	return err
 }
 
-type requiredTogetherGroup struct {
+type requiredTogetherConstraint struct {
 	fields []string
 }
 
 // RequiredTogether creates a constraint requiring the specified fields to be present together.
 func RequiredTogether(fields ...string) ObjectConstraint {
-	return &requiredTogetherGroup{fields: fields}
+	return &requiredTogetherConstraint{fields: fields}
 }
 
 // Validate implements ObjectConstraint.
-func (r *requiredTogetherGroup) Validate(values map[string]cty.Value) error {
+func (r *requiredTogetherConstraint) Validate(values map[string]cty.Value) error {
 	if r == nil {
-		return errors.New("required together group is nil")
+		return errors.New("required together constraint is nil")
 	}
 
 	var foundFields []string
@@ -439,9 +440,9 @@ func (r *requiredTogetherGroup) Validate(values map[string]cty.Value) error {
 }
 
 // ValidateSpec implements ObjectConstraint.
-func (r *requiredTogetherGroup) ValidateSpec(t *objectType) error {
+func (r *requiredTogetherConstraint) ValidateSpec(t *objectType) error {
 	if r == nil {
-		return errors.New("required together group is nil")
+		return errors.New("required together constraint is nil")
 	}
 
 	var err error
@@ -454,7 +455,7 @@ func (r *requiredTogetherGroup) ValidateSpec(t *objectType) error {
 	return err
 }
 
-func (r *requiredTogetherGroup) formatFieldNames() any {
+func (r *requiredTogetherConstraint) formatFieldNames() any {
 	if r == nil {
 		return ""
 	}
@@ -471,19 +472,19 @@ func (r *requiredTogetherGroup) formatFieldNames() any {
 	return fieldNames
 }
 
-type requiredOneOfGroup struct {
+type requiredOneOfConstraint struct {
 	fields []string // List of field names of which at least one is required.
 }
 
 // RequiredOneOf creates a constraint requiring one of the specified fields to be present.
 func RequiredOneOf(fields ...string) ObjectConstraint {
-	return &requiredOneOfGroup{fields: fields}
+	return &requiredOneOfConstraint{fields: fields}
 }
 
 // Validate implements ObjectConstraint.
-func (r *requiredOneOfGroup) Validate(values map[string]cty.Value) error {
+func (r *requiredOneOfConstraint) Validate(values map[string]cty.Value) error {
 	if r == nil {
-		return errors.New("required one of group is nil")
+		return errors.New("required one of constraint is nil")
 	}
 
 	var foundFields []string
@@ -514,9 +515,9 @@ func (r *requiredOneOfGroup) Validate(values map[string]cty.Value) error {
 }
 
 // ValidateSpec implements ObjectConstraint.
-func (r *requiredOneOfGroup) ValidateSpec(t *objectType) error {
+func (r *requiredOneOfConstraint) ValidateSpec(t *objectType) error {
 	if r == nil {
-		return errors.New("required one of group is nil")
+		return errors.New("required one of constraint is nil")
 	}
 
 	var err error
@@ -527,6 +528,100 @@ func (r *requiredOneOfGroup) ValidateSpec(t *objectType) error {
 	}
 
 	return err
+}
+
+type allowedFieldValuesConstraint struct {
+	field  string      // The name of the field to check.
+	values []cty.Value // The list of allowed values.
+}
+
+// AllowedFieldValues creates a constraint that checks if a field's value is one of the allowed values.
+//
+// This should be used as part of a conditional constraint.
+// Otherwise, the AllowedValues constraint should be placed on the field directly.
+func AllowedFieldValues(field string, allowedValues ...cty.Value) ObjectConstraint {
+	return &allowedFieldValuesConstraint{
+		field:  field,
+		values: allowedValues,
+	}
+}
+
+// Validate implements ObjectConstraint.
+func (a *allowedFieldValuesConstraint) Validate(values map[string]cty.Value) error {
+	if a == nil {
+		return errors.New("allowed field values constraint is nil")
+	}
+
+	value, ok := values[a.field]
+	if !ok {
+		return fmt.Errorf("field %q is not present", a.field)
+	}
+
+	if !value.IsWhollyKnown() {
+		return errors.New("cannot validate unknown value")
+	}
+
+	if value.IsNull() {
+		return nil // Null values are not validated
+	}
+
+	for _, allowed := range a.values {
+		if value.Equals(allowed).True() {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("field %q has an invalid value, allowed values are: %s", a.field, a.formatAllowedValues())
+}
+
+// ValidateSpec implements ObjectConstraint.
+func (a *allowedFieldValuesConstraint) ValidateSpec(t *objectType) error {
+	if a == nil {
+		return errors.New("allowed field values constraint is nil")
+	}
+
+	field, ok := t.fields[a.field]
+	if !ok {
+		return fmt.Errorf("field %q is not defined in the object type", a.field)
+	}
+
+	if field.t == nil || field.t.CtyType().Equals(cty.NilType) {
+		return nil // Return early if field type is invalid
+	}
+
+	var err error
+	for _, v := range a.values {
+		if !v.Type().Equals(field.t.CtyType()) {
+			err = errors.Join(
+				err,
+				fmt.Errorf(
+					"allowed value %v does not match field type %s",
+					v.GoString(),
+					field.t.CtyType().FriendlyName(),
+				),
+			)
+			continue
+		}
+
+		if e := field.validate(v); e != nil {
+			err = errors.Join(err, fmt.Errorf("allowed value %v is invalid: %w", v.GoString(), e))
+		}
+	}
+
+	return nil
+}
+
+func (a *allowedFieldValuesConstraint) formatAllowedValues() string {
+	if a == nil || len(a.values) == 0 {
+		return ""
+	}
+
+	allowedValues := make([]string, 0, len(a.values))
+	for _, v := range a.values {
+		allowedValues = append(allowedValues, hclutil.FormatCtyValueToString(v))
+	}
+
+	return strings.Join(allowedValues, ", ")
 }
 
 // ObjectCondition is used by constraints that require a specific condition to be met to apply.

@@ -275,10 +275,10 @@ func TestMutuallyExclusiveValidate_MultipleFieldsPresent(t *testing.T) {
 }
 
 func TestMutuallyExclusiveValidate_Nil(t *testing.T) {
-	var constraint *mutuallyExclusiveGroup
+	var constraint *mutuallyExclusiveConstraint
 
 	err := constraint.Validate(map[string]cty.Value{})
-	expectedError := "mutually exclusive group is nil"
+	expectedError := "mutually exclusive constraint is nil"
 	if err == nil {
 		t.Fatalf("expected error %q from Validate(), got none", expectedError)
 	}
@@ -350,9 +350,9 @@ func TestMutuallyExclusiveValidateSpec_FieldNotDefined(t *testing.T) {
 }
 
 func TestMutuallyExclusiveValidateSpec_Nil(t *testing.T) {
-	var constraint *mutuallyExclusiveGroup
+	var constraint *mutuallyExclusiveConstraint
 
-	expectedError := "mutually exclusive group is nil"
+	expectedError := "mutually exclusive constraint is nil"
 	err := constraint.ValidateSpec(mockObjectType)
 	if err == nil {
 		t.Fatalf("expected error %q from Validate(), got none", expectedError)
@@ -476,9 +476,9 @@ func TestRequiredTogetherValidate_PartialFieldsPresent(t *testing.T) {
 }
 
 func TestRequiredTogetherValidate_Nil(t *testing.T) {
-	var constraint *requiredTogetherGroup
+	var constraint *requiredTogetherConstraint
 
-	expectedError := "required together group is nil"
+	expectedError := "required together constraint is nil"
 	err := constraint.Validate(map[string]cty.Value{})
 	if err == nil {
 		t.Fatalf("expected error %q from Validate(), got none", expectedError)
@@ -551,9 +551,9 @@ func TestRequiredTogetherValidateSpec_FieldNotDefined(t *testing.T) {
 }
 
 func TestRequiredTogetherValidateSpec_Nil(t *testing.T) {
-	var constraint *requiredTogetherGroup
+	var constraint *requiredTogetherConstraint
 
-	expectedError := "required together group is nil"
+	expectedError := "required together constraint is nil"
 	err := constraint.ValidateSpec(mockObjectType)
 	if err == nil {
 		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
@@ -671,9 +671,9 @@ func TestRequiredOneOfValidate_NoFieldsPresent(t *testing.T) {
 }
 
 func TestRequiredOneOfValidate_Nil(t *testing.T) {
-	var constraint *requiredOneOfGroup
+	var constraint *requiredOneOfConstraint
 
-	expectedError := "required one of group is nil"
+	expectedError := "required one of constraint is nil"
 	err := constraint.Validate(map[string]cty.Value{})
 	if err == nil {
 		t.Fatalf("expected error %q from Validate(), got none", expectedError)
@@ -746,9 +746,152 @@ func TestRequiredOneOfValidateSpec_FieldNotDefined(t *testing.T) {
 }
 
 func TestRequiredOneOfValidateSpec_Nil(t *testing.T) {
-	var constraint *requiredOneOfGroup
+	var constraint *requiredOneOfConstraint
 
-	expectedError := "required one of group is nil"
+	expectedError := "required one of constraint is nil"
+	err := constraint.ValidateSpec(mockObjectType)
+	if err == nil {
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
+	if err.Error() != expectedError {
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
+	}
+}
+
+func TestAllowedFieldValuesValidate_Pass(t *testing.T) {
+	tests := []struct {
+		name          string
+		field         string
+		allowedValues []cty.Value
+		values        map[string]cty.Value
+	}{
+		{
+			name:          "field is null",
+			field:         "field1",
+			allowedValues: []cty.Value{cty.StringVal("value1"), cty.StringVal("value2")},
+			values:        map[string]cty.Value{"field1": cty.NullVal(cty.String)},
+		},
+		{
+			name:          "field is first value",
+			field:         "field1",
+			allowedValues: []cty.Value{cty.StringVal("value1"), cty.StringVal("value2")},
+			values:        map[string]cty.Value{"field1": cty.StringVal("value1")},
+		},
+		{
+			name:          "field is second value",
+			field:         "field1",
+			allowedValues: []cty.Value{cty.StringVal("value1"), cty.StringVal("value2")},
+			values:        map[string]cty.Value{"field1": cty.StringVal("value2")},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			constraint := AllowedFieldValues(tt.field, tt.allowedValues...)
+
+			err := constraint.Validate(tt.values)
+			if err != nil {
+				t.Fatalf("expected no error from Validate(), got %q", err.Error())
+			}
+		})
+	}
+}
+
+func TestAllowedFieldValuesValidate_FieldNotPresent(t *testing.T) {
+	tests := []struct {
+		name          string
+		field         string
+		allowedValues []cty.Value
+		values        map[string]cty.Value
+		expectedError string
+	}{
+		{
+			name:          "no field in values",
+			field:         "field1",
+			allowedValues: []cty.Value{cty.StringVal("value1"), cty.StringVal("value2")},
+			values:        map[string]cty.Value{},
+			expectedError: `field "field1" is not present`,
+		},
+		{
+			name:          "not allowed value",
+			field:         "field1",
+			allowedValues: []cty.Value{cty.StringVal("value1"), cty.StringVal("value2")},
+			values: map[string]cty.Value{
+				"field1": cty.StringVal("value3"),
+				"field2": cty.NullVal(cty.String),
+			},
+			expectedError: `field "field1" has an invalid value, allowed values are: "value1", "value2"`,
+		},
+		{
+			name:          "unknown value",
+			field:         "field1",
+			allowedValues: []cty.Value{cty.StringVal("value1"), cty.StringVal("value2")},
+			values: map[string]cty.Value{
+				"field1": cty.UnknownVal(cty.String),
+				"field2": cty.UnknownVal(cty.String),
+			},
+			expectedError: `cannot validate unknown value`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			constraint := AllowedFieldValues(tt.field, tt.allowedValues...)
+
+			err := constraint.Validate(tt.values)
+			if err == nil {
+				t.Fatalf("expected error %q from Validate(), got none", tt.expectedError)
+			}
+
+			if err.Error() != tt.expectedError {
+				t.Errorf("expected error %q from Validate(), got %q", tt.expectedError, err.Error())
+			}
+		})
+	}
+}
+
+func TestAllowedFieldValuesValidate_Nil(t *testing.T) {
+	var constraint *allowedFieldValuesConstraint
+
+	expectedError := "allowed field values constraint is nil"
+	err := constraint.Validate(map[string]cty.Value{})
+	if err == nil {
+		t.Fatalf("expected error %q from Validate(), got none", expectedError)
+	}
+
+	if err.Error() != expectedError {
+		t.Errorf("expected error %q from Validate(), got %q", expectedError, err.Error())
+	}
+}
+
+func TestAllowedFieldValuesValidateSpec_Pass(t *testing.T) {
+	constraint := AllowedFieldValues("field1", cty.StringVal("value1"), cty.StringVal("value2"))
+
+	err := constraint.ValidateSpec(mockObjectType)
+	if err != nil {
+		t.Fatalf("expected no error, got %q", err.Error())
+	}
+}
+
+func TestAllowedFieldValuesValidateSpec_FieldNotDefined(t *testing.T) {
+	constraint := AllowedFieldValues("notdefined", cty.StringVal("value1"), cty.StringVal("value2"))
+
+	err := constraint.ValidateSpec(mockObjectType)
+	expectedError := `field "notdefined" is not defined in the object type`
+	if err == nil {
+		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
+	}
+
+	if err.Error() != expectedError {
+		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
+	}
+}
+
+func TestAllowedFieldValuesValidateSpec_Nil(t *testing.T) {
+	var constraint *allowedFieldValuesConstraint
+
+	expectedError := "allowed field values constraint is nil"
 	err := constraint.ValidateSpec(mockObjectType)
 	if err == nil {
 		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
