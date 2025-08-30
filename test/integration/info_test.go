@@ -26,6 +26,7 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 		PasswordAuth(linuxPassword).
 		DontUseKnownHosts().
 		Build()
+
 	if err != nil {
 		t.Fatalf("failed to create SSH transport: %v", err)
 	}
@@ -179,6 +180,15 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 	} else {
 		if serviceManagerInfo.Name() != "systemd" {
 			t.Errorf("expected Service Manager name to be 'systemd', got '%s'", serviceManagerInfo.Name())
+		}
+	}
+
+	localeInfo := hostInfo.LocaleInfo()
+	if localeInfo == nil {
+		t.Error("expected Locale info to be populated")
+	} else {
+		if len(localeInfo.Locales()) == 0 {
+			t.Error("expected Locale info to contain locales")
 		}
 	}
 
@@ -360,6 +370,15 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 		}
 	}
 
+	localeInfo := hostInfo.LocaleInfo()
+	if localeInfo == nil {
+		t.Error("expected Locale info to be populated")
+	} else {
+		if len(localeInfo.Locales()) != 0 {
+			t.Error("expected Locale info to contain no locales on Windows")
+		}
+	}
+
 	userInfo := hostInfo.UserInfo()
 	if userInfo == nil {
 		t.Error("expected User info to be populated")
@@ -535,6 +554,15 @@ func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 	} else {
 		if serviceManagerInfo.Name() != "windows-service-manager" {
 			t.Errorf("expected Service Manager name to be 'windows-service-manager', got '%s'", serviceManagerInfo.Name())
+		}
+	}
+
+	localeInfo := hostInfo.LocaleInfo()
+	if localeInfo == nil {
+		t.Error("expected Locale info to be populated")
+	} else {
+		if len(localeInfo.Locales()) != 0 {
+			t.Error("expected Locale info to contain no locales on Windows")
 		}
 	}
 
