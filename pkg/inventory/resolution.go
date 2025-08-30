@@ -159,12 +159,12 @@ func validateNoNameConflicts(intermediate *intermediateInventory) hcl.Diagnostic
 }
 
 func resolveGroupMemberships(intermediate *intermediateInventory) {
-	for hostName, host := range intermediate.hosts {
-		resolveHostGroupMembershipWithBFS(hostName, host, intermediate)
+	for _, host := range intermediate.hosts {
+		resolveHostGroupMembershipWithBFS(host, intermediate)
 	}
 }
 
-func resolveHostGroupMembershipWithBFS(hostName string, host *intermediateHost, intermediate *intermediateInventory) {
+func resolveHostGroupMembershipWithBFS(host *intermediateHost, intermediate *intermediateInventory) {
 	queue := []string{}
 	for _, groupName := range host.groups {
 		queue = append(queue, groupName)
