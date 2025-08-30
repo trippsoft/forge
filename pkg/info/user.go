@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/trippsoft/forge/pkg/posix"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
@@ -79,7 +80,8 @@ func (u *UserInfo) populateUserInfo(osInfo *OSInfo, transport transport.Transpor
 }
 
 func (u *UserInfo) populatePosixUserInfo(t transport.Transport) util.Diags {
-	cmd, err := t.NewCommand(userPosixDiscoveryScript, nil)
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, UserPosixDiscoveryScript)
+	cmd, err := t.NewCommand(command, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagError,
@@ -125,7 +127,7 @@ func (u *UserInfo) populatePosixUserInfo(t transport.Transport) util.Diags {
 }
 
 func (u *UserInfo) populateWindowsUserInfo(t transport.Transport) util.Diags {
-	cmd, err := t.NewPowerShellCommand(userWindowsDiscoveryScript, nil)
+	cmd, err := t.NewPowerShellCommand(UserWindowsDiscoveryScript, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagError,

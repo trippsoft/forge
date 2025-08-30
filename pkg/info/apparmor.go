@@ -51,7 +51,7 @@ func (a *AppArmorInfo) populateAppArmorInfo(osInfo *OSInfo, t transport.Transpor
 
 	a.supported = true
 
-	cmd, err := t.NewCommand(apparmorDiscoveryScript, nil)
+	cmd, err := t.NewCommand(ApparmorDiscoveryScript, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagError,

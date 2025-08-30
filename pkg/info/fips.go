@@ -60,7 +60,7 @@ func (f *FIPSInfo) populateFipsInfo(osInfo *OSInfo, transport transport.Transpor
 }
 
 func (f *FIPSInfo) populateLinuxFipsInfo(t transport.Transport) util.Diags {
-	cmd, err := t.NewCommand(fipsLinuxDiscoveryScript, nil)
+	cmd, err := t.NewCommand(FipsLinuxDiscoveryScript, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagError,
@@ -96,7 +96,7 @@ func (f *FIPSInfo) populateLinuxFipsInfo(t transport.Transport) util.Diags {
 }
 
 func (f *FIPSInfo) populateWindowsFipsInfo(t transport.Transport) util.Diags {
-	cmd, err := t.NewPowerShellCommand(fipsWindowsDiscoveryScript, nil)
+	cmd, err := t.NewPowerShellCommand(FipsWindowsDiscoveryScript, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagError,

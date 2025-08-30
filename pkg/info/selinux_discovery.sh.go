@@ -8,7 +8,7 @@
 
 package info
 
-const selinuxDiscoveryScript = `` +
+const SelinuxDiscoveryScript = `` +
     `if [ ! -f /etc/selinux/config ]; then ` +
     `selinux_installed=0; ` +
     `else ` +

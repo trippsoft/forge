@@ -8,7 +8,7 @@
 
 package info
 
-const fipsLinuxDiscoveryScript = `` +
+const FipsLinuxDiscoveryScript = `` +
     `if [ -f /proc/sys/crypto/fips_enabled ]; then ` +
     `fips_enabled=$(cat /proc/sys/crypto/fips_enabled); ` +
     `else ` +

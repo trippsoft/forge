@@ -9,16 +9,7 @@
 
 package info
 
-const osDarwinDiscoveryScript = `` +
-    `escape_json() { ` +
-    `string="$1"; ` +
-    `string=$(printf '%s' "$string" | sed 's/\\/\\\\/g'); ` +
-    `string=$(printf '%s' "$string" | sed 's/"/\\"/g'); ` +
-    `string=$(printf '%s' "$string" | sed 's/\n/\\n/g'); ` +
-    `string=$(printf '%s' "$string" | sed 's/\r/\\r/g'); ` +
-    `string=$(printf '%s' "$string" | sed 's/\t/\\t/g'); ` +
-    `printf '%s' "$string"; ` +
-    `}; ` +
+const OsDarwinDiscoveryScript = `` +
     `os_arch="$(uname -m || echo \"\")"; ` +
     `os_version="$(sw_vers -productVersion || echo \"\")"; ` +
     `printf '{"os_arch": "%s", "os_version": "%s"}\n' ` +

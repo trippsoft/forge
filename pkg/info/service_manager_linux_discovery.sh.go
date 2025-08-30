@@ -9,7 +9,7 @@
 
 package info
 
-const serviceManagerLinuxDiscoveryScript = `` +
+const ServiceManagerLinuxDiscoveryScript = `` +
     `systemctl_exists=0; ` +
     `run_systemd_system_exists=0; ` +
     `dev_run_systemd_exists=0; ` +

@@ -114,7 +114,7 @@ func (s *ServiceManagerInfo) populateDarwinServiceManagerInfo(osInfo *OSInfo) ut
 }
 
 func (s *ServiceManagerInfo) populateLinuxServiceManagerInfo(t transport.Transport) util.Diags {
-	cmd, err := t.NewCommand(serviceManagerLinuxDiscoveryScript, nil)
+	cmd, err := t.NewCommand(ServiceManagerLinuxDiscoveryScript, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagError,

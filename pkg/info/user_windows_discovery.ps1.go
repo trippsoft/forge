@@ -8,7 +8,7 @@
 
 package info
 
-const userWindowsDiscoveryScript = `` +
+const UserWindowsDiscoveryScript = `` +
     `$userName = $env:USERNAME; ` +
     `$userId = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value; ` +
     `$userHomeDir = $env:USERPROFILE; ` +

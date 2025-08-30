@@ -11,16 +11,7 @@
 
 package info
 
-const osLinuxDiscoveryScript = `` +
-    `escape_json() { ` +
-    `string="$1"; ` +
-    `string=$(printf '%s' "$string" | sed 's/\\/\\\\/g'); ` +
-    `string=$(printf '%s' "$string" | sed 's/"/\\"/g'); ` +
-    `string=$(printf '%s' "$string" | sed 's/\n/\\n/g'); ` +
-    `string=$(printf '%s' "$string" | sed 's/\r/\\r/g'); ` +
-    `string=$(printf '%s' "$string" | sed 's/\t/\\t/g'); ` +
-    `printf '%s' "$string"; ` +
-    `}; ` +
+const OsLinuxDiscoveryScript = `` +
     `os_arch="$(uname -m || echo \"\")"; ` +
     `if [ -e /etc/os-release ]; then ` +
     `source /etc/os-release; ` +

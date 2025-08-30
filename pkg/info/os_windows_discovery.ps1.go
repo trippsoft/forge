@@ -8,7 +8,7 @@
 
 package info
 
-const osWindowsDiscoveryScript = `` +
+const OsWindowsDiscoveryScript = `` +
     `Import-Module -Name Dism; ` +
     `$friendlyName = (Get-CimInstance -ClassName Win32_OperatingSystem).Caption; ` +
     `$version = [System.Environment]::OSVersion.Version.ToString(); ` +

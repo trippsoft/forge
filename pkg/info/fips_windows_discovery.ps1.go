@@ -8,7 +8,7 @@
 
 package info
 
-const fipsWindowsDiscoveryScript = `` +
+const FipsWindowsDiscoveryScript = `` +
     `$registryPath = 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa\FipsAlgorithm'; ` +
     `$value = Get-ItemPropertyValue -LiteralPath $registryPath ` +
     `-Name 'Enabled' ` +

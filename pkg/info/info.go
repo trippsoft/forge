@@ -19,6 +19,7 @@ type HostInfo struct {
 	fipsInfo           *FIPSInfo
 	packageManagerInfo *PackageManagerInfo
 	serviceManagerInfo *ServiceManagerInfo
+	localeInfo         *LocaleInfo
 	userInfo           *UserInfo
 }
 
@@ -30,6 +31,7 @@ func NewHostInfo() *HostInfo {
 		fipsInfo:           newFipsInfo(),
 		packageManagerInfo: newPackageManagerInfo(),
 		serviceManagerInfo: newServiceManagerInfo(),
+		localeInfo:         newLocaleInfo(),
 		userInfo:           newUserInfo(),
 	}
 }
@@ -56,6 +58,10 @@ func (i *HostInfo) PackageManagerInfo() *PackageManagerInfo {
 
 func (i *HostInfo) ServiceManagerInfo() *ServiceManagerInfo {
 	return i.serviceManagerInfo
+}
+
+func (i *HostInfo) LocaleInfo() *LocaleInfo {
+	return i.localeInfo
 }
 
 func (i *HostInfo) UserInfo() *UserInfo {
@@ -91,6 +97,9 @@ func (i *HostInfo) Populate(transport transport.Transport) util.Diags {
 	moreDiags = i.serviceManagerInfo.populateServiceManagerInfo(i.osInfo, transport)
 	diags = diags.AppendAll(moreDiags)
 
+	moreDiags = i.localeInfo.populateLocaleInfo(i.osInfo, transport)
+	diags = diags.AppendAll(moreDiags)
+
 	moreDiags = i.userInfo.populateUserInfo(i.osInfo, transport)
 	diags = diags.AppendAll(moreDiags)
 
@@ -106,6 +115,7 @@ func (i *HostInfo) ToMapOfCtyValues() map[string]cty.Value {
 	maps.Copy(values, i.fipsInfo.toMapOfCtyValues())
 	maps.Copy(values, i.packageManagerInfo.toMapOfCtyValues())
 	maps.Copy(values, i.serviceManagerInfo.toMapOfCtyValues())
+	maps.Copy(values, i.localeInfo.toMapOfCtyValues())
 	maps.Copy(values, i.userInfo.toMapOfCtyValues())
 
 	return values
@@ -130,6 +140,9 @@ func (i *HostInfo) String() string {
 	stringBuilder.WriteString("\n")
 
 	stringBuilder.WriteString(i.ServiceManagerInfo().String())
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString(i.LocaleInfo().String())
 	stringBuilder.WriteString("\n")
 
 	stringBuilder.WriteString(i.UserInfo().String())

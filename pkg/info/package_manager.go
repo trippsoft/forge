@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/trippsoft/forge/pkg/posix"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
@@ -46,7 +47,8 @@ func (p *PackageManagerInfo) populatePackageManagerInfo(osInfo *OSInfo, t transp
 		return util.Diags{} // Windows does not have a traditional package manager like other OS families
 	}
 
-	cmd, err := t.NewCommand(packageManagerDiscoveryScript, nil)
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	cmd, err := t.NewCommand(command, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagError,

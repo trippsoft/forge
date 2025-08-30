@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/trippsoft/forge/pkg/posix"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
@@ -228,7 +229,8 @@ func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) util.Diags {
 	o.id = "macos"
 	o.families.Add(o.id)
 
-	cmd, err := t.NewCommand(osDarwinDiscoveryScript, nil)
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, OsDarwinDiscoveryScript)
+	cmd, err := t.NewCommand(command, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagError,
@@ -297,7 +299,8 @@ func (o *OSInfo) populateDarwinOSInfo(t transport.Transport) util.Diags {
 }
 
 func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) util.Diags {
-	cmd, err := t.NewCommand(osLinuxDiscoveryScript, nil)
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, OsLinuxDiscoveryScript)
+	cmd, err := t.NewCommand(command, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagError,
@@ -384,7 +387,7 @@ func (o *OSInfo) populateLinuxOSInfo(t transport.Transport) util.Diags {
 }
 
 func (o *OSInfo) populateWindowsOSInfo(t transport.Transport) util.Diags {
-	cmd, err := t.NewPowerShellCommand(osWindowsDiscoveryScript, nil)
+	cmd, err := t.NewPowerShellCommand(OsWindowsDiscoveryScript, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagError,

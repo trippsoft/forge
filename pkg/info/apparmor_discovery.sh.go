@@ -8,7 +8,7 @@
 
 package info
 
-const apparmorDiscoveryScript = `` +
+const ApparmorDiscoveryScript = `` +
     `if [ -d /sys/kernel/security/apparmor ]; then ` +
     `apparmor_enabled=1; ` +
     `else ` +

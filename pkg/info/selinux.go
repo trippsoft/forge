@@ -85,7 +85,7 @@ func (s *SELinuxInfo) populateSelinuxInfo(osInfo *OSInfo, t transport.Transport)
 
 	s.supported = true
 
-	cmd, err := t.NewCommand(selinuxDiscoveryScript, nil)
+	cmd, err := t.NewCommand(SelinuxDiscoveryScript, nil)
 	if err != nil {
 		return util.Diags{&util.Diag{
 			Severity: util.DiagError,

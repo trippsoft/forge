@@ -4,9 +4,11 @@
 package info
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
+	"github.com/trippsoft/forge/pkg/posix"
 	"github.com/trippsoft/forge/pkg/transport"
 )
 
@@ -95,7 +97,8 @@ func TestUserInfo_PopulateUserInfo_Posix(t *testing.T) {
 			osInfo.id = "generic"
 
 			mockTransport := transport.NewMockTransport()
-			mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.MockCmd{
+			command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, UserPosixDiscoveryScript)
+			mockTransport.CommandResults[command] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -138,7 +141,8 @@ func TestUserInfo_PopulateUserInfo_Posix_Error(t *testing.T) {
 	osInfo.id = "generic"
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, UserPosixDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 
@@ -199,7 +203,8 @@ func TestUserInfo_PopulateUserInfo_Posix_NotJSON(t *testing.T) {
 	osInfo.id = "generic"
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[userPosixDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, UserPosixDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: "Not a valid JSON output",
 	}
 
@@ -293,7 +298,7 @@ func TestUserInfo_PopulateUserInfo_Windows(t *testing.T) {
 			osInfo.id = "windows-server"
 
 			mockTransport := transport.NewWinMockTransport()
-			mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.MockCmd{
+			mockTransport.PowerShellResults[UserWindowsDiscoveryScript] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -327,7 +332,7 @@ func TestUserInfo_PopulateUserInfo_Windows_Error(t *testing.T) {
 	osInfo.id = "windows-server"
 
 	mockTransport := transport.NewWinMockTransport()
-	mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.MockCmd{
+	mockTransport.PowerShellResults[UserWindowsDiscoveryScript] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 
@@ -375,7 +380,7 @@ func TestUserInfo_PopulateUserInfo_Windows_NotJSON(t *testing.T) {
 	osInfo.id = "windows-server"
 
 	mockTransport := transport.NewWinMockTransport()
-	mockTransport.PowerShellResults[userWindowsDiscoveryScript] = &transport.MockCmd{
+	mockTransport.PowerShellResults[UserWindowsDiscoveryScript] = &transport.MockCmd{
 		Stdout: "Not a valid JSON output",
 	}
 

@@ -4,9 +4,11 @@
 package info
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
+	"github.com/trippsoft/forge/pkg/posix"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -202,7 +204,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Darwin(t *testing.T) {
 			osInfo.families.Add("macos")
 
 			mockTransport := transport.NewMockTransport()
-			mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+			command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+			mockTransport.CommandResults[command] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -235,7 +238,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Darwin_NotFound(t *testin
 	osInfo.families.Add("macos")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -310,7 +314,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux(t *testing.T) {
 	osInfo.families.Add("archlinux")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -372,7 +377,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux_NotPacman(t *te
 	osInfo.families.Add("archlinux")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -449,7 +455,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_ArchLinux_NotFound(t *tes
 	osInfo.families.Add("archlinux")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -616,7 +623,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian(t *testing.T) {
 			osInfo.families.Add("debian")
 
 			mockTransport := transport.NewMockTransport()
-			mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+			command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+			mockTransport.CommandResults[command] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -648,7 +656,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian_NotApt(t *testing.
 	osInfo.families.Add("debian")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -725,7 +734,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Debian_NotFound(t *testin
 	osInfo.families.Add("debian")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -892,7 +902,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux(t *testing.T) {
 			osInfo.families.Add("altlinux")
 
 			mockTransport := transport.NewMockTransport()
-			mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+			command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+			mockTransport.CommandResults[command] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -924,7 +935,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux_NotApt(t *testin
 	osInfo.families.Add("altlinux")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -1001,7 +1013,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_AltLinux_NotFound(t *test
 	osInfo.families.Add("altlinux")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -1240,7 +1253,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL(t *testing.T) {
 			osInfo.families.Add("el")
 
 			mockTransport := transport.NewMockTransport()
-			mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+			command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+			mockTransport.CommandResults[command] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -1272,7 +1286,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL_NotDnfOrYum(t *testing
 	osInfo.families.Add("el")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -1349,7 +1364,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_EL_NotFound(t *testing.T)
 	osInfo.families.Add("el")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -1434,7 +1450,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo(t *testing.T) {
 	osInfo.families.Add("gentoo")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -1496,7 +1513,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo_NotPortage(t *test
 	osInfo.families.Add("gentoo")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -1573,7 +1591,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Gentoo_NotFound(t *testin
 	osInfo.families.Add("gentoo")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -1658,7 +1677,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE(t *testing.T) {
 	osInfo.families.Add("suse")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -1720,7 +1740,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE_NotZypper(t *testing
 	osInfo.families.Add("suse")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "1",
 		      "usr_bin_installp_exists": "0",
@@ -1797,7 +1818,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_SUSE_NotFound(t *testing.
 	osInfo.families.Add("suse")
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -2899,7 +2921,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic(t *testing.T) {
 			osInfo.id = "generic"
 
 			mockTransport := transport.NewMockTransport()
-			mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+			command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+			mockTransport.CommandResults[command] = &transport.MockCmd{
 				Stdout: tt.output,
 			}
 
@@ -2930,7 +2953,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_NotFound(t *testi
 	osInfo.id = "generic"
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `{
 			  "qopensys_pkgs_bin_yum_exists": "0",
 		      "usr_bin_installp_exists": "0",
@@ -3004,7 +3028,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_Error(t *testing.
 	osInfo.id = "generic"
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Err: os.ErrPermission,
 	}
 
@@ -3048,7 +3073,8 @@ func TestPackageManagerInfo_PopulatePackageManagerInfo_Generic_NotJSON(t *testin
 	osInfo.id = "generic"
 
 	mockTransport := transport.NewMockTransport()
-	mockTransport.CommandResults[packageManagerDiscoveryScript] = &transport.MockCmd{
+	command := fmt.Sprintf("%s; %s", posix.EscapeJsonScript, PackageManagerDiscoveryScript)
+	mockTransport.CommandResults[command] = &transport.MockCmd{
 		Stdout: `This is not JSON output`,
 	}
 

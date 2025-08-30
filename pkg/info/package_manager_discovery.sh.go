@@ -8,16 +8,7 @@
 
 package info
 
-const packageManagerDiscoveryScript = `` +
-    `escape_json() { ` +
-    `string="$1"; ` +
-    `string=$(printf '%s' "$string" | sed 's/\\/\\\\/g'); ` +
-    `string=$(printf '%s' "$string" | sed 's/"/\\"/g'); ` +
-    `string=$(printf '%s' "$string" | sed 's/\n/\\n/g'); ` +
-    `string=$(printf '%s' "$string" | sed 's/\r/\\r/g'); ` +
-    `string=$(printf '%s' "$string" | sed 's/\t/\\t/g'); ` +
-    `printf '%s' "$string"; ` +
-    `}; ` +
+const PackageManagerDiscoveryScript = `` +
     `qopensys_pkgs_bin_yum_exists="0"; ` +
     `usr_bin_installp_exists="0"; ` +
     `usr_sbin_sorcery_exists="0"; ` +

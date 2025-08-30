@@ -30,11 +30,12 @@ func TestHostInfo_ToMapOfCtyValues(t *testing.T) {
 	fipsValues := hostInfo.FipsInfo().toMapOfCtyValues()
 	packageManagerValues := hostInfo.PackageManagerInfo().toMapOfCtyValues()
 	serviceManagerValues := hostInfo.ServiceManagerInfo().toMapOfCtyValues()
+	localeValues := hostInfo.LocaleInfo().toMapOfCtyValues()
 	userValues := hostInfo.UserInfo().toMapOfCtyValues()
 
 	totalLength := len(osValues) + len(selinuxValues) + len(appArmorValues) +
 		len(fipsValues) + len(packageManagerValues) + len(serviceManagerValues) +
-		len(userValues)
+		len(localeValues) + len(userValues)
 
 	values := hostInfo.ToMapOfCtyValues()
 	if len(values) != totalLength {
