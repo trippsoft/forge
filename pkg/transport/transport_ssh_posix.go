@@ -296,11 +296,11 @@ func (s *sshPosixInfo) newCommand(command string, escalateConfig Escalation) (Cm
 	}
 
 	username := escalateConfig.User()
-	if username == "" || username == "root" {
-		command = fmt.Sprintf("sudo -S -p '%s:' %s", sshSudoPrompt, command)
-	} else {
-		command = fmt.Sprintf("sudo -S -p '%s:' -u %s %s", sshSudoPrompt, username, command)
+	if username == "" {
+		username = "root"
 	}
+
+	command = fmt.Sprintf("sudo -S -p '%s:' -u %s /bin/sh -c '%s'", sshSudoPrompt, username, command)
 
 	return &sshSudoCmd{
 		transport: s.transport,
