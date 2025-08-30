@@ -6,7 +6,6 @@ package inventory
 import (
 	"errors"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/trippsoft/forge/pkg/info"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
@@ -39,8 +38,6 @@ type Host struct {
 	procedureInputs []map[string]cty.Value
 	info            *info.HostInfo
 	vars            map[string]cty.Value
-
-	cachedValues map[*hcl.Attribute]cty.Value
 }
 
 // NewHost creates a new Host instance with the given name, transport, and variables.
@@ -53,7 +50,6 @@ func NewHost(name string, transport transport.Transport, escalateConfig *Escalat
 		procedureInputs: []map[string]cty.Value{},
 		info:            info.NewHostInfo(),
 		vars:            vars,
-		cachedValues:    make(map[*hcl.Attribute]cty.Value),
 	}
 }
 

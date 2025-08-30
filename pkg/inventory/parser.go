@@ -87,6 +87,16 @@ func ParseInventoryFiles(files []*InventoryFile) (*Inventory, hcl.Diagnostics) {
 	return inventory, diags
 }
 
+// ParseTestInventoryFile parses a test inventory file and returns the parsed inventory.
+func ParseTestInventoryFile(content string) (*Inventory, hcl.Diagnostics) {
+	return ParseInventoryFiles([]*InventoryFile{
+		{
+			path:    "test_inventory.hcl",
+			content: []byte(content),
+		},
+	})
+}
+
 func parseHCLBody(body hcl.Body) (*Inventory, hcl.Diagnostics) {
 	intermediate, diags := parseHCLBodyToIntermediate(body)
 	if diags.HasErrors() {

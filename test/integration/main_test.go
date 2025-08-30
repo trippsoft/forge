@@ -4,38 +4,101 @@
 package integration
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/bmatcuk/go-vagrant"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/trippsoft/forge/pkg/inventory"
+)
+
+const (
+	inventoryTemplate = `
+		host "linux" {
+			transport "ssh" {
+				host = %q
+				port = %d
+				user = %q
+				private_key_path = %q
+				use_known_hosts = false
+			}
+
+			escalate {
+				password = %q
+			}
+		}
+
+		host "linuxpw" {
+			transport "ssh" {
+				host = %q
+				port = %d
+				user = %q
+				private_key_path = %q
+				use_known_hosts = false
+			}
+
+			escalate {
+				password = %q
+			}
+		}
+
+		host "cmd" {
+			transport "ssh" {
+				host = %q
+				port = %d
+				user = %q
+				password = %q
+				use_known_hosts = false
+			}
+		}
+
+		host "windows" {
+			transport "ssh" {
+				host = %q
+				port = %d
+				user = %q
+				password = %q
+				use_known_hosts = false
+			}
+		}
+		`
 )
 
 var (
 	vagrantClient *vagrant.VagrantClient
 
-	linuxHost       string
-	linuxPort       uint16
-	linuxUser       string
-	linuxPrivateKey []byte
-	linuxPassword   string
+	linuxHost           string
+	linuxPort           uint16
+	linuxUser           string
+	linuxPrivateKeyPath string
+	linuxPrivateKey     []byte
+	linuxPassword       string
 
-	linuxPWHost       string
-	linuxPWPort       uint16
-	linuxPWUser       string
-	linuxPWPrivateKey []byte
-	linuxPWPassword   string
+	linuxPWHost           string
+	linuxPWPort           uint16
+	linuxPWUser           string
+	linuxPWPrivateKeyPath string
+	linuxPWPrivateKey     []byte
+	linuxPWPassword       string
 
-	cmdHost       string
-	cmdPort       uint16
-	cmdUser       string
-	cmdPrivateKey []byte
-	cmdPassword   string
+	cmdHost           string
+	cmdPort           uint16
+	cmdUser           string
+	cmdPrivateKeyPath string
+	cmdPrivateKey     []byte
+	cmdPassword       string
 
-	windowsHost       string
-	windowsPort       uint16
-	windowsUser       string
-	windowsPrivateKey []byte
-	windowsPassword   string
+	windowsHost           string
+	windowsPort           uint16
+	windowsUser           string
+	windowsPrivateKeyPath string
+	windowsPrivateKey     []byte
+	windowsPassword       string
+
+	inventoryContent string
+
+	inv *inventory.Inventory
 )
 
 func TestMain(m *testing.M) {
@@ -94,10 +157,10 @@ func setupVagrantEnvironment(t testing.TB) {
 	windowsUser = vagrantSshInfo.Configs["windows"].User
 	windowsPassword = "vagrant"
 
-	linuxPrivateKeyPath := vagrantSshInfo.Configs["linux"].IdentityFile
-	linuxPWPrivateKeyPath := vagrantSshInfo.Configs["linuxpw"].IdentityFile
-	cmdPrivateKeyPath := vagrantSshInfo.Configs["cmd"].IdentityFile
-	windowsPrivateKeyPath := vagrantSshInfo.Configs["windows"].IdentityFile
+	linuxPrivateKeyPath = vagrantSshInfo.Configs["linux"].IdentityFile
+	linuxPWPrivateKeyPath = vagrantSshInfo.Configs["linuxpw"].IdentityFile
+	cmdPrivateKeyPath = vagrantSshInfo.Configs["cmd"].IdentityFile
+	windowsPrivateKeyPath = vagrantSshInfo.Configs["windows"].IdentityFile
 
 	linuxPrivateKey, err = os.ReadFile(linuxPrivateKeyPath)
 	if err != nil {
@@ -117,5 +180,38 @@ func setupVagrantEnvironment(t testing.TB) {
 	windowsPrivateKey, err = os.ReadFile(windowsPrivateKeyPath)
 	if err != nil {
 		t.Fatalf("Failed to read Windows private key: %v", err)
+	}
+
+	if inventoryContent == "" {
+		inventoryContent = fmt.Sprintf(
+			inventoryTemplate,
+			linuxHost,
+			linuxPort,
+			linuxUser,
+			linuxPrivateKeyPath,
+			linuxPassword,
+			linuxPWHost,
+			linuxPWPort,
+			linuxPWUser,
+			linuxPWPrivateKeyPath,
+			linuxPWPassword,
+			cmdHost,
+			cmdPort,
+			cmdUser,
+			cmdPassword,
+			windowsHost,
+			windowsPort,
+			windowsUser,
+			windowsPassword,
+		)
+	}
+
+	if inv == nil {
+		var diags hcl.Diagnostics
+		inv, diags = inventory.ParseTestInventoryFile(inventoryContent)
+
+		if diags.HasErrors() {
+			t.Fatalf("Failed to parse inventory files: %v", diags)
+		}
 	}
 }

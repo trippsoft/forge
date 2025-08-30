@@ -477,7 +477,7 @@ func TestSSHTransportCommand_Linux(t *testing.T) {
 
 	defer sshTransport.Close()
 
-	cmd, err := sshTransport.NewCommand("echo 'Hello from Linux'", nil)
+	cmd, err := sshTransport.NewCommand("echo \"Hello from Linux\"", nil)
 	if err != nil {
 		t.Fatalf("Failed to create command: %v", err)
 	}
@@ -526,7 +526,7 @@ func TestSSHTransportEscalatedCommand_Linux_SudoNoPassword(t *testing.T) {
 	defer sshTransport.Close()
 
 	escalateConfig := transport.NewNoPasswordEscalation()
-	cmd, err := sshTransport.NewCommand("echo 'Hello from Linux'", escalateConfig)
+	cmd, err := sshTransport.NewCommand("echo \"Hello from Linux\"", escalateConfig)
 	if err != nil {
 		t.Fatalf("Failed to create escalated command: %v", err)
 	}
@@ -575,7 +575,7 @@ func TestSSHTransportEscalatedCommand_Linux_SudoPassword(t *testing.T) {
 	defer sshTransport.Close()
 
 	escalateConfig := transport.NewEscalation(linuxPWPassword)
-	cmd, err := sshTransport.NewCommand("echo 'Hello from Linux'", escalateConfig)
+	cmd, err := sshTransport.NewCommand("echo \"Hello from Linux\"", escalateConfig)
 	if err != nil {
 		t.Fatalf("Failed to create escalated command: %v", err)
 	}

@@ -100,7 +100,7 @@ func (s *sshWindowsInfo) newPowerShellCommand(command string, escalateConfig Esc
 
 // newPythonCommand implements sshPlatformInfo.
 func (s *sshWindowsInfo) newPythonCommand(command string, escalateConfig Escalation) (Cmd, error) {
-	return nil, errors.New("Python is not supported on Windows SSH transport")
+	return nil, errors.New("Python is not available on the remote system")
 }
 
 func (s *sshWindowsInfo) newCommandImpl(command string, escalateConfig Escalation) (Cmd, error) {
