@@ -229,21 +229,6 @@ type sshPosixInfo struct {
 	cachedPathPrefixes []string
 }
 
-// canRunPowerShell implements sshPlatformInfo.
-func (s *sshPosixInfo) canRunPowerShell() bool {
-	return false
-}
-
-// canRunPython implements sshPlatformInfo.
-func (s *sshPosixInfo) canRunPython() bool {
-	return s.pythonInterpreter != ""
-}
-
-// pythonInterpreterPath implements sshPlatformInfo.
-func (s *sshPosixInfo) pythonInterpreterPath() string {
-	return s.pythonInterpreter
-}
-
 // pathSeparator implements sshPlatformInfo.
 func (s *sshPosixInfo) pathSeparator() rune {
 	return '/'
@@ -288,6 +273,31 @@ func (s *sshPosixInfo) pathPrefixes() ([]string, error) {
 
 // newCommand implements sshPlatformInfo.
 func (s *sshPosixInfo) newCommand(command string, escalateConfig Escalation) (Cmd, error) {
+	command = fmt.Sprintf("/bin/sh -c '%s'", command)
+	return s.newCommandImpl(command, escalateConfig)
+}
+
+// newPowerShellCommand implements sshPlatformInfo.
+func (s *sshPosixInfo) newPowerShellCommand(command string, escalateConfig Escalation) (Cmd, error) {
+	return nil, errors.New("PowerShell is not available on the remote system")
+}
+
+// newPythonCommand implements sshPlatformInfo.
+func (s *sshPosixInfo) newPythonCommand(command string, escalateConfig Escalation) (Cmd, error) {
+	if s.pythonInterpreter == "" {
+		return nil, errors.New("Python is not available on the remote system")
+	}
+
+	encodedCommand, err := encodePythonAsBase64(command)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode Python command: %w", err)
+	}
+
+	command = fmt.Sprintf("%s -c 'import base64; exec(base64.b64decode(%q))'", s.pythonInterpreter, encodedCommand)
+	return s.newCommandImpl(command, escalateConfig)
+}
+
+func (s *sshPosixInfo) newCommandImpl(command string, escalateConfig Escalation) (Cmd, error) {
 	if escalateConfig == nil {
 		return &sshCmd{
 			transport: s.transport,
@@ -300,7 +310,7 @@ func (s *sshPosixInfo) newCommand(command string, escalateConfig Escalation) (Cm
 		username = "root"
 	}
 
-	command = fmt.Sprintf("sudo -S -p '%s:' -u %s /bin/sh -c '%s'", sshSudoPrompt, username, command)
+	command = fmt.Sprintf("sudo -S -p '%s:' -u %s %s", sshSudoPrompt, username, command)
 
 	return &sshSudoCmd{
 		transport: s.transport,

@@ -349,13 +349,6 @@ func (s *sshCmd) createSession(ctx context.Context) error {
 
 // sshPlatformInfo provides platform-specific information for SSH connections.
 type sshPlatformInfo interface {
-	// canRunPowerShell indicates if PowerShell is available on the platform.
-	canRunPowerShell() bool
-	// canRunPython indicates if Python is available on the platform.
-	canRunPython() bool
-
-	// pythonInterpreterPath returns the path to the Python interpreter for the platform.
-	pythonInterpreterPath() string
 	// pathSeparator returns the path separator for the platform.
 	pathSeparator() rune
 	// pathListSeparator returns the path list separator for the platform.
@@ -367,6 +360,10 @@ type sshPlatformInfo interface {
 
 	// newCommand creates a new command with the specified escalation configuration.
 	newCommand(command string, config Escalation) (Cmd, error)
+	// newPowerShellCommand creates a new PowerShell command with the specified escalation configuration.
+	newPowerShellCommand(command string, config Escalation) (Cmd, error)
+	// newPythonCommand creates a new Python command with the specified escalation configuration.
+	newPythonCommand(command string, config Escalation) (Cmd, error)
 }
 
 type sshTransport struct {
@@ -483,18 +480,7 @@ func (s *sshTransport) NewPowerShellCommand(command string, escalateConfig Escal
 		return nil, fmt.Errorf("failed to connect: %w", err)
 	}
 
-	if !s.platform.canRunPowerShell() {
-		return nil, errors.New("PowerShell is not available on the remote system")
-	}
-
-	encodedCommand, err := encodePowerShellAsUTF16LEBase64(command)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode PowerShell command: %w", err)
-	}
-
-	command = fmt.Sprintf("powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand %s", encodedCommand)
-
-	return s.platform.newCommand(command, escalateConfig)
+	return s.platform.newPowerShellCommand(command, escalateConfig)
 }
 
 // NewPythonCommand implements Transport.
@@ -504,22 +490,7 @@ func (s *sshTransport) NewPythonCommand(interpreter, command string, escalateCon
 		return nil, fmt.Errorf("failed to connect: %w", err)
 	}
 
-	if !s.platform.canRunPython() {
-		return nil, errors.New("Python is not available on the remote system")
-	}
-
-	encodedCommand, err := encodePythonAsBase64(command)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode Python command: %w", err)
-	}
-
-	if interpreter == "" {
-		interpreter = s.platform.pythonInterpreterPath()
-	}
-
-	command = fmt.Sprintf("%s -c 'import base64; exec(base64.b64decode(%q))'", interpreter, encodedCommand)
-
-	return s.platform.newCommand(command, escalateConfig)
+	return s.platform.newPythonCommand(command, escalateConfig)
 }
 
 // Stat implements Transport.

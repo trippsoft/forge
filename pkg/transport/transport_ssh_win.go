@@ -17,21 +17,6 @@ type sshWindowsInfo struct {
 	cachedPathPrefixes []string
 }
 
-// canRunPowerShell implements sshPlatformInfo.
-func (s *sshWindowsInfo) canRunPowerShell() bool {
-	return true
-}
-
-// canRunPython implements sshPlatformInfo.
-func (s *sshWindowsInfo) canRunPython() bool {
-	return false
-}
-
-// pythonInterpreterPath implements sshPlatformInfo.
-func (s *sshWindowsInfo) pythonInterpreterPath() string {
-	return ""
-}
-
 // pathSeparator implements sshPlatformInfo.
 func (s *sshWindowsInfo) pathSeparator() rune {
 	return '\\'
@@ -98,6 +83,27 @@ func (s *sshWindowsInfo) pathPrefixes() ([]string, error) {
 
 // newCommand implements sshPlatformInfo.
 func (s *sshWindowsInfo) newCommand(command string, escalateConfig Escalation) (Cmd, error) {
+	return s.newCommandImpl(command, escalateConfig)
+}
+
+// newPowerShellCommand implements sshPlatformInfo.
+func (s *sshWindowsInfo) newPowerShellCommand(command string, escalateConfig Escalation) (Cmd, error) {
+	encodedCommand, err := encodePowerShellAsUTF16LEBase64(command)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode PowerShell command: %w", err)
+	}
+
+	command = fmt.Sprintf("powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand %s", encodedCommand)
+
+	return s.newCommandImpl(command, escalateConfig)
+}
+
+// newPythonCommand implements sshPlatformInfo.
+func (s *sshWindowsInfo) newPythonCommand(command string, escalateConfig Escalation) (Cmd, error) {
+	return nil, errors.New("Python is not supported on Windows SSH transport")
+}
+
+func (s *sshWindowsInfo) newCommandImpl(command string, escalateConfig Escalation) (Cmd, error) {
 	if escalateConfig == nil {
 		return &sshCmd{
 			transport: s.transport,
