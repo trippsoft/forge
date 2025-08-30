@@ -41,3 +41,11 @@ func encodePythonAsBase64(python string) (string, error) {
 
 	return base64Encoded, nil
 }
+
+func encodePosixAsBase64(posix string) string {
+	if posix == "" {
+		return ""
+	}
+
+	return base64.StdEncoding.EncodeToString([]byte(posix))
+}

@@ -8,38 +8,18 @@ import (
 	"testing"
 
 	"github.com/trippsoft/forge/pkg/info"
-	"github.com/trippsoft/forge/pkg/transport"
 )
 
 func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 	setupVagrantEnvironment(t)
 
-	sshBuilder, err := transport.NewSSHBuilder()
-	if err != nil {
-		t.Fatalf("failed to create SSH builder: %v", err)
+	host, ok := inv.Host("linux")
+	if !ok {
+		t.Fatal("Host 'linux' not found in inventory")
 	}
 
-	sshTransport, err := sshBuilder.
-		Host(linuxHost).
-		Port(linuxPort).
-		User(linuxUser).
-		PasswordAuth(linuxPassword).
-		DontUseKnownHosts().
-		Build()
-
-	if err != nil {
-		t.Fatalf("failed to create SSH transport: %v", err)
-	}
-
-	defer sshTransport.Close()
-
-	err = sshTransport.Connect()
-	if err != nil {
-		t.Fatalf("failed to connect SSH transport: %v", err)
-	}
-
-	hostInfo := info.NewHostInfo()
-	diags := hostInfo.Populate(sshTransport)
+	hostInfo := host.Info()
+	diags := hostInfo.Populate(host.Transport())
 	if diags.HasErrors() {
 		t.Fatalf("failed to populate host info via SSH: %v", diags.Errors())
 	}
@@ -225,32 +205,13 @@ func TestHostInfo_SSH_Integration_Linux(t *testing.T) {
 func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 	setupVagrantEnvironment(t)
 
-	sshBuilder, err := transport.NewSSHBuilder()
-	if err != nil {
-		t.Fatalf("failed to create SSH builder: %v", err)
+	host, ok := inv.Host("windows")
+	if !ok {
+		t.Fatal("failed to get windows host")
 	}
 
-	sshTransport, err := sshBuilder.
-		Host(windowsHost).
-		Port(windowsPort).
-		User(windowsUser).
-		PasswordAuth(windowsPassword).
-		DontUseKnownHosts().
-		Build()
-
-	if err != nil {
-		t.Fatalf("failed to create SSH transport: %v", err)
-	}
-
-	defer sshTransport.Close()
-
-	err = sshTransport.Connect()
-	if err != nil {
-		t.Fatalf("failed to connect SSH transport: %v", err)
-	}
-
-	hostInfo := info.NewHostInfo()
-	diags := hostInfo.Populate(sshTransport)
+	hostInfo := host.Info()
+	diags := hostInfo.Populate(host.Transport())
 	if diags.HasErrors() {
 		t.Fatalf("failed to populate host info via SSH: %v", diags)
 	}
@@ -412,32 +373,13 @@ func TestHostInfo_SSH_Integration_Windows(t *testing.T) {
 func TestHostInfo_SSH_Integration_Cmd(t *testing.T) {
 	setupVagrantEnvironment(t)
 
-	sshBuilder, err := transport.NewSSHBuilder()
-	if err != nil {
-		t.Fatalf("failed to create SSH builder: %v", err)
+	host, ok := inv.Host("cmd")
+	if !ok {
+		t.Fatal("failed to get cmd host")
 	}
 
-	sshTransport, err := sshBuilder.
-		Host(cmdHost).
-		Port(cmdPort).
-		User(cmdUser).
-		PasswordAuth(cmdPassword).
-		DontUseKnownHosts().
-		Build()
-
-	if err != nil {
-		t.Fatalf("failed to create SSH transport: %v", err)
-	}
-
-	defer sshTransport.Close()
-
-	err = sshTransport.Connect()
-	if err != nil {
-		t.Fatalf("failed to connect SSH transport: %v", err)
-	}
-
-	hostInfo := info.NewHostInfo()
-	diags := hostInfo.Populate(sshTransport)
+	hostInfo := host.Info()
+	diags := hostInfo.Populate(host.Transport())
 	if diags.HasErrors() {
 		t.Fatalf("failed to populate host info via SSH: %v", diags)
 	}

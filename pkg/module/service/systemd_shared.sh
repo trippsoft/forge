@@ -56,6 +56,6 @@ fi
 PREVIOUS_IS_ENABLED=$(get_is_enabled "$FORGE_NAME")
 
 if [ "$PREVIOUS_IS_ENABLED" = "unknown" ]; then
-    printf "{\"error\": \"Service %s does not appear to exist\"}\n" "$FORGE_NAME"
+    printf '{"error": "Service %s does not appear to exist"}\n' "$FORGE_NAME"
     exit 0
 fi

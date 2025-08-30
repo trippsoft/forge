@@ -24,7 +24,7 @@ func TestShellRun_Linux(t *testing.T) {
 	p := &shell.Module{}
 
 	input := map[string]cty.Value{
-		"command": cty.StringVal("echo \"Hello, World!\""),
+		"command": cty.StringVal("echo 'Hello, World!'"),
 	}
 
 	config := &module.RunConfig{
@@ -84,7 +84,7 @@ func TestShellRun_Linux_SudoPassword(t *testing.T) {
 
 	escalation := transport.NewEscalation(linuxPWPassword)
 	input := map[string]cty.Value{
-		"command": cty.StringVal("echo \"Hello, World!\""),
+		"command": cty.StringVal("echo 'Hello, World!'"),
 	}
 
 	config := &module.RunConfig{
@@ -138,7 +138,7 @@ func TestShellRun_Linux_NoSudoPassword(t *testing.T) {
 
 	escalation := transport.NewNoPasswordEscalation()
 	input := map[string]cty.Value{
-		"command": cty.StringVal("echo \"Hello, World!\""),
+		"command": cty.StringVal("echo 'Hello, World!'"),
 	}
 
 	config := &module.RunConfig{

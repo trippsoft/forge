@@ -11,7 +11,7 @@ const SystemdStopScript = `` +
     `if [ $PREVIOUS_IS_ACTIVE != "inactive" ]; then ` +
     `systemctl stop "$FORGE_NAME" > /dev/null; ` +
     `if [ "$?" -ne 0 ]; then ` +
-    `printf "{\"error\": \"Failed to stop service %s\"}\n" "$FORGE_NAME"; ` +
+    `printf '{"error": "Failed to stop service %s"}\n' "$FORGE_NAME"; ` +
     `exit 0; ` +
     `fi; ` +
     `fi`

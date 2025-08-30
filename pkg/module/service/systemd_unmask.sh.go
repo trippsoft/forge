@@ -11,7 +11,7 @@ const SystemdUnmaskScript = `` +
     `if [ "$PREVIOUS_IS_ENABLED" = "masked" ]; then ` +
     `systemctl unmask "$FORGE_NAME" > /dev/null; ` +
     `if [ "$?" -ne 0 ]; then ` +
-    `printf "{\"error\": \"Failed to unmask service %s\"}\n" "$FORGE_NAME"; ` +
+    `printf '{"error": "Failed to unmask service %s"}\n' "$FORGE_NAME"; ` +
     `exit 0; ` +
     `fi; ` +
     `fi`

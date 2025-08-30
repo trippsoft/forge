@@ -273,7 +273,8 @@ func (s *sshPosixInfo) pathPrefixes() ([]string, error) {
 
 // newCommand implements sshPlatformInfo.
 func (s *sshPosixInfo) newCommand(command string, escalateConfig Escalation) (Cmd, error) {
-	command = fmt.Sprintf("/bin/sh -c '%s'", command)
+	encodedCommand := encodePosixAsBase64(command)
+	command = fmt.Sprintf("/bin/sh -c 'echo %s | base64 -d | /bin/sh'", encodedCommand)
 	return s.newCommandImpl(command, escalateConfig)
 }
 

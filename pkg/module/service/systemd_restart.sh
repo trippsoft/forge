@@ -7,6 +7,6 @@
 systemctl restart "$FORGE_NAME" > /dev/null
 
 if [ "$?" -ne 0 ]; then
-    printf "{\"error\": \"Failed to restart service %s\"}\n" "$FORGE_NAME"
+    printf '{"error": "Failed to restart service %s"}\n' "$FORGE_NAME"
     exit 0
 fi

@@ -11,12 +11,12 @@ const SystemdMaskScript = `` +
     `if [ "$PREVIOUS_IS_ENABLED" != "masked" ]; then ` +
     `systemctl stop "$FORGE_NAME" > /dev/null; ` +
     `if [ "$?" -ne 0 ]; then ` +
-    `printf "{\"error\": \"Failed to stop service %s\"}\n" "$FORGE_NAME"; ` +
+    `printf '{"error": "Failed to stop service %s"}\n' "$FORGE_NAME"; ` +
     `exit 0; ` +
     `fi; ` +
     `systemctl mask "$FORGE_NAME" > /dev/null; ` +
     `if [ "$?" -ne 0 ]; then ` +
-    `printf "{\"error\": \"Failed to mask service %s\"}\n" "$FORGE_NAME"; ` +
+    `printf '{"error": "Failed to mask service %s"}\n' "$FORGE_NAME"; ` +
     `exit 0; ` +
     `fi; ` +
     `fi`

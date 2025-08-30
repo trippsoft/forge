@@ -48,7 +48,7 @@ const OsLinuxDiscoveryScript = `` +
     `if [ -n "$VARIANT_ID" ]; then ` +
     `os_edition_id="$VARIANT_ID"; ` +
     `fi; ` +
-    `printf "{\"os_arch\": \"%s\", \"os_id\": \"%s\", \"os_friendly_name\": \"%s\", \"os_release\": \"%s\", \"os_version\": \"%s\", \"os_edition\": \"%s\", \"os_edition_id\": \"%s\"}\n" ` +
+    `printf '{"os_arch": "%s", "os_id": "%s", "os_friendly_name": "%s", "os_release": "%s", "os_version": "%s", "os_edition": "%s", "os_edition_id": "%s"}\n' ` +
     `"$(escape_json "$os_arch")" ` +
     `"$(escape_json "$os_id")" ` +
     `"$(escape_json "$os_friendly_name")" ` +

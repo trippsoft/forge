@@ -105,6 +105,12 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
+	hosts := inv.Hosts()
+
+	for _, host := range hosts {
+		host.Transport().Close()
+	}
+
 	if vagrantClient == nil {
 		os.Exit(code)
 	}
