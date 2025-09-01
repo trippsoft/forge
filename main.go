@@ -12,11 +12,7 @@ import (
 	"github.com/trippsoft/forge/pkg/hclutil"
 	"github.com/trippsoft/forge/pkg/inventory"
 	"github.com/trippsoft/forge/pkg/module"
-	"github.com/trippsoft/forge/pkg/module/assert"
-	"github.com/trippsoft/forge/pkg/module/message"
-	"github.com/trippsoft/forge/pkg/module/pkg"
-	"github.com/trippsoft/forge/pkg/module/service"
-	"github.com/trippsoft/forge/pkg/module/shell"
+	"github.com/trippsoft/forge/pkg/module/local"
 	"github.com/trippsoft/forge/pkg/ui"
 	"github.com/trippsoft/forge/pkg/workflow"
 )
@@ -66,7 +62,7 @@ func main() {
 
 			moduleRegistry := module.NewRegistry()
 
-			registerLocalModules(moduleRegistry)
+			local.RegisterLocalModules(moduleRegistry)
 
 			w, err := parseWorkflow(i, moduleRegistry)
 			if err != nil {
@@ -142,22 +138,6 @@ func parseInventory() (*inventory.Inventory, error) {
 	}
 
 	return i, nil
-}
-
-func registerLocalModules(moduleRegistry *module.Registry) {
-	moduleRegistry.Register("assert", module.NewLocal(&assert.Module{}))
-
-	moduleRegistry.Register("message", module.NewLocal(&message.Module{}))
-
-	moduleRegistry.Register("dnf", module.NewLocal(&pkg.DNFModule{}))
-	moduleRegistry.Register("dnf_info", module.NewLocal(&pkg.DNFInfoModule{}))
-	moduleRegistry.Register("pkg", module.NewLocal(&pkg.PkgModule{}))
-	moduleRegistry.Register("pkg_info", module.NewLocal(&pkg.PkgInfoModule{}))
-
-	moduleRegistry.Register("systemd_service", module.NewLocal(&service.SystemdServiceModule{}))
-	moduleRegistry.Register("service", module.NewLocal(&service.ServiceModule{}))
-
-	moduleRegistry.Register("shell", module.NewLocal(&shell.Module{}))
 }
 
 func parseWorkflow(inventory *inventory.Inventory, moduleRegistry *module.Registry) (*workflow.Workflow, error) {

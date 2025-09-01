@@ -4,6 +4,7 @@
 package test
 
 import (
+	"context"
 	"slices"
 	"testing"
 
@@ -15,6 +16,35 @@ import (
 	"github.com/trippsoft/forge/pkg/workflow"
 	"github.com/zclconf/go-cty/cty"
 )
+
+type mockModule struct {
+	inputSpec    *hclspec.Spec
+	validateFunc func(config *module.RunConfig) error
+	Result       *module.Result
+}
+
+func newMockModule(spec *hclspec.Spec, validate func(config *module.RunConfig) error) *mockModule {
+	return &mockModule{
+		inputSpec:    spec,
+		validateFunc: validate,
+	}
+}
+
+func (m *mockModule) InputSpec() *hclspec.Spec {
+	return m.inputSpec
+}
+
+func (m *mockModule) Validate(config *module.RunConfig) error {
+	if m.validateFunc == nil {
+		return nil
+	}
+
+	return m.validateFunc(config)
+}
+
+func (m *mockModule) Run(ctx context.Context, config *module.RunConfig) *module.Result {
+	return m.Result
+}
 
 func createMockHost(name string) *inventory.Host {
 	return inventory.NewHost(
@@ -40,8 +70,8 @@ func createMockInventory(h ...*inventory.Host) *inventory.Inventory {
 	return inventory.NewInventory(hosts, groups, targets)
 }
 
-func createMockModule() *module.MockModule {
-	return module.NewMockModule(&hclspec.Spec{}, nil)
+func createMockModule() *mockModule {
+	return newMockModule(&hclspec.Spec{}, nil)
 }
 
 type expectedLoop struct {
@@ -259,7 +289,7 @@ type expectedStep struct {
 	escalation *expectedEscalation
 	output     *expectedOutput
 
-	module *module.MockModule
+	module *mockModule
 }
 
 func (e *expectedStep) verify(t *testing.T, a workflow.Step) {
