@@ -13,6 +13,7 @@ import (
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/trippsoft/forge/pkg/ui"
 	"github.com/trippsoft/forge/pkg/util"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // Process represents a series of steps in a workflow.
@@ -47,7 +48,7 @@ func (p *Process) Steps() []Step {
 }
 
 // Run executes the process with the given workflow context.
-func (p *Process) Run(ctx *workflowContext) error {
+func (p *Process) Run(ctx *workflowContext) (map[string]map[string]cty.Value, error) {
 	nameText := ui.Text(p.name).WithStyle(ui.StyleBold)
 	name := ctx.ui.Format(nameText)
 	line := ctx.ui.FormatLine('*', nil)
@@ -111,12 +112,15 @@ func (p *Process) Run(ctx *workflowContext) error {
 		}
 	}
 
+	outputs := make(map[string]map[string]cty.Value)
+
 	for _, step := range p.steps {
-		e := step.Run(ctx)
+		output, e := step.Run(ctx)
+		outputs[step.ID()] = output
 		err = errors.Join(err, e)
 	}
 
-	return err
+	return outputs, err
 }
 
 func printDiags(ctx *workflowContext, diags util.Diags) {

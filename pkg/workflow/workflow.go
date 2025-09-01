@@ -3,7 +3,11 @@
 
 package workflow
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/zclconf/go-cty/cty"
+)
 
 // Workflow represents a workflow.
 type Workflow struct {
@@ -26,12 +30,15 @@ func (w *Workflow) Processes() []*Process {
 }
 
 // Run executes the workflow.
-func (w *Workflow) Run(ctx *workflowContext) error {
+func (w *Workflow) Run(ctx *workflowContext) ([]map[string]map[string]cty.Value, error) {
 	ctx.inventory.ClearSteps() // Clear any existing steps before running the workflow.
 
+	outputs := make([]map[string]map[string]cty.Value, 0, len(w.processes))
+	var output map[string]map[string]cty.Value
 	var err error
 	for _, process := range w.processes {
-		err = process.Run(ctx)
+		output, err = process.Run(ctx)
+		outputs = append(outputs, output)
 		if err != nil {
 			break
 		}
@@ -41,5 +48,5 @@ func (w *Workflow) Run(ctx *workflowContext) error {
 		host.Transport().Close()
 	}
 
-	return err
+	return outputs, err
 }

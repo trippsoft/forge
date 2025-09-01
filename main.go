@@ -73,7 +73,7 @@ func main() {
 			UI.Print("Successfully parsed workflow file.\n")
 			workflowContext := workflow.WorkflowContext(UI, i, debug)
 
-			err = w.Run(workflowContext)
+			_, err = w.Run(workflowContext)
 
 			if err != nil {
 				os.Exit(1)

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"sync"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/trippsoft/forge/pkg/inventory"
@@ -25,10 +26,12 @@ const (
 
 // Step abstracts a single Step or a procedure in a process.
 type Step interface {
+	// ID returns the ID of the step.
+	ID() string
 	// Targets returns the targets of the step.
 	Targets() []*inventory.Host
 	// Run executes the step with the given workflow context.
-	Run(ctx *workflowContext) error
+	Run(ctx *workflowContext) (map[string]cty.Value, error)
 }
 
 type StepCommonConfig struct {
@@ -161,11 +164,6 @@ func (s *SingleStep) Common() *StepCommonConfig {
 	return s.common
 }
 
-// Targets returns the targets of the step.
-func (s *SingleStep) Targets() []*inventory.Host {
-	return s.common.targets
-}
-
 // Escalation returns the escalation configuration for the step.
 // This is used primarily for testing.
 func (s *SingleStep) Escalation() *StepEscalationConfig {
@@ -184,8 +182,18 @@ func (s *SingleStep) Module() module.Module {
 	return s.module
 }
 
+// ID implements Step.
+func (s *SingleStep) ID() string {
+	return s.common.id
+}
+
+// Targets implements Step.
+func (s *SingleStep) Targets() []*inventory.Host {
+	return s.common.targets
+}
+
 // Run implements Step.
-func (s *SingleStep) Run(ctx *workflowContext) error {
+func (s *SingleStep) Run(ctx *workflowContext) (map[string]cty.Value, error) {
 	nameText := ui.Text(s.common.name).WithStyle(ui.StyleBold)
 	name := ctx.ui.Format(nameText)
 	line := ctx.ui.FormatLine('=', nil)
@@ -196,7 +204,9 @@ func (s *SingleStep) Run(ctx *workflowContext) error {
 	ctx.LoadHostVars()
 
 	var err error
+	mutex := sync.Mutex{}
 	errChannel := make(chan error)
+	outputs := make(map[string]cty.Value)
 
 	for _, host := range s.common.targets {
 		go func(h *inventory.Host) {
@@ -205,7 +215,13 @@ func (s *SingleStep) Run(ctx *workflowContext) error {
 				return
 			}
 
-			errChannel <- s.runOnHost(HostWorkflowContext(ctx, h))
+			output, e := s.runOnHost(HostWorkflowContext(ctx, h))
+
+			mutex.Lock()
+			outputs[h.Name()] = output
+			mutex.Unlock()
+
+			errChannel <- e
 		}(host)
 	}
 
@@ -214,7 +230,7 @@ func (s *SingleStep) Run(ctx *workflowContext) error {
 		err = errors.Join(err, e)
 	}
 
-	return err
+	return outputs, err
 }
 
 type stepIteration struct {

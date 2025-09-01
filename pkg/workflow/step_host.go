@@ -53,12 +53,13 @@ type iterationResult struct {
 	result    cty.Value
 }
 
-func (s *SingleStep) runOnHost(ctx *hostWorkflowContext) error {
+func (s *SingleStep) runOnHost(ctx *hostWorkflowContext) (cty.Value, error) {
 	err := ctx.LoadEvalContext()
 	if err != nil {
 		result := module.NewFailure(err, "failed to load evaluation context")
-		s.handleHostResult(ctx, result)
-		return err
+		output := s.handleHostResult(ctx, result)
+
+		return output, err
 	}
 
 	condition := true // Default to true, in case a condition is not defined.
@@ -67,22 +68,25 @@ func (s *SingleStep) runOnHost(ctx *hostWorkflowContext) error {
 		condition, diags = hclutil.ConvertHCLAttributeToBool(s.common.condition, ctx.evalContext)
 		if diags.HasErrors() {
 			result := module.NewFailure(diags, diags.Error())
-			s.handleHostResult(ctx, result)
-			return diags
+			output := s.handleHostResult(ctx, result)
+
+			return output, diags
 		}
 	}
 
 	if !condition {
 		result := module.NewSkipped()
-		s.handleHostResult(ctx, result)
-		return nil // Skipped
+		output := s.handleHostResult(ctx, result)
+
+		return output, nil // Skipped
 	}
 
 	iterator, err := s.getStepIterator(ctx)
 	if err != nil {
 		result := module.NewFailure(err, err.Error())
-		s.handleHostResult(ctx, result)
-		return err
+		output := s.handleHostResult(ctx, result)
+
+		return output, err
 	}
 
 	results := []*iterationResult{}
@@ -131,7 +135,7 @@ func (s *SingleStep) runOnHost(ctx *hostWorkflowContext) error {
 
 	ctx.host.StoreStepOutput(s.common.id, output)
 
-	return err
+	return output, err
 }
 
 func (s *SingleStep) runHostIteration(ctx *hostWorkflowContext, iteration *stepIteration) (cty.Value, error) {
@@ -363,9 +367,9 @@ func (s *SingleStep) getEscalation(ctx *hostWorkflowContext) (transport.Escalati
 	return transport.NewImpersonation(impersonateUser, ctx.host.EscalateConfig().Pass()), nil
 }
 
-func (s *SingleStep) handleHostResult(ctx *hostWorkflowContext, result *module.Result) {
+func (s *SingleStep) handleHostResult(ctx *hostWorkflowContext, result *module.Result) cty.Value {
 	if result == nil {
-		result = module.NewFailure(errors.New("no result returned from module"), "no result returned from module")
+		result = module.NewFailure(errors.New("no result returned from module"), "")
 	}
 
 	errMessage := s.formatHostError(ctx, result.Err)
@@ -379,6 +383,8 @@ func (s *SingleStep) handleHostResult(ctx *hostWorkflowContext, result *module.R
 
 	output := formatResultOutput(result)
 	ctx.host.StoreStepOutput(s.common.id, output)
+
+	return output
 }
 
 func (s *SingleStep) handleHostIterationResult(ctx *hostWorkflowContext, iteration *stepIteration, result *module.Result) (cty.Value, error) {
