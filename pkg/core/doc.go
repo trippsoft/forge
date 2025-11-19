@@ -3,5 +3,5 @@
 
 // Package core contains the core types and interfaces for Forge.
 //
-// This will include any types that will be used by two or more of the CLI tool, Packer plugin, and/or web interfaces.
+// This will include any code that will be used by two or more of the CLI tool, Packer plugin, and/or web interfaces.
 package core
