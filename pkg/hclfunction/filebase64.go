@@ -38,7 +38,15 @@ var (
 			if err != nil {
 				return cty.NullVal(cty.String), fmt.Errorf("failed to encode file %q to base64: %w", path, err)
 			}
-			_ = encoder.Close()
+
+			err = encoder.Close()
+			if err != nil {
+				return cty.NullVal(cty.String), fmt.Errorf(
+					"failed to finalize base64 encoding for file %q: %w",
+					path,
+					err,
+				)
+			}
 
 			return cty.StringVal(stringBuilder.String()), nil
 		},
