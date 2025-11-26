@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestNewSet(t *testing.T) {
+func TestSet_NewSet(t *testing.T) {
 	s := NewSet[int]()
 	if s.Size() != 0 {
 		t.Errorf("Expected empty set size 0, got %d", s.Size())
@@ -26,7 +26,7 @@ func TestNewSet(t *testing.T) {
 	}
 }
 
-func TestAdd(t *testing.T) {
+func TestSet_Add(t *testing.T) {
 	s := NewSet[int]()
 
 	s.Add(1)
@@ -48,7 +48,7 @@ func TestAdd(t *testing.T) {
 	}
 }
 
-func TestRemove(t *testing.T) {
+func TestSet_Remove(t *testing.T) {
 	s := NewSet(1, 2, 3)
 
 	s.Remove(2)
@@ -66,7 +66,7 @@ func TestRemove(t *testing.T) {
 	}
 }
 
-func TestContains(t *testing.T) {
+func TestSet_Contains(t *testing.T) {
 	s := NewSet("a", "b", "c")
 
 	if !s.Contains("a") {
@@ -82,7 +82,7 @@ func TestContains(t *testing.T) {
 	}
 }
 
-func TestSize(t *testing.T) {
+func TestSet_Size(t *testing.T) {
 	tests := []struct {
 		name     string
 		items    []int
@@ -120,7 +120,7 @@ func TestSize(t *testing.T) {
 	}
 }
 
-func TestItems(t *testing.T) {
+func TestSet_Items(t *testing.T) {
 	s := NewSet[int]()
 	items := s.Items()
 	if len(items) != 0 {
@@ -137,7 +137,7 @@ func TestItems(t *testing.T) {
 	}
 }
 
-func TestClear(t *testing.T) {
+func TestSet_Clear(t *testing.T) {
 	s := NewSet(1, 2, 3)
 	s.Clear()
 
@@ -150,7 +150,7 @@ func TestClear(t *testing.T) {
 	}
 }
 
-func TestIsEmpty(t *testing.T) {
+func TestSet_IsEmpty(t *testing.T) {
 	s := NewSet[int]()
 	if !s.IsEmpty() {
 		t.Error("Expected new set to be empty")
@@ -167,7 +167,7 @@ func TestIsEmpty(t *testing.T) {
 	}
 }
 
-func TestClone(t *testing.T) {
+func TestSet_Clone(t *testing.T) {
 	s := NewSet(1, 2, 3)
 	clone := s.Clone()
 
@@ -187,7 +187,7 @@ func TestClone(t *testing.T) {
 	}
 }
 
-func TestUnion(t *testing.T) {
+func TestSet_Union(t *testing.T) {
 	result := Union[int]()
 	if !result.IsEmpty() {
 		t.Error("Expected union of no sets to be empty")
@@ -211,7 +211,7 @@ func TestUnion(t *testing.T) {
 	}
 }
 
-func TestIntersection(t *testing.T) {
+func TestSet_Intersection(t *testing.T) {
 	result := Intersection[int]()
 	if !result.IsEmpty() {
 		t.Error("Expected intersection of no sets to be empty")
@@ -242,7 +242,7 @@ func TestIntersection(t *testing.T) {
 	}
 }
 
-func TestDifference(t *testing.T) {
+func TestSet_Difference(t *testing.T) {
 	s1 := NewSet(1, 2, 3, 4)
 	s2 := NewSet(3, 4, 5, 6)
 
@@ -266,7 +266,7 @@ func TestDifference(t *testing.T) {
 	}
 }
 
-func TestSetWithStrings(t *testing.T) {
+func TestSet_SetWithStrings(t *testing.T) {
 	s := NewSet("hello", "world")
 	s.Add("test")
 
