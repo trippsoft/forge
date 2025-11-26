@@ -1,0 +1,453 @@
+// Copyright (c) Forge
+// SPDX-License-Identifier: MPL-2.0
+
+package core
+
+import (
+	"errors"
+	"fmt"
+	"net"
+	"os"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
+
+	"github.com/pkg/sftp"
+	"github.com/trippsoft/forge/pkg/info"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
+)
+
+const (
+	DefaultSSHPort               uint16        = 22
+	DefaultUseKnownHostsFile     bool          = true
+	DefaultAddUnknownHostsToFile bool          = true
+	DefaultSSHConnectionTimeout  time.Duration = 10 * time.Second
+
+	sshSudoPrompt = "forge_sudo_prompt"
+)
+
+func DefaultKnownHostsPath() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get user home directory: %w", err)
+	}
+
+	return filepath.Join(homeDir, ".ssh", "known_hosts"), nil
+}
+
+type sshTransport struct {
+	host string
+	port uint16
+
+	config     *ssh.ClientConfig
+	client     *ssh.Client
+	sftpClient *sftp.Client
+}
+
+// Type implements Transport.
+func (s *sshTransport) Type() TransportType {
+	return TransportTypeSSH
+}
+
+// Connect implements Transport.
+func (s *sshTransport) Connect() error {
+	if s.client != nil {
+		return nil // Already connected
+	}
+
+	address := fmt.Sprintf("%s:%d", s.host, s.port)
+	client, err := ssh.Dial("tcp", address, s.config)
+	if err != nil {
+		return fmt.Errorf("failed to connect to SSH server at %s: %w", address, err)
+	}
+
+	s.client = client
+	session, err := s.client.NewSession()
+	if err != nil {
+		s.client.Close()
+		s.client = nil
+		return fmt.Errorf("failed to create SSH session: %w", err)
+	}
+	defer session.Close()
+
+	return nil
+}
+
+// Close implements Transport.
+func (s *sshTransport) Close() error {
+	if s.sftpClient != nil {
+		_ = s.sftpClient.Close() // Close the SFTP client if it exists
+	}
+
+	if s.client == nil {
+		return nil // No client to close
+	}
+
+	err := s.client.Close()
+	s.client = nil
+	if err != nil {
+		return fmt.Errorf("failed to close SSH client: %w", err)
+	}
+
+	return nil
+}
+
+// GetRuntimeInfo implements Transport.
+func (s *sshTransport) GetRuntimeInfo() (*info.RuntimeInfo, error) {
+
+	err := s.Connect()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to SSH server: %w", err)
+	}
+
+	session, err := s.client.NewSession()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create SSH session: %w", err)
+	}
+
+	// Check if PowerShell is available on the remote system
+	powershellCheckCmd := "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command " +
+		`"Write-Host 'PowerShell is available'"`
+	psErr := session.Run(powershellCheckCmd)
+	session.Close()
+	if psErr == nil {
+		// PowerShell is available, detect Windows OS architecture
+		arch, archErr := s.getWindowsArchitecture()
+		if archErr != nil {
+			return nil, fmt.Errorf("failed to detect Windows architecture: %w", archErr)
+		}
+
+		return info.NewRuntimeInfo("windows", arch), nil
+	}
+
+	return s.getPosixBasicHostInfo()
+}
+
+func (s *sshTransport) getWindowsArchitecture() (string, error) {
+	session, err := s.client.NewSession()
+	if err != nil {
+		return "", fmt.Errorf("failed to create SSH session: %w", err)
+	}
+	defer session.Close()
+
+	archCmd := "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command " +
+		`"$env:PROCESSOR_ARCHITECTURE"`
+	archOutput, err := session.CombinedOutput(archCmd)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute architecture detection command: %w", err)
+	}
+
+	arch := strings.TrimSpace(strings.ToLower(string(archOutput)))
+
+	switch arch {
+	case "amd64", "arm64":
+		return arch, nil
+	case "x86":
+		return "386", nil
+	}
+
+	return "", fmt.Errorf("unknown or unsupported architecture: %s", arch)
+}
+
+func (s *sshTransport) getPosixBasicHostInfo() (*info.RuntimeInfo, error) {
+	session, err := s.client.NewSession()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create SSH session: %w", err)
+	}
+
+	kernelCmd := "uname -s"
+	kernelOutput, err := session.CombinedOutput(kernelCmd)
+	session.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute kernel detection command: %w", err)
+	}
+
+	os := strings.TrimSpace(strings.ToLower(string(kernelOutput)))
+
+	switch os {
+	case "aix", "darwin", "dragonfly", "freebsd", "illumos", "linux", "netbsd", "openbsd", "plan9", "solaris":
+		// Supported POSIX OS, now detect architecture
+	default:
+		return nil, fmt.Errorf("unknown or unsupported POSIX OS: %s", os)
+	}
+
+	session, err = s.client.NewSession()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create SSH session: %w", err)
+	}
+	defer session.Close()
+
+	archCmd := "uname -m"
+	archOutput, err := session.CombinedOutput(archCmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute architecture detection command: %w", err)
+	}
+
+	arch := strings.TrimSpace(strings.ToLower(string(archOutput)))
+
+	switch arch {
+	case "x86_64":
+		arch = "amd64"
+	case "aarch64":
+		arch = "arm64"
+	case "i386", "i486", "i586", "i686", "i786", "x86":
+		arch = "386"
+	case "armv6l", "armv7l":
+		arch = "arm"
+	case "386", "amd64", "arm", "arm64", "mips", "mips64", "ppc64", "ppc64le", "riscv64", "s390x":
+		// Supported architecture that matches Go naming
+	default:
+		return nil, fmt.Errorf("unknown or unsupported architecture: %s", arch)
+	}
+
+	return info.NewRuntimeInfo(os, arch), nil
+}
+
+// SSHTransportBuilder is a builder for constructing SSH transport instances.
+type SSHTransportBuilder struct {
+	host string
+	port uint16
+
+	user string
+
+	publicKeyAuth  bool
+	privateKey     []byte
+	privateKeyPass string
+
+	passwordAuth bool
+	password     string
+
+	useKnownHostsFile     bool
+	knownHostsPath        string
+	addUnknownHostsToFile bool
+
+	connectionTimeout time.Duration
+}
+
+// NewSSHBuilder creates a new SSHTransportBuilder with default settings.
+func NewSSHBuilder() (*SSHTransportBuilder, error) {
+	knownHostsPath, err := DefaultKnownHostsPath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get default known hosts path: %w", err)
+	}
+
+	return &SSHTransportBuilder{
+		port:              22,               // Default SSH port
+		connectionTimeout: 10 * time.Second, // Default connection timeout
+		knownHostsPath:    knownHostsPath,
+	}, nil
+}
+
+// WithHost sets the host for the SSH transport.
+func (b *SSHTransportBuilder) WithHost(host string) *SSHTransportBuilder {
+	b.host = host
+	return b
+}
+
+// WithPort sets the port for the SSH transport.
+func (b *SSHTransportBuilder) WithPort(port uint16) *SSHTransportBuilder {
+	b.port = port
+	return b
+}
+
+// WithUser sets the user for the SSH transport.
+func (b *SSHTransportBuilder) WithUser(user string) *SSHTransportBuilder {
+	b.user = user
+	return b
+}
+
+// WithoutPublicKeyAuth disables public key authentication for the SSH transport.
+func (b *SSHTransportBuilder) WithoutPublicKeyAuth() *SSHTransportBuilder {
+	b.publicKeyAuth = false
+	b.privateKey = nil
+	b.privateKeyPass = ""
+	return b
+}
+
+// WithPublicKeyAuth enables public key authentication for the SSH transport.
+func (b *SSHTransportBuilder) WithPublicKeyAuth(privateKey []byte) *SSHTransportBuilder {
+	b.publicKeyAuth = true
+	b.privateKey = privateKey
+	b.privateKeyPass = ""
+	return b
+}
+
+// WithPublicKeyAuthWithPass enables public key authentication with a passphrase for the SSH transport.
+func (b *SSHTransportBuilder) WithPublicKeyAuthWithPass(privateKey []byte, privateKeyPass string) *SSHTransportBuilder {
+	b.publicKeyAuth = true
+	b.privateKey = privateKey
+	b.privateKeyPass = privateKeyPass
+	return b
+}
+
+// WithPasswordAuth disables password authentication for the SSH transport.
+func (b *SSHTransportBuilder) WithPasswordAuth(password string) *SSHTransportBuilder {
+	b.passwordAuth = true
+	b.password = password
+	return b
+}
+
+// WithoutPasswordAuth disables password authentication for the SSH transport.
+func (b *SSHTransportBuilder) WithoutPasswordAuth() *SSHTransportBuilder {
+	b.passwordAuth = false
+	b.password = ""
+	return b
+}
+
+// DontUseKnownHosts disables the use of a known hosts file for the SSH transport.
+func (b *SSHTransportBuilder) DontUseKnownHosts() *SSHTransportBuilder {
+	b.useKnownHostsFile = false
+	return b
+}
+
+// UseKnownHosts enables the use of a known hosts file for the SSH transport, adding unknown hosts to the file.
+func (b *SSHTransportBuilder) UseKnownHosts(knownHostsPath string) *SSHTransportBuilder {
+	b.useKnownHostsFile = true
+	b.knownHostsPath = knownHostsPath
+	b.addUnknownHostsToFile = true
+	return b
+}
+
+// UseStrictKnownHosts enables the use of a known hosts file for the SSH transport, enforcing strict host key checking.
+func (b *SSHTransportBuilder) UseStrictKnownHosts(knownHostsPath string) *SSHTransportBuilder {
+	b.useKnownHostsFile = true
+	b.knownHostsPath = knownHostsPath
+	b.addUnknownHostsToFile = false
+	return b
+}
+
+// WithConnectionTimeout sets the connection timeout for the SSH transport.
+func (b *SSHTransportBuilder) WithConnectionTimeout(timeout time.Duration) *SSHTransportBuilder {
+	b.connectionTimeout = timeout
+	return b
+}
+
+// Build constructs the SSHTransport based on the builder's configuration.
+func (b *SSHTransportBuilder) Build() (Transport, error) {
+	if b.host == "" {
+		return nil, fmt.Errorf("host cannot be empty")
+	}
+
+	if b.port == 0 {
+		return nil, fmt.Errorf("port must be between 1 and 65535")
+	}
+
+	if b.user == "" {
+		return nil, fmt.Errorf("user cannot be empty")
+	}
+
+	if b.publicKeyAuth && b.privateKey == nil {
+		return nil, fmt.Errorf("privateKey cannot be empty when public key authentication is enabled")
+	}
+
+	if b.passwordAuth && b.password == "" {
+		return nil, fmt.Errorf("password cannot be empty when password authentication is enabled")
+	}
+
+	if b.useKnownHostsFile && b.knownHostsPath == "" {
+		return nil, fmt.Errorf("knownHostsPath cannot be empty when using known hosts")
+	}
+
+	if b.connectionTimeout <= 0 {
+		return nil, fmt.Errorf("connectionTimeout must be greater than zero")
+	}
+
+	authMethods := make([]ssh.AuthMethod, 0, 2)
+	if b.publicKeyAuth {
+		var signer ssh.Signer
+		var err error
+		if b.privateKeyPass != "" {
+			signer, err = ssh.ParsePrivateKeyWithPassphrase(b.privateKey, []byte(b.privateKeyPass))
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse private key with passphrase: %w", err)
+			}
+		} else {
+			signer, err = ssh.ParsePrivateKey(b.privateKey)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse private key: %w", err)
+			}
+		}
+
+		authMethods = append(authMethods, ssh.PublicKeys(signer))
+	}
+
+	if b.passwordAuth {
+		authMethods = append(authMethods, ssh.Password(b.password))
+	}
+
+	hostKeyCallback := ssh.InsecureIgnoreHostKey() // Default to insecure host key checking
+	var err error
+	if b.useKnownHostsFile {
+		if b.addUnknownHostsToFile {
+			hostKeyCallback, err = newHostKeyAddingCallback(b.knownHostsPath)
+		} else {
+			hostKeyCallback, err = knownhosts.New(b.knownHostsPath)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to create host key adding callback: %w", err)
+		}
+	}
+
+	clientConfig := &ssh.ClientConfig{
+		User:            b.user,
+		Auth:            authMethods,
+		HostKeyCallback: hostKeyCallback,
+		Timeout:         b.connectionTimeout,
+	}
+
+	return &sshTransport{
+		host:   b.host,
+		port:   b.port,
+		config: clientConfig,
+	}, nil
+}
+
+func newHostKeyAddingCallback(path string) (ssh.HostKeyCallback, error) {
+	_, err := os.Stat(path)
+	if err != nil && (errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOENT)) {
+		file, err := os.Create(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create known hosts file %s: %w", path, err)
+		}
+		file.Close()
+	}
+
+	checkingCallback, err := knownhosts.New(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		err = checkingCallback(hostname, remote, key)
+		if err == nil {
+			return nil // Host key is already known
+		}
+
+		var keyErr *knownhosts.KeyError
+		if errors.As(err, &keyErr) && len(keyErr.Want) > 0 {
+			return keyErr // Host has known hosts entry, but key does not match
+		}
+
+		file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			return fmt.Errorf("failed to open known hosts file %s: %w", path, err)
+		}
+
+		defer file.Close()
+
+		remoteNormalized := knownhosts.Normalize(remote.String())
+		hostNormalized := knownhosts.Normalize(hostname)
+		addresses := []string{remoteNormalized}
+
+		if remoteNormalized != hostNormalized {
+			addresses = append(addresses, hostNormalized)
+		}
+
+		_, err = file.WriteString(knownhosts.Line(addresses, key) + "\n")
+
+		return err
+	}, nil
+}
