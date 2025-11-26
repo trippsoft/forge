@@ -20,5 +20,5 @@ type Transport interface {
 	Connect() error // Connect establishes the transport connection.
 	Close() error   // Close terminates the transport connection.
 
-	GetRuntimeInfo() (*info.RuntimeInfo, error) // GetBasicHostInfo retrieves basic host information.
+	GetRuntimeInfo() (*info.RuntimeInfo, error) // GetRuntimeInfo retrieves OS and architecture information.
 }
