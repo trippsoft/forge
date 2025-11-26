@@ -3,6 +3,7 @@
 
 package core
 
+// ReadOnlySet is a generic interface representing a read-only set of unique items of type T.
 type ReadOnlySet[T comparable] interface {
 	// Contains checks if the set contains the specified item.
 	Contains(item T) bool
@@ -16,12 +17,14 @@ type ReadOnlySet[T comparable] interface {
 }
 
 // Set is a generic set data structure that holds unique items of type T.
+//
 // It provides methods to add, remove, check for existence, and perform set operations.
 type Set[T comparable] struct {
 	items map[T]struct{}
 }
 
 // NewSet creates a new Set with the provided items.
+//
 // If no items are provided, it initializes an empty set.
 // Duplicate items are ignored, ensuring all items in the set are unique.
 // The type T must be comparable, meaning it can be used as a key in a map.
@@ -37,12 +40,14 @@ func NewSet[T comparable](items ...T) *Set[T] {
 }
 
 // Add adds an item to the set. If the item already exists, it does nothing.
+//
 // The item must be of type T, which is comparable.
 func (s *Set[T]) Add(item T) {
 	s.items[item] = struct{}{}
 }
 
 // Remove removes an item from the set. If the item does not exist, it does nothing.
+//
 // The item must be of type T, which is comparable.
 func (s *Set[T]) Remove(item T) {
 	delete(s.items, item)
@@ -60,6 +65,7 @@ func (s *Set[T]) Size() int {
 }
 
 // Items returns a slice of all items in the set.
+//
 // The order of items in the slice is not guaranteed to be consistent.
 // If the set is empty, it returns an empty slice.
 func (s *Set[T]) Items() []T {
@@ -107,6 +113,7 @@ func Union[T comparable](sets ...*Set[T]) *Set[T] {
 }
 
 // Intersection returns a new Set that is the intersection of all provided sets.
+//
 // It contains only the items that are present in all sets.
 // If no sets are provided, it returns an empty set.
 func Intersection[T comparable](sets ...*Set[T]) *Set[T] {
@@ -127,6 +134,7 @@ func Intersection[T comparable](sets ...*Set[T]) *Set[T] {
 }
 
 // Difference returns a new Set that contains items from the first set that are not in the second set.
+//
 // It effectively computes the set difference: set1 - set2.
 func Difference[T comparable](set1, set2 *Set[T]) *Set[T] {
 	differenceSet := NewSet[T]()
