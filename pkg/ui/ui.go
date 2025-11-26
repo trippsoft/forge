@@ -1,7 +1,7 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package core
+package ui
 
 // UI represents a user interface for text output.
 //

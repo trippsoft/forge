@@ -1,24 +1,33 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package core
+package ui
 
 import (
 	"bytes"
 	"io"
 	"strings"
 	"sync"
+
+	"github.com/trippsoft/forge/pkg/util"
 )
 
-// SecretFilter wraps an io.Writer to filter out sensitive information from logs and output.
-type SecretFilter struct {
+var (
+	SecretFilter = &secretFilter{
+		secrets: util.NewSet[string](),
+		writer:  io.Discard,
+	}
+)
+
+// secretFilter wraps an io.Writer to filter out sensitive information from logs and output.
+type secretFilter struct {
 	mutex   sync.RWMutex
-	secrets *Set[string]
+	secrets *util.Set[string]
 	writer  io.Writer
 }
 
 // Secrets returns a slice of all secrets currently being filtered.
-func (f *SecretFilter) Secrets() []string {
+func (f *secretFilter) Secrets() []string {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()
 
@@ -26,7 +35,7 @@ func (f *SecretFilter) Secrets() []string {
 }
 
 // AddSecret adds a secret to be filtered from output.
-func (f *SecretFilter) AddSecret(secret string) {
+func (f *secretFilter) AddSecret(secret string) {
 	if secret == "" {
 		return
 	}
@@ -38,7 +47,7 @@ func (f *SecretFilter) AddSecret(secret string) {
 }
 
 // SetOutput sets the io.Writer where filtered output will be written.
-func (f *SecretFilter) SetOutput(writer io.Writer) {
+func (f *secretFilter) SetOutput(writer io.Writer) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
@@ -46,7 +55,7 @@ func (f *SecretFilter) SetOutput(writer io.Writer) {
 }
 
 // Write implements io.Writer, filtering out any added secrets before writing to the underlying writer.
-func (f *SecretFilter) Write(p []byte) (n int, err error) {
+func (f *secretFilter) Write(p []byte) (n int, err error) {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()
 
@@ -60,7 +69,7 @@ func (f *SecretFilter) Write(p []byte) (n int, err error) {
 }
 
 // Filter filters out any added secrets from the provided message string.
-func (f *SecretFilter) Filter(message string) string {
+func (f *secretFilter) Filter(message string) string {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()
 
@@ -74,7 +83,7 @@ func (f *SecretFilter) Filter(message string) string {
 }
 
 // Clear removes all secrets from the filter.
-func (f *SecretFilter) Clear() {
+func (f *secretFilter) Clear() {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
