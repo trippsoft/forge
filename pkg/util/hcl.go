@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/convert"
 	"github.com/zclconf/go-cty/cty/gocty"
 )
 
@@ -82,7 +84,11 @@ func ConvertHCLAttributeToBool(attribute *hcl.Attribute, evalCtx *hcl.EvalContex
 }
 
 // ConvertHCLAttributeToDuration converts an HCL attribute to a duration value.
-func ConvertHCLAttributeToDuration(attribute *hcl.Attribute, evalCtx *hcl.EvalContext) (time.Duration, hcl.Diagnostics) {
+func ConvertHCLAttributeToDuration(
+	attribute *hcl.Attribute,
+	evalCtx *hcl.EvalContext,
+) (time.Duration, hcl.Diagnostics) {
+
 	diags := hcl.Diagnostics{}
 
 	value, moreDiags := attribute.Expr.Value(evalCtx)
@@ -97,7 +103,11 @@ func ConvertHCLAttributeToDuration(attribute *hcl.Attribute, evalCtx *hcl.EvalCo
 		return 0, append(diags, &hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  "Invalid value type",
-			Detail:   fmt.Sprintf("The value for '%s' could not be converted to a duration string: %v", attribute.Name, err),
+			Detail: fmt.Sprintf(
+				"The value for '%s' could not be converted to a duration string: %v",
+				attribute.Name,
+				err,
+			),
 		})
 	}
 
@@ -111,6 +121,39 @@ func ConvertHCLAttributeToDuration(attribute *hcl.Attribute, evalCtx *hcl.EvalCo
 	}
 
 	return duration, diags
+}
+
+// GetAllCtyStrings returns all string values found within a cty.Value.
+func GetAllCtyStrings(value cty.Value) []string {
+	results := []string{}
+
+	switch {
+	case value.IsNull() || !value.IsWhollyKnown():
+		return results
+	case value.Type().IsPrimitiveType() && value.Type() == cty.String:
+		valueStr := value.AsString()
+		if valueStr != "" {
+			results = append(results, valueStr)
+		}
+	case value.Type().IsListType() || value.Type().IsSetType() || value.Type().IsTupleType():
+
+		it := value.ElementIterator()
+		for it.Next() {
+			_, elementValue := it.Element()
+			results = append(results, GetAllCtyStrings(elementValue)...)
+		}
+	case value.Type().IsMapType():
+		for _, elementValue := range value.AsValueMap() {
+			results = append(results, GetAllCtyStrings(elementValue)...)
+		}
+	case value.Type().IsObjectType():
+		for name := range value.Type().AttributeTypes() {
+			elementValue := value.GetAttr(name)
+			results = append(results, GetAllCtyStrings(elementValue)...)
+		}
+	}
+
+	return results
 }
 
 // ModifyUnexpectedElementDiags modifies diagnostics for unexpected elements to be more specific and be of warning
@@ -133,4 +176,147 @@ func ModifyUnexpectedElementDiags(diags hcl.Diagnostics, location string) hcl.Di
 	}
 
 	return diags
+}
+
+// FormatCtyValueToString formats a cty.Value to a string representation.
+func FormatCtyValueToString(value cty.Value) string {
+	if value.IsNull() || !value.IsWhollyKnown() {
+		return "null"
+	}
+
+	switch {
+	case value.IsNull() || !value.IsWhollyKnown():
+		return "null"
+	case value.Type().Equals(cty.String):
+		return fmt.Sprintf("%q", value.AsString())
+	case value.Type().Equals(cty.Bool):
+		return fmt.Sprintf("%t", value.True())
+	case value.Type().Equals(cty.Number):
+		converted, _ := convert.Convert(value, cty.String)
+		return converted.AsString()
+	case value.Type().IsListType() || value.Type().IsSetType() || value.Type().IsTupleType():
+		length := value.LengthInt()
+		if length == 0 {
+			return "[]"
+		}
+
+		stringBuilder := &strings.Builder{}
+		it := value.ElementIterator()
+		stringBuilder.WriteString("[")
+		i := 0
+		for it.Next() {
+			_, elemValue := it.Element()
+			stringBuilder.WriteString(FormatCtyValueToString(elemValue))
+			if i < length-1 {
+				stringBuilder.WriteString(", ")
+			}
+
+			i++
+		}
+
+		stringBuilder.WriteString("]")
+
+		return stringBuilder.String()
+
+	case value.Type().IsMapType() || value.Type().IsObjectType():
+		length := value.LengthInt()
+		if length == 0 {
+			return "{}"
+		}
+
+		stringBuilder := &strings.Builder{}
+		it := value.ElementIterator()
+		stringBuilder.WriteString("{")
+		i := 0
+		for it.Next() {
+			key, elemValue := it.Element()
+			fmt.Fprintf(stringBuilder, "%q: %s", key.AsString(), FormatCtyValueToString(elemValue))
+			if i < length-1 {
+				stringBuilder.WriteString(", ")
+			}
+
+			i++
+		}
+
+		stringBuilder.WriteString("}")
+
+		return stringBuilder.String()
+
+	default:
+		return "unsupported type"
+	}
+}
+
+// FormatCtyValueToIndentedString formats a cty.Value to a string with indentation for nested structures.
+func FormatCtyValueToIndentedString(value cty.Value, currentIndent int, indentSize int) string {
+	if value.IsNull() || !value.IsWhollyKnown() {
+		return "null"
+	}
+
+	switch {
+	case value.IsNull() || !value.IsWhollyKnown() || value.Type().IsPrimitiveType():
+		return FormatCtyValueToString(value)
+	case value.Type().IsListType() || value.Type().IsSetType() || value.Type().IsTupleType():
+		length := value.LengthInt()
+		if length == 0 {
+			return "[]"
+		}
+
+		stringBuilder := &strings.Builder{}
+		it := value.ElementIterator()
+		stringBuilder.WriteString("[\n")
+		i := 0
+		for it.Next() {
+			stringBuilder.WriteString(strings.Repeat(" ", currentIndent+indentSize))
+			_, elemValue := it.Element()
+			stringBuilder.WriteString(FormatCtyValueToIndentedString(elemValue, currentIndent+indentSize, indentSize))
+			if i < length-1 {
+				stringBuilder.WriteString(",\n")
+			}
+
+			i++
+		}
+
+		stringBuilder.WriteString("\n")
+		stringBuilder.WriteString(strings.Repeat(" ", currentIndent))
+		stringBuilder.WriteString("]")
+
+		return stringBuilder.String()
+
+	case value.Type().IsMapType() || value.Type().IsObjectType():
+		length := value.LengthInt()
+		if length == 0 {
+			return "{}"
+		}
+
+		stringBuilder := &strings.Builder{}
+		it := value.ElementIterator()
+		stringBuilder.WriteString("{\n")
+		i := 0
+		for it.Next() {
+			stringBuilder.WriteString(strings.Repeat(" ", currentIndent+indentSize))
+			key, elemValue := it.Element()
+			fmt.Fprintf(
+				stringBuilder,
+				"%q: %s",
+				key.AsString(),
+				FormatCtyValueToIndentedString(elemValue, currentIndent+indentSize, indentSize),
+			)
+
+			if i < length-1 {
+				stringBuilder.WriteString(",\n")
+			}
+
+			i++
+		}
+
+		stringBuilder.WriteString("\n")
+		stringBuilder.WriteString(strings.Repeat(" ", currentIndent))
+		stringBuilder.WriteString("}")
+
+		return stringBuilder.String()
+
+	default:
+		return "unsupported type"
+	}
 }
