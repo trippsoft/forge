@@ -10,30 +10,34 @@ import (
 	"sync"
 )
 
+// SecretFilter wraps an io.Writer to filter out sensitive information from logs and output.
 type SecretFilter struct {
-	mutex   sync.Mutex
+	mutex   sync.RWMutex
 	secrets *Set[string]
 	writer  io.Writer
 }
 
+// Secrets returns a slice of all secrets currently being filtered.
 func (f *SecretFilter) Secrets() []string {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
 
 	return f.secrets.Items()
 }
 
+// AddSecret adds a secret to be filtered from output.
 func (f *SecretFilter) AddSecret(secret string) {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-
 	if secret == "" {
 		return
 	}
 
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
 	f.secrets.Add(secret)
 }
 
+// SetOutput sets the io.Writer where filtered output will be written.
 func (f *SecretFilter) SetOutput(writer io.Writer) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
@@ -41,7 +45,11 @@ func (f *SecretFilter) SetOutput(writer io.Writer) {
 	f.writer = writer
 }
 
+// Write implements io.Writer, filtering out any added secrets before writing to the underlying writer.
 func (f *SecretFilter) Write(p []byte) (n int, err error) {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
+
 	for _, secret := range f.secrets.Items() {
 		if secret != "" {
 			p = bytes.ReplaceAll(p, []byte(secret), []byte("<redacted>"))
@@ -51,7 +59,11 @@ func (f *SecretFilter) Write(p []byte) (n int, err error) {
 	return f.writer.Write(p)
 }
 
+// Filter filters out any added secrets from the provided message string.
 func (f *SecretFilter) Filter(message string) string {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
+
 	for _, secret := range f.secrets.Items() {
 		if secret != "" {
 			message = strings.ReplaceAll(message, secret, "<redacted>")
@@ -61,6 +73,7 @@ func (f *SecretFilter) Filter(message string) string {
 	return message
 }
 
+// Clear removes all secrets from the filter.
 func (f *SecretFilter) Clear() {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
