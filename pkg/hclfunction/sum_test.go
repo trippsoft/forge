@@ -36,8 +36,12 @@ func getSumTestCases() []struct {
 			expected: cty.NumberIntVal(6),
 		},
 		{
-			name:     "sum of floats",
-			input:    cty.ListVal([]cty.Value{cty.NumberFloatVal(1.5), cty.NumberFloatVal(2.5), cty.NumberFloatVal(3.0)}),
+			name: "sum of floats",
+			input: cty.ListVal([]cty.Value{
+				cty.NumberFloatVal(1.5),
+				cty.NumberFloatVal(2.5),
+				cty.NumberFloatVal(3.0),
+			}),
 			expected: cty.NumberFloatVal(7.0),
 		},
 		{

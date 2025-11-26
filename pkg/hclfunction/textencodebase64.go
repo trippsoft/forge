@@ -35,14 +35,18 @@ var (
 
 			encodingName, err := ianaindex.IANA.Name(encoding)
 			if err != nil {
-				encodingName = args[1].AsString() // Fallback to the original string if not found, this should not happen
+				encodingName = args[1].AsString() // Fallback to the original string if not found
 			}
 
 			input := args[0].AsString()
 			encoder := encoding.NewEncoder()
 			encoded, err := encoder.Bytes([]byte(input))
 			if err != nil {
-				return cty.UnknownVal(cty.String), function.NewArgErrorf(0, "failed to encode input as %q", encodingName)
+				return cty.UnknownVal(cty.String), function.NewArgErrorf(
+					0,
+					"failed to encode input as %q",
+					encodingName,
+				)
 			}
 
 			base64Encoded := base64.StdEncoding.EncodeToString(encoded)

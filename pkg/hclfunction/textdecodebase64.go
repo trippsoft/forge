@@ -36,7 +36,7 @@ var (
 
 			encodingName, err := ianaindex.IANA.Name(encoding)
 			if err != nil {
-				encodingName = args[1].AsString() // Fallback to the original string if not found, this should not happen
+				encodingName = args[1].AsString() // Fallback to the original string if not found
 			}
 
 			input := args[0].AsString()
@@ -45,7 +45,11 @@ var (
 			if err != nil {
 				switch err := err.(type) {
 				case base64.CorruptInputError:
-					return cty.UnknownVal(cty.String), function.NewArgErrorf(0, "the input has invalid base64 character at offset: %d", int(err))
+					return cty.UnknownVal(cty.String), function.NewArgErrorf(
+						0,
+						"the input has invalid base64 character at offset: %d",
+						int(err),
+					)
 				default:
 					return cty.UnknownVal(cty.String), function.NewArgErrorf(0, "failed to decode input: %w", err)
 				}
@@ -55,7 +59,11 @@ var (
 
 			decoded, err := decoder.Bytes([]byte(base64Decoded))
 			if err != nil || bytes.ContainsRune(decoded, '�') {
-				return cty.UnknownVal(cty.String), function.NewArgErrorf(0, "failed to decode input as %q", encodingName)
+				return cty.UnknownVal(cty.String), function.NewArgErrorf(
+					0,
+					"failed to decode input as %q",
+					encodingName,
+				)
 			}
 
 			return cty.StringVal(string(decoded)), nil

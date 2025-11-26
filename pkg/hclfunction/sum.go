@@ -32,7 +32,11 @@ var (
 
 			listType := args[0].Type()
 			if !listType.IsListType() && !listType.IsSetType() && !listType.IsTupleType() {
-				return cty.NilVal, function.NewArgErrorf(0, "sum function requires a list, set, or tuple type, got %q", listType.FriendlyName())
+				return cty.NilVal, function.NewArgErrorf(
+					0,
+					"sum function requires a list, set, or tuple type, got %q",
+					listType.FriendlyName(),
+				)
 			}
 
 			if !args[0].IsWhollyKnown() {
@@ -43,7 +47,10 @@ var (
 
 			sum := list[0]
 			if sum.IsNull() {
-				return cty.NilVal, function.NewArgErrorf(0, "sum function requires a list, set, or tuple of numbers, got null")
+				return cty.NilVal, function.NewArgErrorf(
+					0,
+					"sum function requires a list, set, or tuple of numbers, got null",
+				)
 			}
 
 			sum, err := convert.Convert(sum, cty.Number)
@@ -53,11 +60,17 @@ var (
 
 			for _, value := range list[1:] {
 				if value.IsNull() {
-					return cty.NilVal, function.NewArgErrorf(0, "sum function requires a list, set, or tuple of numbers, got null")
+					return cty.NilVal, function.NewArgErrorf(
+						0,
+						"sum function requires a list, set, or tuple of numbers, got null",
+					)
 				}
 				value, err := convert.Convert(value, cty.Number)
 				if err != nil {
-					return cty.NilVal, function.NewArgErrorf(0, "sum function requires a list, set, or tuple of numbers")
+					return cty.NilVal, function.NewArgErrorf(
+						0,
+						"sum function requires a list, set, or tuple of numbers",
+					)
 				}
 				sum = sum.Add(value)
 			}

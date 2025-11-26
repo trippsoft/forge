@@ -56,7 +56,8 @@ var (
 			case argType.IsListType() || argType.IsSetType() || argType.IsMapType():
 				return arg.Length(), nil
 			default:
-				return cty.UnknownVal(cty.Number), errors.New("length function requires a string, tuple, object, list, map, or set type")
+				return cty.UnknownVal(cty.Number),
+					errors.New("length function requires a string, tuple, object, list, map, or set type")
 			}
 		},
 	})
