@@ -3,6 +3,8 @@
 
 package core
 
+import "github.com/trippsoft/forge/pkg/info"
+
 // TransportType represents the type of transport used for connecting to managed systems.
 type TransportType string
 
@@ -17,4 +19,6 @@ type Transport interface {
 
 	Connect() error // Connect establishes the transport connection.
 	Close() error   // Close terminates the transport connection.
+
+	GetRuntimeInfo() (*info.RuntimeInfo, error) // GetBasicHostInfo retrieves basic host information.
 }
