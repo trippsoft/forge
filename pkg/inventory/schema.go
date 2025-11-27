@@ -44,8 +44,8 @@ var (
 		},
 		Attributes: []hcl.AttributeSchema{},
 	}
-	inventoryTransportLocalSchema = &hcl.BodySchema{}
-	inventoryTransportSSHSchema   = &hcl.BodySchema{
+	transportLocalSchema = &hcl.BodySchema{}
+	transportSSHSchema   = &hcl.BodySchema{
 		Attributes: []hcl.AttributeSchema{
 			{
 				Name:     sshAttrHost,
@@ -90,7 +90,7 @@ var (
 		},
 		Blocks: []hcl.BlockHeaderSchema{},
 	}
-	inventoryEscalateBlockSchema = &hcl.BodySchema{
+	escalateBlockSchema = &hcl.BodySchema{
 		Attributes: []hcl.AttributeSchema{
 			{
 				Name:     "password",
@@ -98,7 +98,7 @@ var (
 			},
 		},
 	}
-	inventoryGroupBlockSchema = &hcl.BodySchema{
+	groupBlockSchema = &hcl.BodySchema{
 		Blocks: []hcl.BlockHeaderSchema{
 			{
 				Type:       "vars",
@@ -120,7 +120,7 @@ var (
 			},
 		},
 	}
-	inventoryHostBlockSchema = &hcl.BodySchema{
+	hostBlockSchema = &hcl.BodySchema{
 		Blocks: []hcl.BlockHeaderSchema{
 			{
 				Type:       "vars",
