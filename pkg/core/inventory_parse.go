@@ -326,7 +326,7 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 	switch transportType {
 	case string(TransportTypeLocal):
 		var moreDiags hcl.Diagnostics
-		body, moreDiags = block.Body.Content(transportLocalSchema)
+		body, moreDiags = block.Body.Content(inventoryTransportLocalSchema)
 		util.ModifyUnexpectedElementDiags(moreDiags, "in a transport \"none\" block")
 		diags = diags.Extend(moreDiags)
 		if moreDiags.HasErrors() {
@@ -335,7 +335,7 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 
 	case string(TransportTypeSSH):
 		var moreDiags hcl.Diagnostics
-		body, moreDiags = block.Body.Content(transportSSHSchema)
+		body, moreDiags = block.Body.Content(inventoryTransportSSHSchema)
 		util.ModifyUnexpectedElementDiags(moreDiags, "in a transport \"ssh\" block")
 		diags = diags.Extend(moreDiags)
 		if moreDiags.HasErrors() {
@@ -417,7 +417,7 @@ func parseEscalateBlocksToIntermediate(blocks []*hcl.Block) (*intermediateEscala
 func parseEscalateBlockToIntermediate(block *hcl.Block) (*intermediateEscalate, hcl.Diagnostics) {
 	diags := hcl.Diagnostics{}
 
-	body, moreDiags := block.Body.Content(escalateBlockSchema)
+	body, moreDiags := block.Body.Content(inventoryEscalateBlockSchema)
 	util.ModifyUnexpectedElementDiags(moreDiags, "in an escalate block")
 	diags = diags.Extend(moreDiags)
 	if moreDiags.HasErrors() {
@@ -496,7 +496,7 @@ func parseGroupBlockToIntermediate(block *hcl.Block) (*intermediateGroup, hcl.Di
 		vars: make(map[string]*hcl.Attribute),
 	}
 
-	content, moreDiags := block.Body.Content(groupBlockSchema)
+	content, moreDiags := block.Body.Content(inventoryGroupBlockSchema)
 	util.ModifyUnexpectedElementDiags(moreDiags, "in a group block")
 	diags = diags.Extend(moreDiags)
 
@@ -642,7 +642,7 @@ func parseHostBlockToIntermediate(block *hcl.Block) (*intermediateHost, hcl.Diag
 		hclRange:  &block.DefRange,
 	}
 
-	content, moreDiags := block.Body.Content(hostBlockSchema)
+	content, moreDiags := block.Body.Content(inventoryHostBlockSchema)
 	util.ModifyUnexpectedElementDiags(moreDiags, "in a host block")
 	diags = diags.Extend(moreDiags)
 	if moreDiags.HasErrors() {
