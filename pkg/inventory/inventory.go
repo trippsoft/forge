@@ -1,13 +1,14 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package core
+package inventory
 
 import (
 	"errors"
 	"maps"
 
 	"github.com/trippsoft/forge/pkg/info"
+	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -32,7 +33,7 @@ func (e *EscalateConfig) Pass() string {
 type Host struct {
 	name string
 
-	transport      Transport
+	transport      transport.Transport
 	escalateConfig *EscalateConfig
 
 	info *info.HostInfo
@@ -45,7 +46,7 @@ func (h *Host) Name() string {
 }
 
 // Transport returns the transport used to connect to the host.
-func (h *Host) Transport() Transport {
+func (h *Host) Transport() transport.Transport {
 	return h.transport
 }
 
@@ -58,7 +59,7 @@ func (h *Host) Vars() map[string]cty.Value {
 type HostBuilder struct {
 	name string
 
-	transport      Transport
+	transport      transport.Transport
 	escalateConfig *EscalateConfig
 
 	vars map[string]cty.Value
@@ -76,7 +77,7 @@ func (b *HostBuilder) WithName(name string) *HostBuilder {
 }
 
 // WithTransport sets the transport for the host.
-func (b *HostBuilder) WithTransport(transport Transport) *HostBuilder {
+func (b *HostBuilder) WithTransport(transport transport.Transport) *HostBuilder {
 	b.transport = transport
 	return b
 }

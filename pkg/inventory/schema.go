@@ -1,7 +1,7 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package core
+package inventory
 
 import "github.com/hashicorp/hcl/v2"
 

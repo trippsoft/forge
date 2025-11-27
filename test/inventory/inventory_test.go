@@ -13,13 +13,14 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/trippsoft/forge/pkg/core"
+	"github.com/trippsoft/forge/pkg/inventory"
+	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
 )
 
 type expectedHost struct {
 	name          string
-	transportType core.TransportType
+	transportType transport.TransportType
 	vars          map[string]cty.Value
 }
 
@@ -113,7 +114,7 @@ func createExpectedTargets(t *testing.T, expectedHosts []expectedHost, expectedG
 	return expectedTargets
 }
 
-func verifyHosts(t *testing.T, inventory *core.Inventory, expectedHosts []expectedHost) {
+func verifyHosts(t *testing.T, inventory *inventory.Inventory, expectedHosts []expectedHost) {
 	hosts := inventory.Hosts()
 	if len(hosts) != len(expectedHosts) {
 		t.Errorf("Expected %d hosts, got %d.", len(expectedHosts), len(hosts))
@@ -130,7 +131,7 @@ func verifyHosts(t *testing.T, inventory *core.Inventory, expectedHosts []expect
 	}
 }
 
-func verifyHost(t *testing.T, host *core.Host, expected expectedHost) {
+func verifyHost(t *testing.T, host *inventory.Host, expected expectedHost) {
 	t.Helper()
 
 	if host.Name() != expected.name {
@@ -188,7 +189,7 @@ func verifyHost(t *testing.T, host *core.Host, expected expectedHost) {
 	}
 }
 
-func verifyGroups(t *testing.T, inventory *core.Inventory, expectedGroups []expectedGroup) {
+func verifyGroups(t *testing.T, inventory *inventory.Inventory, expectedGroups []expectedGroup) {
 	t.Helper()
 
 	groups := inventory.Groups()
@@ -232,7 +233,7 @@ func verifyGroups(t *testing.T, inventory *core.Inventory, expectedGroups []expe
 	}
 }
 
-func verifyTargets(t *testing.T, inventory *core.Inventory, expectedTargets []expectedGroup) {
+func verifyTargets(t *testing.T, inventory *inventory.Inventory, expectedTargets []expectedGroup) {
 	t.Helper()
 
 	targets := inventory.Targets()
@@ -303,7 +304,7 @@ func verifyDiagnostics(t *testing.T, expected hcl.Diagnostics, actual hcl.Diagno
 func TestSimpleParsing(t *testing.T) {
 	path := filepath.Join("corpus", "simple")
 
-	files, err := core.DiscoverInventoryFiles(path)
+	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
 		t.Fatalf("Failed to discover inventory files: %v", err)
 	}
@@ -312,7 +313,7 @@ func TestSimpleParsing(t *testing.T) {
 		t.Fatalf("Expected 1 inventory file, got %d", len(files))
 	}
 
-	inventory, diags := core.ParseInventoryFiles(files)
+	inventory, diags := inventory.ParseInventoryFiles(files)
 	if diags.HasErrors() {
 		t.Fatalf("Failed to parse inventory: %s", diags.Error())
 	}
@@ -395,7 +396,7 @@ func TestParentHierarchyParsing(t *testing.T) {
 		path = filepath.Join("corpus", "parent-hierarchy", "nonwin")
 	}
 
-	files, err := core.DiscoverInventoryFiles(path)
+	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
 		t.Fatalf("Failed to discover inventory files: %v", err)
 	}
@@ -404,7 +405,7 @@ func TestParentHierarchyParsing(t *testing.T) {
 		t.Fatalf("Expected 1 inventory file, got %d", len(files))
 	}
 
-	inventory, diags := core.ParseInventoryFiles(files)
+	inventory, diags := inventory.ParseInventoryFiles(files)
 	if diags.HasErrors() {
 		t.Fatalf("Failed to parse inventory: %s", diags.Error())
 	}
@@ -553,7 +554,7 @@ func TestParentHierarchyParsing(t *testing.T) {
 func TestVariableInterpolationParsing(t *testing.T) {
 	path := filepath.Join("corpus", "variable-interpolation")
 
-	files, err := core.DiscoverInventoryFiles(path)
+	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
 		t.Fatalf("Failed to discover inventory files: %v", err)
 	}
@@ -562,7 +563,7 @@ func TestVariableInterpolationParsing(t *testing.T) {
 		t.Fatalf("Expected 1 inventory file, got %d", len(files))
 	}
 
-	inventory, diags := core.ParseInventoryFiles(files)
+	inventory, diags := inventory.ParseInventoryFiles(files)
 	if diags.HasErrors() {
 		t.Fatalf("Failed to parse inventory: %s", diags.Error())
 	}
@@ -731,7 +732,7 @@ func TestTransportInheritanceParsing(t *testing.T) {
 		path = filepath.Join("corpus", "transport-inheritance", "nonwin")
 	}
 
-	files, err := core.DiscoverInventoryFiles(path)
+	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
 		t.Fatalf("Failed to discover inventory files: %v", err)
 	}
@@ -740,7 +741,7 @@ func TestTransportInheritanceParsing(t *testing.T) {
 		t.Fatalf("Expected 1 inventory file, got %d", len(files))
 	}
 
-	inventory, diags := core.ParseInventoryFiles(files)
+	inventory, diags := inventory.ParseInventoryFiles(files)
 	if diags.HasErrors() {
 		t.Fatalf("Failed to parse inventory: %s", diags.Error())
 	}
@@ -855,7 +856,7 @@ func TestMultiEnvironmentParsing(t *testing.T) {
 		path = filepath.Join("corpus", "multi-environment", "nonwin")
 	}
 
-	files, err := core.DiscoverInventoryFiles(path)
+	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
 		t.Fatalf("Failed to discover inventory files: %v", err)
 	}
@@ -864,7 +865,7 @@ func TestMultiEnvironmentParsing(t *testing.T) {
 		t.Fatalf("Expected 3 inventory files, got %d", len(files))
 	}
 
-	inventory, diags := core.ParseInventoryFiles(files)
+	inventory, diags := inventory.ParseInventoryFiles(files)
 	if diags.HasErrors() {
 		t.Fatalf("Failed to parse inventory: %s", diags.Error())
 	}
@@ -1223,7 +1224,7 @@ func TestMultiEnvironmentParsing_Partial(t *testing.T) {
 				}
 			}
 
-			files, err := core.DiscoverInventoryFiles(fullPaths...)
+			files, err := inventory.DiscoverInventoryFiles(fullPaths...)
 			if err != nil {
 				t.Fatalf("Failed to discover inventory files: %v", err)
 			}
@@ -1232,7 +1233,7 @@ func TestMultiEnvironmentParsing_Partial(t *testing.T) {
 				t.Fatalf("Expected %d inventory files, got %d", len(tt.paths), len(files))
 			}
 
-			inventory, diags := core.ParseInventoryFiles(files)
+			inventory, diags := inventory.ParseInventoryFiles(files)
 			if diags.HasErrors() {
 				t.Fatalf("Failed to parse inventory: %s", diags.Error())
 			}
@@ -1258,7 +1259,7 @@ func TestMultiEnvironmentParsing_Partial(t *testing.T) {
 func TestComplexVariableParsing(t *testing.T) {
 	path := filepath.Join("corpus", "complex-variables")
 
-	files, err := core.DiscoverInventoryFiles(path)
+	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
 		t.Fatalf("Failed to discover inventory files: %v", err)
 	}
@@ -1267,7 +1268,7 @@ func TestComplexVariableParsing(t *testing.T) {
 		t.Fatalf("Expected 1 inventory file, got %d", len(files))
 	}
 
-	inventory, diags := core.ParseInventoryFiles(files)
+	inventory, diags := inventory.ParseInventoryFiles(files)
 	if diags.HasErrors() {
 		t.Fatalf("Failed to parse inventory: %s", diags.Error())
 	}
@@ -1481,7 +1482,7 @@ func TestComplexVariableParsing(t *testing.T) {
 func TestDeepHierarchyParsing(t *testing.T) {
 	path := filepath.Join("corpus", "deep-hierarchy")
 
-	files, err := core.DiscoverInventoryFiles(path)
+	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
 		t.Fatalf("Failed to discover inventory files: %v", err)
 	}
@@ -1490,7 +1491,7 @@ func TestDeepHierarchyParsing(t *testing.T) {
 		t.Fatalf("Expected 1 inventory file, got %d", len(files))
 	}
 
-	inventory, diags := core.ParseInventoryFiles(files)
+	inventory, diags := inventory.ParseInventoryFiles(files)
 	if diags.HasErrors() {
 		t.Fatalf("Failed to parse inventory: %s", diags.Error())
 	}
@@ -1838,7 +1839,7 @@ func TestMultiPathCombinedParsing(t *testing.T) {
 	path2 := filepath.Join("corpus", "multi-path", "production")
 	path3 := filepath.Join("corpus", "multi-path", "staging")
 
-	files, err := core.DiscoverInventoryFiles(path1, path2, path3)
+	files, err := inventory.DiscoverInventoryFiles(path1, path2, path3)
 	if err != nil {
 		t.Fatalf("Failed to discover inventory files: %v", err)
 	}
@@ -1847,7 +1848,7 @@ func TestMultiPathCombinedParsing(t *testing.T) {
 		t.Fatalf("Expected 3 inventory files, got %d", len(files))
 	}
 
-	inventory, diags := core.ParseInventoryFiles(files)
+	inventory, diags := inventory.ParseInventoryFiles(files)
 	if diags.HasErrors() {
 		t.Fatalf("Failed to parse inventory: %s", diags.Error())
 	}
@@ -2089,7 +2090,7 @@ func TestMultiPathCombinedParsing_Partial(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			files, err := core.DiscoverInventoryFiles(tt.paths...)
+			files, err := inventory.DiscoverInventoryFiles(tt.paths...)
 			if err != nil {
 				t.Fatalf("Failed to discover inventory files: %v", err)
 			}
@@ -2098,7 +2099,7 @@ func TestMultiPathCombinedParsing_Partial(t *testing.T) {
 				t.Fatalf("Expected %d inventory files, got %d", len(tt.paths), len(files))
 			}
 
-			inventory, diags := core.ParseInventoryFiles(files)
+			inventory, diags := inventory.ParseInventoryFiles(files)
 			if diags.HasErrors() {
 				t.Fatalf("Failed to parse inventory: %s", diags.Error())
 			}
@@ -2124,7 +2125,7 @@ func TestMultiPathCombinedParsing_Partial(t *testing.T) {
 func TestCircularParentReferenceParsing(t *testing.T) {
 	path := filepath.Join("corpus", "error-cases", "circular-parent.hcl")
 
-	files, err := core.DiscoverInventoryFiles(path)
+	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
 		t.Fatalf("Failed to discover inventory files: %v", err)
 	}
@@ -2133,7 +2134,7 @@ func TestCircularParentReferenceParsing(t *testing.T) {
 		t.Fatalf("Expected 1 inventory file, got %d", len(files))
 	}
 
-	inventory, diags := core.ParseInventoryFiles(files)
+	inventory, diags := inventory.ParseInventoryFiles(files)
 	if !diags.HasErrors() {
 		t.Fatal("Expected parsing to fail due to circular parent reference")
 	}
@@ -2166,7 +2167,7 @@ func TestCircularParentReferenceParsing(t *testing.T) {
 func TestInvalidParentReferenceParsing(t *testing.T) {
 	path := filepath.Join("corpus", "error-cases", "invalid-parent.hcl")
 
-	files, err := core.DiscoverInventoryFiles(path)
+	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
 		t.Fatalf("Failed to discover inventory files: %v", err)
 	}
@@ -2175,7 +2176,7 @@ func TestInvalidParentReferenceParsing(t *testing.T) {
 		t.Fatalf("Expected 1 inventory file, got %d", len(files))
 	}
 
-	inventory, diags := core.ParseInventoryFiles(files)
+	inventory, diags := inventory.ParseInventoryFiles(files)
 	if !diags.HasErrors() {
 		t.Fatal("Expected parsing to fail due to invalid parent reference")
 	}
@@ -2198,7 +2199,7 @@ func TestInvalidParentReferenceParsing(t *testing.T) {
 func TestReservedGroupNameParsing(t *testing.T) {
 	path := filepath.Join("corpus", "error-cases", "reserved-name.hcl")
 
-	files, err := core.DiscoverInventoryFiles(path)
+	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
 		t.Fatalf("Failed to discover inventory files: %v", err)
 	}
@@ -2207,7 +2208,7 @@ func TestReservedGroupNameParsing(t *testing.T) {
 		t.Fatalf("Expected 1 inventory file, got %d", len(files))
 	}
 
-	inventory, diags := core.ParseInventoryFiles(files)
+	inventory, diags := inventory.ParseInventoryFiles(files)
 	if !diags.HasErrors() {
 		t.Fatal("Expected parsing to fail due to reserved group name")
 	}
@@ -2230,7 +2231,7 @@ func TestReservedGroupNameParsing(t *testing.T) {
 func TestCircularVariablesParsing(t *testing.T) {
 	path := filepath.Join("corpus", "error-cases", "circular-variables.hcl")
 
-	files, err := core.DiscoverInventoryFiles(path)
+	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
 		t.Fatalf("Failed to discover inventory files: %v", err)
 	}
@@ -2239,7 +2240,7 @@ func TestCircularVariablesParsing(t *testing.T) {
 		t.Fatalf("Expected 1 inventory file, got %d", len(files))
 	}
 
-	inventory, diags := core.ParseInventoryFiles(files)
+	inventory, diags := inventory.ParseInventoryFiles(files)
 	if !diags.HasErrors() {
 		t.Fatal("Expected parsing to fail due to circular variable references")
 	}
@@ -2277,7 +2278,7 @@ func TestCircularVariablesParsing(t *testing.T) {
 func TestNameConflictsParsing(t *testing.T) {
 	path := filepath.Join("corpus", "error-cases", "name-conflicts.hcl")
 
-	files, err := core.DiscoverInventoryFiles(path)
+	files, err := inventory.DiscoverInventoryFiles(path)
 	if err != nil {
 		t.Fatalf("Failed to discover inventory files: %v", err)
 	}
@@ -2286,7 +2287,7 @@ func TestNameConflictsParsing(t *testing.T) {
 		t.Fatalf("Expected 1 inventory file, got %d", len(files))
 	}
 
-	inventory, diags := core.ParseInventoryFiles(files)
+	inventory, diags := inventory.ParseInventoryFiles(files)
 	if !diags.HasErrors() {
 		t.Fatal("Expected parsing to fail due to name conflicts")
 	}

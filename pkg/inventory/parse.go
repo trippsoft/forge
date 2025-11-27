@@ -1,7 +1,7 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package core
+package inventory
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -324,7 +325,7 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 	var body *hcl.BodyContent
 
 	switch transportType {
-	case string(TransportTypeLocal):
+	case string(transport.TransportTypeLocal):
 		var moreDiags hcl.Diagnostics
 		body, moreDiags = block.Body.Content(inventoryTransportLocalSchema)
 		util.ModifyUnexpectedElementDiags(moreDiags, "in a transport \"none\" block")
@@ -333,7 +334,7 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 			return nil, diags
 		}
 
-	case string(TransportTypeSSH):
+	case string(transport.TransportTypeSSH):
 		var moreDiags hcl.Diagnostics
 		body, moreDiags = block.Body.Content(inventoryTransportSSHSchema)
 		util.ModifyUnexpectedElementDiags(moreDiags, "in a transport \"ssh\" block")
@@ -349,8 +350,8 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 			Detail: fmt.Sprintf(
 				"The transport type %q is not supported. Allowed types are: %q, %q",
 				transportType,
-				TransportTypeLocal,
-				TransportTypeSSH),
+				transport.TransportTypeLocal,
+				transport.TransportTypeSSH),
 			Subject: &block.DefRange,
 		})
 	}

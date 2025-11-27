@@ -1,7 +1,7 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package core
+package inventory
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/trippsoft/forge/pkg/hclfunction"
+	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/trippsoft/forge/pkg/ui"
 	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
@@ -387,10 +388,10 @@ func containsDependencyError(diags hcl.Diagnostics) bool {
 func resolveAllHostTransports(
 	intermediate *intermediateInventory,
 	hostVars map[string]map[string]cty.Value,
-) (map[string]Transport, hcl.Diagnostics) {
+) (map[string]transport.Transport, hcl.Diagnostics) {
 
 	diags := hcl.Diagnostics{}
-	transports := make(map[string]Transport)
+	transports := make(map[string]transport.Transport)
 	for hostName, host := range intermediate.hosts {
 		vars, exists := hostVars[hostName]
 		if !exists {
@@ -414,7 +415,7 @@ func resolveHostTransport(
 	host *intermediateHost,
 	intermediate *intermediateInventory,
 	vars map[string]cty.Value,
-) (Transport, hcl.Diagnostics) {
+) (transport.Transport, hcl.Diagnostics) {
 
 	inheritanceChain, diags := buildTransportInheritanceChain(hostName, host, intermediate)
 	if diags.HasErrors() {
@@ -423,7 +424,7 @@ func resolveHostTransport(
 
 	combinedTransport := combineTransportsFromChain(inheritanceChain)
 	if combinedTransport == nil {
-		return LocalTransport, diags
+		return transport.LocalTransport, diags
 	}
 
 	transport, moreDiags := createTransportFromConfig(combinedTransport, vars)
@@ -502,12 +503,12 @@ func combineTransportsFromChain(chain []*intermediateTransport) *intermediateTra
 func createTransportFromConfig(
 	intermediate *intermediateTransport,
 	vars map[string]cty.Value,
-) (Transport, hcl.Diagnostics) {
+) (transport.Transport, hcl.Diagnostics) {
 
 	switch intermediate.name {
-	case string(TransportTypeLocal):
-		return LocalTransport, hcl.Diagnostics{}
-	case string(TransportTypeSSH):
+	case string(transport.TransportTypeLocal):
+		return transport.LocalTransport, hcl.Diagnostics{}
+	case string(transport.TransportTypeSSH):
 		return createSSHTransport(intermediate.config, vars)
 	default:
 		return nil, hcl.Diagnostics{
@@ -523,26 +524,26 @@ func createTransportFromConfig(
 func createSSHTransport(
 	transportSSH map[string]*hcl.Attribute,
 	vars map[string]cty.Value,
-) (Transport, hcl.Diagnostics) {
+) (transport.Transport, hcl.Diagnostics) {
 
 	diags := hcl.Diagnostics{}
 	var moreDiags hcl.Diagnostics
 
 	var host string
-	port := DefaultSSHPort // Default SSH port
+	port := transport.DefaultSSHPort // Default SSH port
 	var user string
 	var privateKeyPath string
 	var privateKeyPass string
 	var password string
-	useKnownHosts := DefaultUseKnownHostsFile
+	useKnownHosts := transport.DefaultUseKnownHostsFile
 
-	knownHostsPath, err := DefaultKnownHostsPath()
+	knownHostsPath, err := transport.DefaultKnownHostsPath()
 	if err != nil {
 		knownHostsPath = "" // Fallback to empty if default path cannot be determined
 	}
 
-	addUnknownHosts := DefaultAddUnknownHostsToFile
-	connectionTimeout := DefaultSSHConnectionTimeout
+	addUnknownHosts := transport.DefaultAddUnknownHostsToFile
+	connectionTimeout := transport.DefaultSSHConnectionTimeout
 
 	evalCtx := &hcl.EvalContext{
 		Variables: map[string]cty.Value{
@@ -651,7 +652,7 @@ func createSSHTransport(
 		}
 	}
 
-	builder, err := NewSSHBuilder()
+	builder, err := transport.NewSSHBuilder()
 	if err != nil {
 		return nil, append(diags, &hcl.Diagnostic{
 			Severity: hcl.DiagError,
@@ -863,7 +864,7 @@ func createEscalateConfigFromCombined(
 func buildFinalInventory(
 	intermediate *intermediateInventory,
 	hostVars map[string]map[string]cty.Value,
-	hostTransports map[string]Transport,
+	hostTransports map[string]transport.Transport,
 	hostEscalateConfigs map[string]*EscalateConfig,
 ) (*Inventory, hcl.Diagnostics) {
 
@@ -878,7 +879,7 @@ func buildFinalInventory(
 
 		t, exists := hostTransports[hostName]
 		if !exists {
-			t = LocalTransport
+			t = transport.LocalTransport
 		}
 
 		escalateConfig, exists := hostEscalateConfigs[hostName]
