@@ -33,6 +33,11 @@ const (
 // Each implementation will be specific to the type of UI (e.g. CLI, Packer plugin, web).
 // The implementation should handle secret filtering and text formatting.
 type UI interface {
+	// Print prints a general text message.
+	//
+	// This is usually used for startup messages or other non-structured output.
+	Print(text string)
+
 	// PrintHeader prints a header with a specified level.
 	//
 	// The level (1-3) indicates the importance of the header.
