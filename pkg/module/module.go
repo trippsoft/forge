@@ -4,12 +4,42 @@
 package module
 
 import (
+	"context"
 	"fmt"
 	"maps"
+	"time"
+
+	"github.com/trippsoft/forge/pkg/hclspec"
+	"github.com/trippsoft/forge/pkg/info"
+	"github.com/trippsoft/forge/pkg/result"
+	"github.com/trippsoft/forge/pkg/transport"
+	"github.com/zclconf/go-cty/cty"
 )
+
+const (
+	DefaultTimeout = 10 * time.Minute
+)
+
+// RunConfig provides the context for running a module on a specific host.
+type RunConfig struct {
+	Transport  transport.Transport   // The transport to use for the host.
+	HostInfo   *info.HostInfo        // The host info this context is associated with.
+	Escalation *transport.Escalation // Privilege escalation configuration for the host.
+	WhatIf     bool                  // If true, the module should not make any changes.
+	Input      map[string]cty.Value  // Input variables for the module.
+}
 
 // Module abstracts local and plugin modules.
 type Module interface {
+	// InputSpec returns the specification for the module's input.
+	InputSpec() *hclspec.Spec
+
+	// Validate checks if the module input is valid.
+	// This validation is done after ensuring the input matches the InputSpec.
+	Validate(config *RunConfig) error
+
+	// Run executes the module with the provided host and input.
+	Run(ctx context.Context, config *RunConfig) *result.Result
 }
 
 // Registry manages a collection of modules.
