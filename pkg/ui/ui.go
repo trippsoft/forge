@@ -3,21 +3,16 @@
 
 package ui
 
+import (
+	"github.com/trippsoft/forge/pkg/result"
+)
+
 type HeaderLevel uint8
 
 const (
 	HeaderLevel1 HeaderLevel = 1
 	HeaderLevel2 HeaderLevel = 2
 	HeaderLevel3 HeaderLevel = 3
-)
-
-type ResultType uint8
-
-const (
-	ResultTypeSuccess ResultType = iota
-	ResultTypeChanged
-	ResultTypeSkipped
-	ResultTypeFailure
 )
 
 type MessageLevel uint8
@@ -48,24 +43,12 @@ type UI interface {
 	//
 	// The hostname is the name of the managed system.
 	// The result indicates the outcome of the step execution.
-	PrintHostResult(hostname string, result ResultType)
+	PrintHostResult(hostname string, result *result.Result)
 
 	// PrintIterationResult prints the step result for a single iteration on a host.
 	//
 	// The hostname is the name of the managed system.
 	// The iterationLabel is the label for the specific iteration.
 	// The result indicates the outcome of the step execution for that iteration.
-	PrintIterationResult(hostname, iterationLabel string, result ResultType)
-
-	// PrintMessage prints a general message with a specified level.
-	//
-	// The message is the content to be printed.
-	// The level indicates the severity or importance of the message.
-	PrintMessage(message string, level MessageLevel)
-
-	// PrintErrorDetail prints a detailed error message.
-	//
-	// The message is the detailed error content to be printed.
-	// This will be supressed in non-debug modes.
-	PrintErrorDetail(message string)
+	PrintIterationResult(hostname, iterationLabel string, result *result.Result)
 }
