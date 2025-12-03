@@ -5,6 +5,7 @@ package module
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"time"
@@ -18,6 +19,13 @@ import (
 
 const (
 	DefaultTimeout = 10 * time.Minute
+)
+
+var (
+	localModules = map[string]Module{
+		"assert":  &AssertModule{},
+		"message": &MessageModule{},
+	}
 )
 
 // RunConfig provides the context for running a module on a specific host.
@@ -61,6 +69,19 @@ func (r *Registry) Register(name string, module Module) error {
 
 	r.modules[name] = module
 	return nil
+}
+
+// RegisterLocalModules registers the built-in local modules to the registry.
+func (r *Registry) RegisterLocalModules() error {
+	var err error
+	for name, module := range localModules {
+		regErr := r.Register(name, module)
+		if regErr != nil {
+			err = errors.Join(err, regErr)
+		}
+	}
+
+	return err
 }
 
 // Lookup retrieves a module by its name from the registry.
