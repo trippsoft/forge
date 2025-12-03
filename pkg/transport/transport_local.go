@@ -5,8 +5,6 @@ package transport
 
 import (
 	"runtime"
-
-	"github.com/trippsoft/forge/pkg/info"
 )
 
 var (
@@ -31,7 +29,7 @@ func (l *localTransport) Close() error {
 	return nil
 }
 
-// GetRuntimeInfo implements Transport.
-func (l *localTransport) GetRuntimeInfo() (*info.RuntimeInfo, error) {
-	return info.NewRuntimeInfo(runtime.GOOS, runtime.GOARCH), nil
+// GetOSAndArch implements Transport.
+func (l *localTransport) GetOSAndArch() (string, string, error) {
+	return runtime.GOOS, runtime.GOARCH, nil
 }

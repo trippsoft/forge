@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/pkg/sftp"
-	"github.com/trippsoft/forge/pkg/info"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 )
@@ -94,17 +93,17 @@ func (s *sshTransport) Close() error {
 	return nil
 }
 
-// GetRuntimeInfo implements Transport.
-func (s *sshTransport) GetRuntimeInfo() (*info.RuntimeInfo, error) {
+// GetOSAndArch implements Transport.
+func (s *sshTransport) GetOSAndArch() (string, string, error) {
 
 	err := s.Connect()
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to SSH server: %w", err)
+		return "", "", fmt.Errorf("failed to connect to SSH server: %w", err)
 	}
 
 	session, err := s.client.NewSession()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create SSH session: %w", err)
+		return "", "", fmt.Errorf("failed to create SSH session: %w", err)
 	}
 
 	// Check if PowerShell is available on the remote system
@@ -114,18 +113,18 @@ func (s *sshTransport) GetRuntimeInfo() (*info.RuntimeInfo, error) {
 	session.Close()
 	if psErr == nil {
 		// PowerShell is available, detect Windows OS architecture
-		arch, archErr := s.getWindowsArchitecture()
+		arch, archErr := s.getWindowsArch()
 		if archErr != nil {
-			return nil, fmt.Errorf("failed to detect Windows architecture: %w", archErr)
+			return "", "", fmt.Errorf("failed to detect Windows architecture: %w", archErr)
 		}
 
-		return info.NewRuntimeInfo("windows", arch), nil
+		return "windows", arch, nil
 	}
 
-	return s.getPosixBasicHostInfo()
+	return s.getPosixOSAndArch()
 }
 
-func (s *sshTransport) getWindowsArchitecture() (string, error) {
+func (s *sshTransport) getWindowsArch() (string, error) {
 	session, err := s.client.NewSession()
 	if err != nil {
 		return "", fmt.Errorf("failed to create SSH session: %w", err)
@@ -151,17 +150,17 @@ func (s *sshTransport) getWindowsArchitecture() (string, error) {
 	return "", fmt.Errorf("unknown or unsupported architecture: %s", arch)
 }
 
-func (s *sshTransport) getPosixBasicHostInfo() (*info.RuntimeInfo, error) {
+func (s *sshTransport) getPosixOSAndArch() (string, string, error) {
 	session, err := s.client.NewSession()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create SSH session: %w", err)
+		return "", "", fmt.Errorf("failed to create SSH session: %w", err)
 	}
 
 	kernelCmd := "uname -s"
 	kernelOutput, err := session.CombinedOutput(kernelCmd)
 	session.Close()
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute kernel detection command: %w", err)
+		return "", "", fmt.Errorf("failed to execute kernel detection command: %w", err)
 	}
 
 	os := strings.TrimSpace(strings.ToLower(string(kernelOutput)))
@@ -170,19 +169,19 @@ func (s *sshTransport) getPosixBasicHostInfo() (*info.RuntimeInfo, error) {
 	case "aix", "darwin", "dragonfly", "freebsd", "illumos", "linux", "netbsd", "openbsd", "plan9", "solaris":
 		// Supported POSIX OS, now detect architecture
 	default:
-		return nil, fmt.Errorf("unknown or unsupported POSIX OS: %s", os)
+		return "", "", fmt.Errorf("unknown or unsupported POSIX OS: %s", os)
 	}
 
 	session, err = s.client.NewSession()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create SSH session: %w", err)
+		return "", "", fmt.Errorf("failed to create SSH session: %w", err)
 	}
 	defer session.Close()
 
 	archCmd := "uname -m"
 	archOutput, err := session.CombinedOutput(archCmd)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute architecture detection command: %w", err)
+		return "", "", fmt.Errorf("failed to execute architecture detection command: %w", err)
 	}
 
 	arch := strings.TrimSpace(strings.ToLower(string(archOutput)))
@@ -199,10 +198,10 @@ func (s *sshTransport) getPosixBasicHostInfo() (*info.RuntimeInfo, error) {
 	case "386", "amd64", "arm", "arm64", "mips", "mips64", "ppc64", "ppc64le", "riscv64", "s390x":
 		// Supported architecture that matches Go naming
 	default:
-		return nil, fmt.Errorf("unknown or unsupported architecture: %s", arch)
+		return "", "", fmt.Errorf("unknown or unsupported architecture: %s", arch)
 	}
 
-	return info.NewRuntimeInfo(os, arch), nil
+	return os, arch, nil
 }
 
 // SSHTransportBuilder is a builder for constructing SSH transport instances.

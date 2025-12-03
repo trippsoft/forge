@@ -8,6 +8,7 @@ import (
 	"maps"
 
 	"github.com/trippsoft/forge/pkg/info"
+	"github.com/trippsoft/forge/pkg/result"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -66,6 +67,11 @@ func (h *Host) Info() *info.HostInfo {
 // Vars returns the variables associated with the host.
 func (h *Host) Vars() map[string]cty.Value {
 	return h.vars
+}
+
+// PopulateInfo populates the host's information using its transport.
+func (h *Host) PopulateInfo(runtimeOnly bool) *result.Result {
+	return h.info.Populate(h.transport, runtimeOnly)
 }
 
 // GetCurrentContextSteps retrieves the current step context for the host.

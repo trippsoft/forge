@@ -7,6 +7,8 @@ import (
 	"maps"
 	"strings"
 
+	"github.com/trippsoft/forge/pkg/result"
+	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -15,12 +17,38 @@ type HostInfo struct {
 	runtime *RuntimeInfo
 }
 
+// Populate retrieves and populates the HostInfo using the provided transport.
+func (i *HostInfo) Populate(t transport.Transport, runtimeOnly bool) *result.Result {
+	var err error
+	i.runtime.os, i.runtime.arch, err = t.GetOSAndArch()
+	if err != nil {
+		return result.NewFailure(err, err.Error())
+	}
+
+	if runtimeOnly {
+		return result.NewSuccess(false, nil)
+	}
+
+	// TODO - Add more info population here in the future
+
+	return result.NewSuccess(false, nil)
+}
+
+// Runtime returns the RuntimeInfo of the managed host.
+func (i *HostInfo) Runtime() *RuntimeInfo {
+	return i.runtime
+}
+
+// ToMapOfCtyValues converts the HostInfo into a map of cty.Values.
 func (i *HostInfo) ToMapOfCtyValues() map[string]cty.Value {
 	values := make(map[string]cty.Value)
 	maps.Copy(values, i.runtime.ToMapOfCtyValues())
 	return values
 }
 
+// String returns a string representation of the host information.
+//
+// This is useful for logging or debugging purposes.
 func (i *HostInfo) String() string {
 	stringBuilder := &strings.Builder{}
 
@@ -28,6 +56,13 @@ func (i *HostInfo) String() string {
 	stringBuilder.WriteString("\n")
 
 	return stringBuilder.String()
+}
+
+// NewHostInfo creates a new HostInfo instance.
+func NewHostInfo() *HostInfo {
+	return &HostInfo{
+		runtime: &RuntimeInfo{},
+	}
 }
 
 // RuntimeInfo contains the OS and architecture information of a managed host.
@@ -46,6 +81,7 @@ func (r *RuntimeInfo) Arch() string {
 	return r.arch
 }
 
+// ToMapOfCtyValues converts the RuntimeInfo into a map of cty.Values.
 func (r *RuntimeInfo) ToMapOfCtyValues() map[string]cty.Value {
 	values := make(map[string]cty.Value)
 	if r.os == "" {

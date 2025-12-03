@@ -70,7 +70,37 @@ func (p *Process) Run(wc *WorkflowContext) (map[string]map[string]cty.Value, err
 }
 
 func (p *Process) discoverInfoForTargets(wc *WorkflowContext) error {
-	panic("not implemented")
+	var header string
+	if p.discoverInfo {
+		header = "Discovering Host Info"
+	} else {
+		header = "Discovering Runtime Info Only"
+	}
+
+	wc.ui.PrintHeader(ui.HeaderLevel2, header)
+
+	errChannel := make(chan error)
+	var err error
+	for _, target := range p.allTargets {
+		go func(host *inventory.Host) {
+			result := host.PopulateInfo(!p.discoverInfo)
+
+			var e error
+			if result.Err != nil {
+				e = result.Err
+			}
+
+			wc.ui.PrintHostResult(host.Name(), result)
+			errChannel <- e
+		}(target)
+	}
+
+	for range p.allTargets {
+		e := <-errChannel
+		err = errors.Join(err, e)
+	}
+
+	return err
 }
 
 // ProcessBuilder is used to build a Process instance during parsing.

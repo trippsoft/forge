@@ -5,8 +5,6 @@ package transport
 
 import (
 	"runtime"
-
-	"github.com/trippsoft/forge/pkg/info"
 )
 
 var (
@@ -33,9 +31,9 @@ func (w *MockTransport) Close() error {
 	return nil
 }
 
-// GetRuntimeInfo implements Transport.
-func (w *MockTransport) GetRuntimeInfo() (*info.RuntimeInfo, error) {
-	return info.NewRuntimeInfo(runtime.GOOS, runtime.GOARCH), nil
+// GetOSAndArch implements Transport.
+func (w *MockTransport) GetOSAndArch() (string, string, error) {
+	return runtime.GOOS, runtime.GOARCH, nil
 }
 
 // NewMockTransport creates a new instance of MockTransport with default settings.
