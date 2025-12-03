@@ -64,6 +64,7 @@ func (r *RuntimeInfo) ToMapOfCtyValues() map[string]cty.Value {
 }
 
 // String returns a string representation of the OS information.
+//
 // This is useful for logging or debugging purposes.
 func (r *RuntimeInfo) String() string {
 	stringBuilder := &strings.Builder{}

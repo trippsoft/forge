@@ -16,8 +16,8 @@ type Result struct {
 	Err            error                // Error encountered during module execution, if any.
 	ErrDetail      string               // Detailed error message, if any.
 	Output         map[string]cty.Value // Output data from the module execution.
-	Warning        string               // Warning message, if any.
-	Message        string               // Informational message, if any.
+	Warnings       []string             // Warning message, if any.
+	Messages       []string             // Informational message, if any.
 }
 
 // NewSuccess creates a new success result.
