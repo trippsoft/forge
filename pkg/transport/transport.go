@@ -13,10 +13,10 @@ const (
 
 // Transport defines the transport mechanism for interacting a managed system.
 type Transport interface {
-	Type() TransportType // Type returns the type of transport.
+	Type() TransportType   // Type returns the type of transport.
+	OS() (string, error)   // OS returns the operating system of the managed system.
+	Arch() (string, error) // Arch returns the architecture of the managed system.
 
 	Connect() error // Connect establishes the transport connection.
 	Close() error   // Close terminates the transport connection.
-
-	GetOSAndArch() (os string, arch string, err error) // GetOSAndArch retrieves OS and architecture information.
 }

@@ -19,6 +19,16 @@ func (l *localTransport) Type() TransportType {
 	return TransportTypeLocal
 }
 
+// OS implements Transport.
+func (l *localTransport) OS() (string, error) {
+	return runtime.GOOS, nil
+}
+
+// Arch implements Transport.
+func (l *localTransport) Arch() (string, error) {
+	return runtime.GOARCH, nil
+}
+
 // Connect implements Transport.
 func (l *localTransport) Connect() error {
 	return nil
@@ -27,9 +37,4 @@ func (l *localTransport) Connect() error {
 // Close implements Transport.
 func (l *localTransport) Close() error {
 	return nil
-}
-
-// GetOSAndArch implements Transport.
-func (l *localTransport) GetOSAndArch() (string, string, error) {
-	return runtime.GOOS, runtime.GOARCH, nil
 }

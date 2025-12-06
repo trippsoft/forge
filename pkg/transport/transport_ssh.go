@@ -61,6 +61,30 @@ func (s *sshTransport) Type() TransportType {
 	return TransportTypeSSH
 }
 
+// OS implements Transport.
+func (s *sshTransport) OS() (string, error) {
+	if s.os == "" {
+		err := s.Connect()
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return s.os, nil
+}
+
+// Arch implements Transport.
+func (s *sshTransport) Arch() (string, error) {
+	if s.arch == "" {
+		err := s.Connect()
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return s.arch, nil
+}
+
 // Connect implements Transport.
 func (s *sshTransport) Connect() error {
 	if s.client != nil {

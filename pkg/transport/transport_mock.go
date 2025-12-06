@@ -21,6 +21,16 @@ func (w *MockTransport) Type() TransportType {
 	return w.TransportType
 }
 
+// OS implements Transport.
+func (w *MockTransport) OS() (string, error) {
+	return runtime.GOOS, nil
+}
+
+// Arch implements Transport.
+func (w *MockTransport) Arch() (string, error) {
+	return runtime.GOARCH, nil
+}
+
 // Connect implements Transport.
 func (w *MockTransport) Connect() error {
 	return nil
@@ -29,11 +39,6 @@ func (w *MockTransport) Connect() error {
 // Close implements Transport.
 func (w *MockTransport) Close() error {
 	return nil
-}
-
-// GetOSAndArch implements Transport.
-func (w *MockTransport) GetOSAndArch() (string, string, error) {
-	return runtime.GOOS, runtime.GOARCH, nil
 }
 
 // NewMockTransport creates a new instance of MockTransport with default settings.
