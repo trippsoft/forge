@@ -5,6 +5,8 @@ package transport
 
 import (
 	"runtime"
+
+	"github.com/trippsoft/forge/pkg/discover"
 )
 
 var (
@@ -39,6 +41,11 @@ func (w *MockTransport) Connect() error {
 // Close implements Transport.
 func (w *MockTransport) Close() error {
 	return nil
+}
+
+// StartDiscovery implements Transport.
+func (w *MockTransport) StartDiscovery() (*discover.DiscoveryClient, error) {
+	panic("unimplemented") // TODO: Implement mock discovery client if needed
 }
 
 // NewMockTransport creates a new instance of MockTransport with default settings.

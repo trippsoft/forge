@@ -4,16 +4,22 @@
 package transport
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/pkg/sftp"
+	"github.com/trippsoft/forge/pkg/discover"
+	"github.com/trippsoft/forge/pkg/network"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 )
@@ -43,13 +49,17 @@ type sshTransport struct {
 	host string
 	port uint16
 
-	minPluginPort uint16
-	maxPluginPort uint16
+	minLocalPluginPort uint16
+	maxLocalPluginPort uint16
+
+	minRemotePluginPort uint16
+	maxRemotePluginPort uint16
 
 	os   string
 	arch string
 
-	tempPath string
+	discoveryPluginBasePath string
+	tempPath                string
 
 	config     *ssh.ClientConfig
 	client     *ssh.Client
@@ -140,8 +150,134 @@ func (s *sshTransport) Close() error {
 	return nil
 }
 
-func (s *sshTransport) populatePlatformInfo() error {
+// StartDiscovery implements Transport.
+func (s *sshTransport) StartDiscovery() (*discover.DiscoveryClient, error) {
+	err := s.Connect()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to SSH server: %w", err)
+	}
 
+	var extension string
+	if s.os == "windows" {
+		extension = ".exe"
+	}
+
+	localPluginPath := fmt.Sprintf(
+		"%sforge-discover_%s_%s%s",
+		s.discoveryPluginBasePath,
+		s.os,
+		s.arch,
+		extension,
+	)
+
+	remotePluginPath := fmt.Sprintf("%s/forge-discover%s", s.tempPath, extension)
+
+	if s.sftpClient == nil {
+		sftpClient, err := sftp.NewClient(s.client)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create SFTP client: %w", err)
+		}
+		s.sftpClient = sftpClient
+	}
+
+	err = s.sftpClient.MkdirAll(s.tempPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create remote temp path '%s': %w", s.tempPath, err)
+	}
+
+	err = s.uploadFile(localPluginPath, remotePluginPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to upload discovery plugin to remote path '%s': %w", remotePluginPath, err)
+	}
+
+	if s.os != "windows" {
+		session, err := s.client.NewSession()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create SSH session: %w", err)
+		}
+
+		err = session.Run(fmt.Sprintf("chmod +x %s", remotePluginPath))
+		session.Close()
+		if err != nil {
+			return nil, fmt.Errorf("failed to make discovery plugin executable: %w", err)
+		}
+	}
+
+	session, err := s.client.NewSession()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create session: %w", err)
+	}
+
+	stdout, err := session.StdoutPipe()
+	if err != nil {
+		session.Close()
+		return nil, fmt.Errorf("failed to get stdout pipe: %w", err)
+	}
+
+	stderr, err := session.StderrPipe()
+	if err != nil {
+		session.Close()
+		return nil, fmt.Errorf("failed to get stderr pipe: %w", err)
+	}
+
+	// Start the plugin
+	err = session.Start(
+		fmt.Sprintf(
+			"FORGE_DISCOVERY_MIN_PORT=%d FORGE_DISCOVERY_MAX_PORT=%d %s",
+			s.minRemotePluginPort,
+			s.maxRemotePluginPort,
+			remotePluginPath,
+		),
+	)
+
+	if err != nil {
+		session.Close()
+		return nil, fmt.Errorf("failed to start plugin: %w", err)
+	}
+
+	// Read port from stdout
+	scanner := bufio.NewScanner(stdout)
+	var portOutput string
+	for scanner.Scan() {
+		portOutput = scanner.Text()
+		break
+	}
+
+	if portOutput == "" {
+		errBuf := &bytes.Buffer{}
+		errBuf.ReadFrom(stderr)
+		session.Close()
+		return nil, fmt.Errorf("no port output from plugin: %s", errBuf.String())
+	}
+
+	remotePort, err := strconv.ParseUint(portOutput, 10, 16)
+	if err != nil {
+		session.Close()
+		return nil, fmt.Errorf("invalid port output: %w", err)
+	}
+
+	// TODO - Implement configurable local port range
+	listener, localPort, err := network.GetListenerAndPortInRange(s.minLocalPluginPort, s.maxLocalPluginPort)
+	if err != nil {
+		session.Close()
+		return nil, fmt.Errorf("failed to get local listener: %w", err)
+	}
+
+	go s.forwardConnections(listener, uint16(remotePort))
+
+	cleanup := func() {
+		listener.Close()
+		session.Signal(ssh.SIGTERM)
+		session.Close()
+		s.sftpClient.Remove(remotePluginPath)
+	}
+
+	discoveryClient := discover.NewDiscoveryClient(localPort, cleanup)
+
+	return discoveryClient, nil
+}
+
+func (s *sshTransport) populatePlatformInfo() error {
 	session, err := s.client.NewSession()
 	if err != nil {
 		return fmt.Errorf("failed to create SSH session: %w", err)
@@ -218,7 +354,7 @@ func (s *sshTransport) populateWindowsTempPath() error {
 	}
 
 	homeDir := strings.TrimSpace(string(homeOutput))
-	s.tempPath = fmt.Sprintf("%s\\AppData\\Local\\Temp", homeDir)
+	s.tempPath = fmt.Sprintf(`%s\AppData\Local\Temp\Forge`, homeDir)
 	return nil
 }
 
@@ -315,263 +451,68 @@ func (s *sshTransport) populatePosixTempPath() error {
 	}
 
 	homeDir := strings.TrimSpace(string(homeOutput))
-	s.tempPath = fmt.Sprintf("%s/.local/share", homeDir)
+	s.tempPath = fmt.Sprintf("%s/.local/share/forge-tmp", homeDir)
 	return nil
 }
 
-// GetOSAndArch implements Transport.
-func (s *sshTransport) GetOSAndArch() (string, string, error) {
-	err := s.Connect()
-	if err != nil {
-		return "", "", fmt.Errorf("failed to connect to SSH server: %w", err)
-	}
-
-	return s.os, s.arch, nil
-}
-
-// SSHTransportBuilder is a builder for constructing SSH transport instances.
-type SSHTransportBuilder struct {
-	host string
-	port uint16
-
-	user string
-
-	publicKeyAuth  bool
-	privateKey     []byte
-	privateKeyPass string
-
-	passwordAuth bool
-	password     string
-
-	useKnownHostsFile     bool
-	knownHostsPath        string
-	addUnknownHostsToFile bool
-
-	connectionTimeout time.Duration
-
-	minPluginPort uint16
-	maxPluginPort uint16
-
-	tempPath string
-}
-
-// WithHost sets the host for the SSH transport.
-func (b *SSHTransportBuilder) WithHost(host string) *SSHTransportBuilder {
-	b.host = host
-	return b
-}
-
-// WithPort sets the port for the SSH transport.
-func (b *SSHTransportBuilder) WithPort(port uint16) *SSHTransportBuilder {
-	b.port = port
-	return b
-}
-
-// WithUser sets the user for the SSH transport.
-func (b *SSHTransportBuilder) WithUser(user string) *SSHTransportBuilder {
-	b.user = user
-	return b
-}
-
-// WithoutPublicKeyAuth disables public key authentication for the SSH transport.
-func (b *SSHTransportBuilder) WithoutPublicKeyAuth() *SSHTransportBuilder {
-	b.publicKeyAuth = false
-	b.privateKey = nil
-	b.privateKeyPass = ""
-	return b
-}
-
-// WithPublicKeyAuth enables public key authentication for the SSH transport.
-func (b *SSHTransportBuilder) WithPublicKeyAuth(privateKey []byte) *SSHTransportBuilder {
-	b.publicKeyAuth = true
-	b.privateKey = privateKey
-	b.privateKeyPass = ""
-	return b
-}
-
-// WithPublicKeyAuthWithPass enables public key authentication with a passphrase for the SSH transport.
-func (b *SSHTransportBuilder) WithPublicKeyAuthWithPass(privateKey []byte, privateKeyPass string) *SSHTransportBuilder {
-	b.publicKeyAuth = true
-	b.privateKey = privateKey
-	b.privateKeyPass = privateKeyPass
-	return b
-}
-
-// WithPasswordAuth disables password authentication for the SSH transport.
-func (b *SSHTransportBuilder) WithPasswordAuth(password string) *SSHTransportBuilder {
-	b.passwordAuth = true
-	b.password = password
-	return b
-}
-
-// WithoutPasswordAuth disables password authentication for the SSH transport.
-func (b *SSHTransportBuilder) WithoutPasswordAuth() *SSHTransportBuilder {
-	b.passwordAuth = false
-	b.password = ""
-	return b
-}
-
-// DontUseKnownHosts disables the use of a known hosts file for the SSH transport.
-func (b *SSHTransportBuilder) DontUseKnownHosts() *SSHTransportBuilder {
-	b.useKnownHostsFile = false
-	return b
-}
-
-// UseKnownHosts enables the use of a known hosts file for the SSH transport, adding unknown hosts to the file.
-func (b *SSHTransportBuilder) UseKnownHosts(knownHostsPath string) *SSHTransportBuilder {
-	b.useKnownHostsFile = true
-	b.knownHostsPath = knownHostsPath
-	b.addUnknownHostsToFile = true
-	return b
-}
-
-// UseStrictKnownHosts enables the use of a known hosts file for the SSH transport, enforcing strict host key checking.
-func (b *SSHTransportBuilder) UseStrictKnownHosts(knownHostsPath string) *SSHTransportBuilder {
-	b.useKnownHostsFile = true
-	b.knownHostsPath = knownHostsPath
-	b.addUnknownHostsToFile = false
-	return b
-}
-
-// WithConnectionTimeout sets the connection timeout for the SSH transport.
-func (b *SSHTransportBuilder) WithConnectionTimeout(timeout time.Duration) *SSHTransportBuilder {
-	b.connectionTimeout = timeout
-	return b
-}
-
-// WithPluginPortRange sets the plugin port range for the SSH transport.
-func (b *SSHTransportBuilder) WithPluginPortRange(minPluginPort, maxPluginPort uint16) *SSHTransportBuilder {
-	b.minPluginPort = minPluginPort
-	b.maxPluginPort = maxPluginPort
-	return b
-}
-
-// WithTempPath sets the temporary path for the SSH transport.
-func (b *SSHTransportBuilder) WithTempPath(tempPath string) *SSHTransportBuilder {
-	b.tempPath = tempPath
-	return b
-}
-
-// Build constructs the SSHTransport based on the builder's configuration.
-func (b *SSHTransportBuilder) Build() (Transport, error) {
-	if b.host == "" {
-		return nil, errors.New("host cannot be empty")
-	}
-
-	if b.port == 0 {
-		return nil, errors.New("port must be between 1 and 65535")
-	}
-
-	if b.user == "" {
-		return nil, errors.New("user cannot be empty")
-	}
-
-	if b.publicKeyAuth && b.privateKey == nil {
-		return nil, errors.New("privateKey cannot be empty when public key authentication is enabled")
-	}
-
-	if b.passwordAuth && b.password == "" {
-		return nil, errors.New("password cannot be empty when password authentication is enabled")
-	}
-
-	if b.useKnownHostsFile && b.knownHostsPath == "" {
-		return nil, errors.New("knownHostsPath cannot be empty when using known hosts")
-	}
-
-	if b.connectionTimeout <= 0 {
-		return nil, errors.New("connectionTimeout must be greater than zero")
-	}
-
-	if b.minPluginPort > 0 && b.minPluginPort < 1024 {
-		return nil, errors.New("minPluginPort must be at least 1024")
-	}
-
-	if b.maxPluginPort > 0 && b.maxPluginPort < 1024 {
-		return nil, errors.New("maxPluginPort must be at least 1024")
-	}
-
-	if b.minPluginPort == 0 {
-		if b.maxPluginPort != 0 && b.maxPluginPort < DefaultMinPluginPort {
-			b.minPluginPort = b.maxPluginPort
-		} else {
-			b.minPluginPort = DefaultMinPluginPort
-		}
-	}
-
-	if b.maxPluginPort == 0 {
-		if b.minPluginPort != 0 && b.minPluginPort > DefaultMaxPluginPort {
-			b.maxPluginPort = b.minPluginPort
-		} else {
-			b.maxPluginPort = DefaultMaxPluginPort
-		}
-	}
-
-	authMethods := make([]ssh.AuthMethod, 0, 2)
-	if b.publicKeyAuth {
-		var signer ssh.Signer
-		var err error
-		if b.privateKeyPass != "" {
-			signer, err = ssh.ParsePrivateKeyWithPassphrase(b.privateKey, []byte(b.privateKeyPass))
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse private key with passphrase: %w", err)
-			}
-		} else {
-			signer, err = ssh.ParsePrivateKey(b.privateKey)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse private key: %w", err)
-			}
-		}
-
-		authMethods = append(authMethods, ssh.PublicKeys(signer))
-	}
-
-	if b.passwordAuth {
-		authMethods = append(authMethods, ssh.Password(b.password))
-	}
-
-	hostKeyCallback := ssh.InsecureIgnoreHostKey() // Default to insecure host key checking
-	var err error
-	if b.useKnownHostsFile {
-		if b.addUnknownHostsToFile {
-			hostKeyCallback, err = newHostKeyAddingCallback(b.knownHostsPath)
-		} else {
-			hostKeyCallback, err = knownhosts.New(b.knownHostsPath)
-		}
-
+func (s *sshTransport) uploadFile(localPath, remotePath string) error {
+	if s.sftpClient == nil {
+		sftpClient, err := sftp.NewClient(s.client)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create host key adding callback: %w", err)
+			return fmt.Errorf("failed to create SFTP client: %w", err)
 		}
+		s.sftpClient = sftpClient
 	}
 
-	clientConfig := &ssh.ClientConfig{
-		User:            b.user,
-		Auth:            authMethods,
-		HostKeyCallback: hostKeyCallback,
-		Timeout:         b.connectionTimeout,
+	localFile, err := os.Open(localPath)
+	if err != nil {
+		return fmt.Errorf("failed to open local file '%s': %w", localPath, err)
+	}
+	defer localFile.Close()
+
+	remoteFile, err := s.sftpClient.Create(remotePath)
+	if err != nil {
+		return fmt.Errorf("failed to create remote file '%s': %w", remotePath, err)
+	}
+	defer remoteFile.Close()
+
+	_, err = remoteFile.ReadFrom(localFile)
+	if err != nil {
+		return fmt.Errorf("failed to upload file to '%s': %w", remotePath, err)
 	}
 
-	return &sshTransport{
-		host:          b.host,
-		port:          b.port,
-		config:        clientConfig,
-		minPluginPort: b.minPluginPort,
-		maxPluginPort: b.maxPluginPort,
-		tempPath:      b.tempPath,
-	}, nil
+	return nil
 }
 
-// NewSSHBuilder creates a new SSHTransportBuilder with default settings.
-func NewSSHBuilder() (*SSHTransportBuilder, error) {
-	knownHostsPath, err := DefaultKnownHostsPath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get default known hosts path: %w", err)
-	}
+func (s *sshTransport) forwardConnections(localListener net.Listener, remotePort uint16) {
+	for {
+		localConn, err := localListener.Accept()
+		if err != nil {
+			return // Listener closed
+		}
 
-	return &SSHTransportBuilder{
-		port:              22,               // Default SSH port
-		connectionTimeout: 10 * time.Second, // Default connection timeout
-		knownHostsPath:    knownHostsPath,
-	}, nil
+		go func(local net.Conn) {
+			defer local.Close()
+
+			remoteConn, err := s.client.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", remotePort))
+			if err != nil {
+				return
+			}
+			defer remoteConn.Close()
+
+			// Bidirectional copy
+			done := make(chan struct{}, 2)
+			go func() {
+				io.Copy(remoteConn, local)
+				done <- struct{}{}
+			}()
+			go func() {
+				io.Copy(local, remoteConn)
+				done <- struct{}{}
+			}()
+			<-done
+		}(localConn)
+	}
 }
 
 func newHostKeyAddingCallback(path string) (ssh.HostKeyCallback, error) {

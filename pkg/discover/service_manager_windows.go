@@ -3,7 +3,7 @@
 
 //go:build windows
 
-package info
+package discover
 
 func discoverServiceManagerInfo() (*ServiceManagerInfoResponse, error) {
 	return &ServiceManagerInfoResponse{

@@ -44,7 +44,19 @@ func (i *HostInfo) Populate(t transport.Transport, runtimeOnly bool) *result.Res
 		return result.NewSuccess(false, nil)
 	}
 
-	// TODO - Add more info population here in the future
+	discoveryClient, err := t.StartDiscovery()
+	if err != nil {
+		err = fmt.Errorf("failed to start discovery client: %w", err)
+		return result.NewFailure(err, err.Error())
+	}
+
+	response, err := discoveryClient.Discover()
+	if err != nil {
+		err = fmt.Errorf("failed to discover host info: %w", err)
+		return result.NewFailure(err, err.Error())
+	}
+
+	i.FromProtobuf(response)
 
 	return result.NewSuccess(false, nil)
 }

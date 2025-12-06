@@ -3,7 +3,7 @@
 
 //go:build !aix && !darwin && !linux && !windows
 
-package info
+package discover
 
 import "os"
 

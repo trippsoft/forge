@@ -3,6 +3,8 @@
 
 package transport
 
+import "github.com/trippsoft/forge/pkg/discover"
+
 // TransportType represents the type of transport used for connecting to managed systems.
 type TransportType string
 
@@ -19,4 +21,10 @@ type Transport interface {
 
 	Connect() error // Connect establishes the transport connection.
 	Close() error   // Close terminates the transport connection.
+
+	// StartDiscovery initializes the discovery client.
+	//
+	// basePath specifies the base path for discovery plugins. The OS, architecture, and extension if applicable will be
+	// appended to this path. (e.g., <basePath>_windows_amd64.exe)
+	StartDiscovery() (*discover.DiscoveryClient, error)
 }

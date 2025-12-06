@@ -424,7 +424,7 @@ func resolveHostTransport(
 
 	combinedTransport := combineTransportsFromChain(inheritanceChain)
 	if combinedTransport == nil {
-		return transport.LocalTransport, diags
+		return transport.NewLocalTransportBuilder().Build(), diags
 	}
 
 	transport, moreDiags := createTransportFromConfig(combinedTransport, vars)
@@ -507,7 +507,7 @@ func createTransportFromConfig(
 
 	switch intermediate.name {
 	case string(transport.TransportTypeLocal):
-		return transport.LocalTransport, hcl.Diagnostics{}
+		return transport.NewLocalTransportBuilder().Build(), hcl.Diagnostics{}
 	case string(transport.TransportTypeSSH):
 		return createSSHTransport(intermediate.config, vars)
 	default:
@@ -908,7 +908,7 @@ func buildFinalInventory(
 
 		t, exists := hostTransports[hostName]
 		if !exists {
-			t = transport.LocalTransport
+			t = transport.NewLocalTransportBuilder().Build()
 		}
 
 		escalateConfig, exists := hostEscalateConfigs[hostName]

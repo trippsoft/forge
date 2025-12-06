@@ -3,7 +3,7 @@
 
 //go:build windows
 
-package info
+package discover
 
 func discoverPackageManagerInfo(_ *OSInfoResponse) (*PackageManagerInfoResponse, error) {
 	// Windows package managers are not handled in this implementation.

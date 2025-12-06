@@ -3,7 +3,7 @@
 
 //go:build windows
 
-package info
+package discover
 
 import (
 	"errors"
