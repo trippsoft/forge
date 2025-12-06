@@ -1,7 +1,7 @@
 syntax = "proto3";
 package info;
 
-option go_package = "github.com/trippsoft/forge/pkg/info";
+option go_package = "github.com/trippsoft/forge/pkg/discover";
 
 message DiscoverInfoRequest {}
 

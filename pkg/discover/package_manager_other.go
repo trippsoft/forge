@@ -3,7 +3,7 @@
 
 //go:build !darwin && !windows
 
-package info
+package discover
 
 import (
 	"bytes"

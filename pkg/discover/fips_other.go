@@ -3,7 +3,7 @@
 
 //go:build !linux && !windows
 
-package info
+package discover
 
 func discoverFIPSInfo() (*FIPSInfoResponse, error) {
 	return &FIPSInfoResponse{

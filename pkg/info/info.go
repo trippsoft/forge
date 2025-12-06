@@ -4,9 +4,11 @@
 package info
 
 import (
+	"fmt"
 	"maps"
 	"strings"
 
+	"github.com/trippsoft/forge/pkg/discover"
 	"github.com/trippsoft/forge/pkg/result"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
@@ -26,8 +28,15 @@ type HostInfo struct {
 // Populate retrieves and populates the HostInfo using the provided transport.
 func (i *HostInfo) Populate(t transport.Transport, runtimeOnly bool) *result.Result {
 	var err error
-	i.runtime.os, i.runtime.arch, err = t.GetOSAndArch()
+	i.runtime.os, err = t.OS()
 	if err != nil {
+		err = fmt.Errorf("failed to get OS from transport: %w", err)
+		return result.NewFailure(err, err.Error())
+	}
+
+	i.runtime.arch, err = t.Arch()
+	if err != nil {
+		err = fmt.Errorf("failed to get architecture from transport: %w", err)
 		return result.NewFailure(err, err.Error())
 	}
 
@@ -89,7 +98,7 @@ func (i *HostInfo) ToMapOfCtyValues() map[string]cty.Value {
 }
 
 // FromProtobuf populates the HostInfo from a protobuf representation.
-func (i *HostInfo) FromProtobuf(response *DiscoverInfoResponse) {
+func (i *HostInfo) FromProtobuf(response *discover.DiscoverInfoResponse) {
 	i.os.FromProtobuf(response.Os)
 	i.fips.FromProtobuf(response.Fips)
 	i.appArmor.FromProtobuf(response.AppArmor)

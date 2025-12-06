@@ -6,6 +6,7 @@ package info
 import (
 	"strings"
 
+	"github.com/trippsoft/forge/pkg/discover"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -44,7 +45,7 @@ func (p *PackageManagerInfo) ToMapOfCtyValues() map[string]cty.Value {
 }
 
 // FromProtobuf populates the PackageManagerInfo from a protobuf representation.
-func (p *PackageManagerInfo) FromProtobuf(response *PackageManagerInfoResponse) {
+func (p *PackageManagerInfo) FromProtobuf(response *discover.PackageManagerInfoResponse) {
 	p.name = response.Name
 	p.path = response.Path
 }

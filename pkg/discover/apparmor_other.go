@@ -3,7 +3,7 @@
 
 //go:build !linux
 
-package info
+package discover
 
 func discoverAppArmorInfo() (*AppArmorInfoResponse, error) {
 	return &AppArmorInfoResponse{

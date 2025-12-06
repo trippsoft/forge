@@ -6,6 +6,7 @@ package info
 import (
 	"fmt"
 
+	"github.com/trippsoft/forge/pkg/discover"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -39,7 +40,7 @@ func (a *AppArmorInfo) ToMapOfCtyValues() map[string]cty.Value {
 }
 
 // FromProtobuf populates the AppArmorInfo from a protobuf representation.
-func (a *AppArmorInfo) FromProtobuf(response *AppArmorInfoResponse) {
+func (a *AppArmorInfo) FromProtobuf(response *discover.AppArmorInfoResponse) {
 	a.supported = response.Supported
 	a.enabled = response.Enabled
 }

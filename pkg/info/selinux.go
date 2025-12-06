@@ -6,6 +6,7 @@ package info
 import (
 	"strings"
 
+	"github.com/trippsoft/forge/pkg/discover"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -63,7 +64,7 @@ func (s *SELinuxInfo) ToMapOfCtyValues() map[string]cty.Value {
 }
 
 // FromProtobuf populates the SELinuxInfo from a protobuf representation.
-func (s *SELinuxInfo) FromProtobuf(response *SELinuxInfoResponse) {
+func (s *SELinuxInfo) FromProtobuf(response *discover.SELinuxInfoResponse) {
 	s.supported = response.Supported
 	s.installed = response.Installed
 	s.status = response.Status

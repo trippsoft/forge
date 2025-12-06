@@ -3,7 +3,10 @@
 
 package info
 
-import "github.com/zclconf/go-cty/cty"
+import (
+	"github.com/trippsoft/forge/pkg/discover"
+	"github.com/zclconf/go-cty/cty"
+)
 
 // ServiceManagerInfo contains information about the service manager of a managed host.
 type ServiceManagerInfo struct {
@@ -29,7 +32,7 @@ func (s *ServiceManagerInfo) ToMapOfCtyValues() map[string]cty.Value {
 }
 
 // FromProtobuf populates the ServiceManagerInfo from a protobuf representation.
-func (s *ServiceManagerInfo) FromProtobuf(response *ServiceManagerInfoResponse) {
+func (s *ServiceManagerInfo) FromProtobuf(response *discover.ServiceManagerInfoResponse) {
 	s.name = response.Name
 }
 

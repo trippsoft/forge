@@ -6,6 +6,7 @@ package info
 import (
 	"strings"
 
+	"github.com/trippsoft/forge/pkg/discover"
 	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -136,7 +137,7 @@ func (o *OSInfo) ToMapOfCtyValues() map[string]cty.Value {
 }
 
 // FromProtobuf populates the OSInfo fields from a protobuf OSInfoResponse.
-func (o *OSInfo) FromProtobuf(response *OSInfoResponse) {
+func (o *OSInfo) FromProtobuf(response *discover.OSInfoResponse) {
 	o.id = response.Id
 	o.friendlyName = response.FriendlyName
 	o.release = response.Release

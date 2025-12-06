@@ -4,7 +4,7 @@
 // - protoc             v3.19.6
 // source: discovery_plugin.proto
 
-package info
+package discover
 
 import (
 	context "context"

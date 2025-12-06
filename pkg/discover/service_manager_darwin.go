@@ -3,7 +3,7 @@
 
 //go:build darwin
 
-package info
+package discover
 
 func discoverServiceManagerInfo() (*ServiceManagerInfoResponse, error) {
 	return &ServiceManagerInfoResponse{

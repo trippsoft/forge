@@ -6,6 +6,7 @@ package info
 import (
 	"fmt"
 
+	"github.com/trippsoft/forge/pkg/discover"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -39,7 +40,7 @@ func (f *FIPSInfo) ToMapOfCtyValues() map[string]cty.Value {
 }
 
 // FromProtobuf populates the FIPSInfo from a protobuf representation.
-func (f *FIPSInfo) FromProtobuf(response *FIPSInfoResponse) {
+func (f *FIPSInfo) FromProtobuf(response *discover.FIPSInfoResponse) {
 	f.known = response.Known
 	f.enabled = response.Enabled
 }
