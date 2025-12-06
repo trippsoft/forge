@@ -24,6 +24,9 @@ const (
 	DefaultAddUnknownHostsToFile bool          = true
 	DefaultSSHConnectionTimeout  time.Duration = 10 * time.Second
 
+	DefaultMinPluginPort uint16 = 25000
+	DefaultMaxPluginPort uint16 = 40000
+
 	sshSudoPrompt = "forge_sudo_prompt"
 )
 
@@ -39,6 +42,14 @@ func DefaultKnownHostsPath() (string, error) {
 type sshTransport struct {
 	host string
 	port uint16
+
+	minPluginPort uint16
+	maxPluginPort uint16
+
+	os   string
+	arch string
+
+	tempPath string
 
 	config     *ssh.ClientConfig
 	client     *ssh.Client
@@ -63,13 +74,25 @@ func (s *sshTransport) Connect() error {
 	}
 
 	s.client = client
-	session, err := s.client.NewSession()
+
+	if s.os != "" && s.arch != "" && s.tempPath != "" {
+		session, err := s.client.NewSession()
+		if err != nil {
+			s.client.Close()
+			s.client = nil
+			return fmt.Errorf("failed to create SSH session: %w", err)
+		}
+		session.Close()
+
+		return nil
+	}
+
+	err = s.populatePlatformInfo()
 	if err != nil {
 		s.client.Close()
 		s.client = nil
-		return fmt.Errorf("failed to create SSH session: %w", err)
+		return fmt.Errorf("failed to populate platform info: %w", err)
 	}
-	defer session.Close()
 
 	return nil
 }
@@ -93,41 +116,45 @@ func (s *sshTransport) Close() error {
 	return nil
 }
 
-// GetOSAndArch implements Transport.
-func (s *sshTransport) GetOSAndArch() (string, string, error) {
-
-	err := s.Connect()
-	if err != nil {
-		return "", "", fmt.Errorf("failed to connect to SSH server: %w", err)
-	}
+func (s *sshTransport) populatePlatformInfo() error {
 
 	session, err := s.client.NewSession()
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create SSH session: %w", err)
+		return fmt.Errorf("failed to create SSH session: %w", err)
 	}
 
-	// Check if PowerShell is available on the remote system
 	powershellCheckCmd := "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command " +
 		`"Write-Host 'PowerShell is available'"`
 	psErr := session.Run(powershellCheckCmd)
 	session.Close()
 	if psErr == nil {
-		// PowerShell is available, detect Windows OS architecture
-		arch, archErr := s.getWindowsArch()
-		if archErr != nil {
-			return "", "", fmt.Errorf("failed to detect Windows architecture: %w", archErr)
-		}
-
-		return "windows", arch, nil
+		return s.populateWindowsInfo()
 	}
 
-	return s.getPosixOSAndArch()
+	return s.populatePosixInfo()
 }
 
-func (s *sshTransport) getWindowsArch() (string, error) {
+func (s *sshTransport) populateWindowsInfo() error {
+	s.os = "windows"
+	err := s.populateWindowsArch()
+	if err != nil {
+		return err
+	}
+
+	if s.tempPath == "" {
+		err = s.populateWindowsTempPath()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *sshTransport) populateWindowsArch() error {
 	session, err := s.client.NewSession()
 	if err != nil {
-		return "", fmt.Errorf("failed to create SSH session: %w", err)
+		return fmt.Errorf("failed to create SSH session: %w", err)
 	}
 	defer session.Close()
 
@@ -135,73 +162,147 @@ func (s *sshTransport) getWindowsArch() (string, error) {
 		`"$env:PROCESSOR_ARCHITECTURE"`
 	archOutput, err := session.CombinedOutput(archCmd)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute architecture detection command: %w", err)
+		return fmt.Errorf("failed to execute architecture detection command: %w", err)
 	}
 
 	arch := strings.TrimSpace(strings.ToLower(string(archOutput)))
 
 	switch arch {
 	case "amd64", "arm64":
-		return arch, nil
+		s.arch = arch
+		return nil
 	case "x86":
-		return "386", nil
+		s.arch = "386"
+		return nil
 	}
 
-	return "", fmt.Errorf("unknown or unsupported architecture: %s", arch)
+	return fmt.Errorf("unknown or unsupported architecture: %s", arch)
 }
 
-func (s *sshTransport) getPosixOSAndArch() (string, string, error) {
+func (s *sshTransport) populateWindowsTempPath() error {
 	session, err := s.client.NewSession()
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create SSH session: %w", err)
+		return fmt.Errorf("failed to create SSH session: %w", err)
 	}
 
-	kernelCmd := "uname -s"
-	kernelOutput, err := session.CombinedOutput(kernelCmd)
+	homeCmd := "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command " +
+		`"$env:USERPROFILE"`
+	homeOutput, err := session.CombinedOutput(homeCmd)
 	session.Close()
 	if err != nil {
-		return "", "", fmt.Errorf("failed to execute kernel detection command: %w", err)
+		return fmt.Errorf("failed to execute home directory detection command: %w", err)
 	}
 
-	os := strings.TrimSpace(strings.ToLower(string(kernelOutput)))
+	homeDir := strings.TrimSpace(string(homeOutput))
+	s.tempPath = fmt.Sprintf("%s\\AppData\\Local\\Temp", homeDir)
+	return nil
+}
+
+func (s *sshTransport) populatePosixInfo() error {
+	err := s.populatePosixOS()
+	if err != nil {
+		return err
+	}
+
+	err = s.populatePosixArch()
+	if err != nil {
+		return err
+	}
+
+	if s.tempPath == "" {
+		err = s.populatePosixTempPath()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *sshTransport) populatePosixOS() error {
+	session, err := s.client.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create SSH session: %w", err)
+	}
+	defer session.Close()
+
+	osCmd := "uname -s"
+	osOutput, err := session.CombinedOutput(osCmd)
+	if err != nil {
+		return fmt.Errorf("failed to execute OS detection command: %w", err)
+	}
+
+	os := strings.TrimSpace(strings.ToLower(string(osOutput)))
 
 	switch os {
 	case "aix", "darwin", "dragonfly", "freebsd", "illumos", "linux", "netbsd", "openbsd", "plan9", "solaris":
-		// Supported POSIX OS, now detect architecture
+		s.os = os
 	default:
-		return "", "", fmt.Errorf("unknown or unsupported POSIX OS: %s", os)
+		return fmt.Errorf("unknown or unsupported POSIX OS: %s", os)
 	}
 
-	session, err = s.client.NewSession()
+	return nil
+}
+
+func (s *sshTransport) populatePosixArch() error {
+	session, err := s.client.NewSession()
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create SSH session: %w", err)
+		return fmt.Errorf("failed to create SSH session: %w", err)
 	}
 	defer session.Close()
 
 	archCmd := "uname -m"
 	archOutput, err := session.CombinedOutput(archCmd)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to execute architecture detection command: %w", err)
+		return fmt.Errorf("failed to execute architecture detection command: %w", err)
 	}
 
 	arch := strings.TrimSpace(strings.ToLower(string(archOutput)))
 
 	switch arch {
 	case "x86_64":
-		arch = "amd64"
+		s.arch = "amd64"
 	case "aarch64":
-		arch = "arm64"
+		s.arch = "arm64"
 	case "i386", "i486", "i586", "i686", "i786", "x86":
-		arch = "386"
+		s.arch = "386"
 	case "armv6l", "armv7l":
-		arch = "arm"
+		s.arch = "arm"
 	case "386", "amd64", "arm", "arm64", "mips", "mips64", "ppc64", "ppc64le", "riscv64", "s390x":
-		// Supported architecture that matches Go naming
+		s.arch = arch
 	default:
-		return "", "", fmt.Errorf("unknown or unsupported architecture: %s", arch)
+		return fmt.Errorf("unknown or unsupported architecture: %s", arch)
 	}
 
-	return os, arch, nil
+	return nil
+}
+
+func (s *sshTransport) populatePosixTempPath() error {
+	session, err := s.client.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create SSH session: %w", err)
+	}
+	defer session.Close()
+
+	homeCmd := "echo $HOME"
+	homeOutput, err := session.CombinedOutput(homeCmd)
+	if err != nil {
+		return fmt.Errorf("failed to execute home directory detection command: %w", err)
+	}
+
+	homeDir := strings.TrimSpace(string(homeOutput))
+	s.tempPath = fmt.Sprintf("%s/.local/share", homeDir)
+	return nil
+}
+
+// GetOSAndArch implements Transport.
+func (s *sshTransport) GetOSAndArch() (string, string, error) {
+	err := s.Connect()
+	if err != nil {
+		return "", "", fmt.Errorf("failed to connect to SSH server: %w", err)
+	}
+
+	return s.os, s.arch, nil
 }
 
 // SSHTransportBuilder is a builder for constructing SSH transport instances.
@@ -223,20 +324,11 @@ type SSHTransportBuilder struct {
 	addUnknownHostsToFile bool
 
 	connectionTimeout time.Duration
-}
 
-// NewSSHBuilder creates a new SSHTransportBuilder with default settings.
-func NewSSHBuilder() (*SSHTransportBuilder, error) {
-	knownHostsPath, err := DefaultKnownHostsPath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get default known hosts path: %w", err)
-	}
+	minPluginPort uint16
+	maxPluginPort uint16
 
-	return &SSHTransportBuilder{
-		port:              22,               // Default SSH port
-		connectionTimeout: 10 * time.Second, // Default connection timeout
-		knownHostsPath:    knownHostsPath,
-	}, nil
+	tempPath string
 }
 
 // WithHost sets the host for the SSH transport.
@@ -323,34 +415,71 @@ func (b *SSHTransportBuilder) WithConnectionTimeout(timeout time.Duration) *SSHT
 	return b
 }
 
+// WithPluginPortRange sets the plugin port range for the SSH transport.
+func (b *SSHTransportBuilder) WithPluginPortRange(minPluginPort, maxPluginPort uint16) *SSHTransportBuilder {
+	b.minPluginPort = minPluginPort
+	b.maxPluginPort = maxPluginPort
+	return b
+}
+
+// WithTempPath sets the temporary path for the SSH transport.
+func (b *SSHTransportBuilder) WithTempPath(tempPath string) *SSHTransportBuilder {
+	b.tempPath = tempPath
+	return b
+}
+
 // Build constructs the SSHTransport based on the builder's configuration.
 func (b *SSHTransportBuilder) Build() (Transport, error) {
 	if b.host == "" {
-		return nil, fmt.Errorf("host cannot be empty")
+		return nil, errors.New("host cannot be empty")
 	}
 
 	if b.port == 0 {
-		return nil, fmt.Errorf("port must be between 1 and 65535")
+		return nil, errors.New("port must be between 1 and 65535")
 	}
 
 	if b.user == "" {
-		return nil, fmt.Errorf("user cannot be empty")
+		return nil, errors.New("user cannot be empty")
 	}
 
 	if b.publicKeyAuth && b.privateKey == nil {
-		return nil, fmt.Errorf("privateKey cannot be empty when public key authentication is enabled")
+		return nil, errors.New("privateKey cannot be empty when public key authentication is enabled")
 	}
 
 	if b.passwordAuth && b.password == "" {
-		return nil, fmt.Errorf("password cannot be empty when password authentication is enabled")
+		return nil, errors.New("password cannot be empty when password authentication is enabled")
 	}
 
 	if b.useKnownHostsFile && b.knownHostsPath == "" {
-		return nil, fmt.Errorf("knownHostsPath cannot be empty when using known hosts")
+		return nil, errors.New("knownHostsPath cannot be empty when using known hosts")
 	}
 
 	if b.connectionTimeout <= 0 {
-		return nil, fmt.Errorf("connectionTimeout must be greater than zero")
+		return nil, errors.New("connectionTimeout must be greater than zero")
+	}
+
+	if b.minPluginPort > 0 && b.minPluginPort < 1024 {
+		return nil, errors.New("minPluginPort must be at least 1024")
+	}
+
+	if b.maxPluginPort > 0 && b.maxPluginPort < 1024 {
+		return nil, errors.New("maxPluginPort must be at least 1024")
+	}
+
+	if b.minPluginPort == 0 {
+		if b.maxPluginPort != 0 && b.maxPluginPort < DefaultMinPluginPort {
+			b.minPluginPort = b.maxPluginPort
+		} else {
+			b.minPluginPort = DefaultMinPluginPort
+		}
+	}
+
+	if b.maxPluginPort == 0 {
+		if b.minPluginPort != 0 && b.minPluginPort > DefaultMaxPluginPort {
+			b.maxPluginPort = b.minPluginPort
+		} else {
+			b.maxPluginPort = DefaultMaxPluginPort
+		}
 	}
 
 	authMethods := make([]ssh.AuthMethod, 0, 2)
@@ -398,9 +527,26 @@ func (b *SSHTransportBuilder) Build() (Transport, error) {
 	}
 
 	return &sshTransport{
-		host:   b.host,
-		port:   b.port,
-		config: clientConfig,
+		host:          b.host,
+		port:          b.port,
+		config:        clientConfig,
+		minPluginPort: b.minPluginPort,
+		maxPluginPort: b.maxPluginPort,
+		tempPath:      b.tempPath,
+	}, nil
+}
+
+// NewSSHBuilder creates a new SSHTransportBuilder with default settings.
+func NewSSHBuilder() (*SSHTransportBuilder, error) {
+	knownHostsPath, err := DefaultKnownHostsPath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get default known hosts path: %w", err)
+	}
+
+	return &SSHTransportBuilder{
+		port:              22,               // Default SSH port
+		connectionTimeout: 10 * time.Second, // Default connection timeout
+		knownHostsPath:    knownHostsPath,
 	}, nil
 }
 

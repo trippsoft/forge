@@ -536,6 +536,9 @@ func createSSHTransport(
 	var privateKeyPass string
 	var password string
 	useKnownHosts := transport.DefaultUseKnownHostsFile
+	var minPluginPort uint16
+	var maxPluginPort uint16
+	var tempPath string
 
 	knownHostsPath, err := transport.DefaultKnownHostsPath()
 	if err != nil {
@@ -652,6 +655,30 @@ func createSSHTransport(
 		}
 	}
 
+	if attr, exists := transportSSH["min_plugin_port"]; exists && attr != nil {
+		minPluginPort, moreDiags = util.ConvertHCLAttributeToUint16(attr, evalCtx)
+		diags = append(diags, moreDiags...)
+		if moreDiags.HasErrors() {
+			return nil, diags // Return early if there are errors in converting the min_plugin_port
+		}
+	}
+
+	if attr, exists := transportSSH["max_plugin_port"]; exists && attr != nil {
+		maxPluginPort, moreDiags = util.ConvertHCLAttributeToUint16(attr, evalCtx)
+		diags = append(diags, moreDiags...)
+		if moreDiags.HasErrors() {
+			return nil, diags // Return early if there are errors in converting the max_plugin_port
+		}
+	}
+
+	if attr, exists := transportSSH["temp_path"]; exists && attr != nil {
+		tempPath, moreDiags = util.ConvertHCLAttributeToString(attr, evalCtx)
+		diags = append(diags, moreDiags...)
+		if moreDiags.HasErrors() {
+			return nil, diags // Return early if there are errors in converting the temp_path
+		}
+	}
+
 	builder, err := transport.NewSSHBuilder()
 	if err != nil {
 		return nil, append(diags, &hcl.Diagnostic{
@@ -664,7 +691,9 @@ func createSSHTransport(
 	builder = builder.WithHost(host).
 		WithPort(port).
 		WithUser(user).
-		WithConnectionTimeout(connectionTimeout)
+		WithConnectionTimeout(connectionTimeout).
+		WithPluginPortRange(minPluginPort, maxPluginPort).
+		WithTempPath(tempPath)
 
 	if privateKeyPath != "" {
 		privateKey, exists := cachedPrivateKeyFiles[privateKeyPath]

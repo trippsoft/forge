@@ -16,6 +16,9 @@ const (
 	sshAttrKnownHostsPath    = "known_hosts_path"
 	sshAttrAddUnknownHosts   = "add_unknown_hosts"
 	sshAttrConnectionTimeout = "connection_timeout"
+	sshAttrMinPluginPort     = "min_plugin_port"
+	sshAttrMaxPluginPort     = "max_plugin_port"
+	sshAttrTempPath          = "temp_path"
 )
 
 var (
@@ -85,6 +88,18 @@ var (
 			},
 			{
 				Name:     sshAttrConnectionTimeout,
+				Required: false,
+			},
+			{
+				Name:     sshAttrMinPluginPort,
+				Required: false,
+			},
+			{
+				Name:     sshAttrMaxPluginPort,
+				Required: false,
+			},
+			{
+				Name:     sshAttrTempPath,
 				Required: false,
 			},
 		},

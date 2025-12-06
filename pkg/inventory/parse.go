@@ -6,6 +6,7 @@ package inventory
 import (
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 
@@ -362,9 +363,7 @@ func parseTransportBlockToIntermediate(block *hcl.Block) (*intermediateTransport
 		hclRange: &block.DefRange,
 	}
 
-	for name, attr := range body.Attributes {
-		transport.config[name] = attr
-	}
+	maps.Copy(transport.config, body.Attributes)
 
 	if diags.HasErrors() {
 		return nil, diags
