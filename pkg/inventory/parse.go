@@ -62,7 +62,7 @@ func DiscoverInventoryFiles(paths ...string) ([]*InventoryFile, error) {
 }
 
 // ParseInventoryFiles parses the content of the inventory files and returns the parsed inventory.
-func ParseInventoryFiles(files []*InventoryFile) (*Inventory, hcl.Diagnostics) {
+func ParseInventoryFiles(files ...*InventoryFile) (*Inventory, hcl.Diagnostics) {
 	parser := hclparse.NewParser()
 	diags := hcl.Diagnostics{}
 	hclFiles := make([]*hcl.File, 0, len(files))

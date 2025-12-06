@@ -13,12 +13,11 @@ import (
 )
 
 type WorkflowContext struct {
-	ui             ui.UI
-	inventory      *inventory.Inventory
-	basePluginPath string
-	debug          bool
-	hostVars       map[string]cty.Value
-	failedHosts    *util.Set[*inventory.Host]
+	ui          ui.UI
+	inventory   *inventory.Inventory
+	debug       bool
+	hostVars    map[string]cty.Value
+	failedHosts *util.Set[*inventory.Host]
 }
 
 // LoadHostVars loads the variables for each host in the inventory into the WorkflowContext.
@@ -43,13 +42,12 @@ func (wc *WorkflowContext) MarkFailed(host *inventory.Host) {
 }
 
 // NewWorkflowContext creates a new WorkflowContext with the provided parameters.
-func NewWorkflowContext(ui ui.UI, i *inventory.Inventory, basePluginPath string, debug bool) *WorkflowContext {
+func NewWorkflowContext(ui ui.UI, i *inventory.Inventory, debug bool) *WorkflowContext {
 	return &WorkflowContext{
-		ui:             ui,
-		inventory:      i,
-		basePluginPath: basePluginPath,
-		debug:          debug,
-		failedHosts:    util.NewSet[*inventory.Host](),
+		ui:          ui,
+		inventory:   i,
+		debug:       debug,
+		failedHosts: util.NewSet[*inventory.Host](),
 	}
 }
 

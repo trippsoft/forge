@@ -23,6 +23,10 @@ const (
 	MessageLevelError
 )
 
+var (
+	MockUI UI = &mockUI{}
+)
+
 // UI represents a user interface for text output.
 //
 // Each implementation will be specific to the type of UI (e.g. CLI, Packer plugin, web).
@@ -51,4 +55,22 @@ type UI interface {
 	// The iterationLabel is the label for the specific iteration.
 	// The result indicates the outcome of the step execution for that iteration.
 	PrintIterationResult(hostname, iterationLabel string, result *result.Result)
+}
+
+type mockUI struct{}
+
+// Print implements UI.
+func (m *mockUI) Print(text string) {
+}
+
+// PrintHeader implements UI.
+func (m *mockUI) PrintHeader(level HeaderLevel, text string) {
+}
+
+// PrintHostResult implements UI.
+func (m *mockUI) PrintHostResult(hostname string, result *result.Result) {
+}
+
+// PrintIterationResult implements UI.
+func (m *mockUI) PrintIterationResult(hostname string, iterationLabel string, result *result.Result) {
 }
