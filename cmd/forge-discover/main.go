@@ -32,9 +32,21 @@ func realMain() error {
 	defer listener.Close()
 
 	s := grpc.NewServer()
-	info.RegisterDiscoveryPluginServer(s, &info.DiscoveryServer{})
-	err = s.Serve(listener)
-	return err
+	discoveryServer := info.NewDiscoveryServer()
+	info.RegisterDiscoveryPluginServer(s, discoveryServer)
+
+	go func() {
+		err = s.Serve(listener)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+			os.Exit(1)
+		}
+	}()
+
+	discoveryServer.WaitForShutdown()
+	s.GracefulStop()
+
+	return nil
 }
 
 func getListenerAndPort() (net.Listener, int, error) {

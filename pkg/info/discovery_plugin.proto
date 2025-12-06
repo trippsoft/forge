@@ -54,4 +54,8 @@ message DiscoverInfoResponse {
 
 service DiscoveryPlugin {
   rpc DiscoverInfo(DiscoverInfoRequest) returns (DiscoverInfoResponse);
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
 }
+
+message ShutdownRequest {}
+message ShutdownResponse {}

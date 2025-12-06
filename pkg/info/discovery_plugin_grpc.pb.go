@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion8
 
 const (
 	DiscoveryPlugin_DiscoverInfo_FullMethodName = "/info.DiscoveryPlugin/DiscoverInfo"
+	DiscoveryPlugin_Shutdown_FullMethodName     = "/info.DiscoveryPlugin/Shutdown"
 )
 
 // DiscoveryPluginClient is the client API for DiscoveryPlugin service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DiscoveryPluginClient interface {
 	DiscoverInfo(ctx context.Context, in *DiscoverInfoRequest, opts ...grpc.CallOption) (*DiscoverInfoResponse, error)
+	Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error)
 }
 
 type discoveryPluginClient struct {
@@ -47,11 +49,22 @@ func (c *discoveryPluginClient) DiscoverInfo(ctx context.Context, in *DiscoverIn
 	return out, nil
 }
 
+func (c *discoveryPluginClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ShutdownResponse)
+	err := c.cc.Invoke(ctx, DiscoveryPlugin_Shutdown_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DiscoveryPluginServer is the server API for DiscoveryPlugin service.
 // All implementations should embed UnimplementedDiscoveryPluginServer
 // for forward compatibility
 type DiscoveryPluginServer interface {
 	DiscoverInfo(context.Context, *DiscoverInfoRequest) (*DiscoverInfoResponse, error)
+	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)
 }
 
 // UnimplementedDiscoveryPluginServer should be embedded to have forward compatible implementations.
@@ -60,6 +73,9 @@ type UnimplementedDiscoveryPluginServer struct {
 
 func (UnimplementedDiscoveryPluginServer) DiscoverInfo(context.Context, *DiscoverInfoRequest) (*DiscoverInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DiscoverInfo not implemented")
+}
+func (UnimplementedDiscoveryPluginServer) Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Shutdown not implemented")
 }
 
 // UnsafeDiscoveryPluginServer may be embedded to opt out of forward compatibility for this service.
@@ -91,6 +107,24 @@ func _DiscoveryPlugin_DiscoverInfo_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DiscoveryPlugin_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShutdownRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DiscoveryPluginServer).Shutdown(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DiscoveryPlugin_Shutdown_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DiscoveryPluginServer).Shutdown(ctx, req.(*ShutdownRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DiscoveryPlugin_ServiceDesc is the grpc.ServiceDesc for DiscoveryPlugin service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -101,6 +135,10 @@ var DiscoveryPlugin_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DiscoverInfo",
 			Handler:    _DiscoveryPlugin_DiscoverInfo_Handler,
+		},
+		{
+			MethodName: "Shutdown",
+			Handler:    _DiscoveryPlugin_Shutdown_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
