@@ -1,0 +1,57 @@
+syntax = "proto3";
+package info;
+
+option go_package = "github.com/trippsoft/forge/pkg/info";
+
+message DiscoverInfoRequest {}
+
+message OSInfoResponse {
+  string id = 1;
+  string friendly_name = 2;
+  string release = 3;
+  string release_id = 4;
+  string major_version = 5;
+  string version = 6;
+  string edition = 7;
+  string edition_id = 8;
+  repeated string families = 9;
+}
+
+message FIPSInfoResponse {
+  bool known = 1;
+  bool enabled = 2;
+}
+
+message AppArmorInfoResponse {
+  bool supported = 1;
+  bool enabled = 2;
+}
+
+message SELinuxInfoResponse {
+  bool supported = 1;
+  bool installed = 2;
+  string status = 3;
+  string type = 4;
+}
+
+message PackageManagerInfoResponse {
+  string name = 1;
+  string path = 2;
+}
+
+message ServiceManagerInfoResponse {
+  string name = 1;
+}
+
+message DiscoverInfoResponse {
+  OSInfoResponse os = 1;
+  FIPSInfoResponse fips = 2;
+  AppArmorInfoResponse app_armor = 3;
+  SELinuxInfoResponse selinux = 4;
+  PackageManagerInfoResponse package_manager = 5;
+  ServiceManagerInfoResponse service_manager = 6;
+}
+
+service DiscoveryPlugin {
+  rpc DiscoverInfo(DiscoverInfoRequest) returns (DiscoverInfoResponse);
+}

@@ -1,0 +1,212 @@
+// Copyright (c) Forge
+// SPDX-License-Identifier: MPL-2.0
+
+package info
+
+import (
+	"strings"
+
+	"github.com/trippsoft/forge/pkg/util"
+	"github.com/zclconf/go-cty/cty"
+)
+
+// OSInfo contains detailed information about the operating system of a managed host.
+type OSInfo struct {
+	id           string
+	friendlyName string
+	release      string
+	releaseId    string
+	majorVersion string
+	version      string
+	edition      string
+	editionId    string
+
+	families *util.Set[string]
+}
+
+// ID returns the identifier of the operating system.
+func (o *OSInfo) ID() string {
+	return o.id
+}
+
+// FriendlyName returns the friendly name of the operating system.
+func (o *OSInfo) FriendlyName() string {
+	return o.friendlyName
+}
+
+// Release returns the release name of the operating system.
+func (o *OSInfo) Release() string {
+	return o.release
+}
+
+// ReleaseId returns the release identifier of the operating system.
+func (o *OSInfo) ReleaseId() string {
+	return o.releaseId
+}
+
+// MajorVersion returns the major version of the operating system.
+func (o *OSInfo) MajorVersion() string {
+	return o.majorVersion
+}
+
+// Version returns the version of the operating system.
+func (o *OSInfo) Version() string {
+	return o.version
+}
+
+// Edition returns the edition of the operating system.
+func (o *OSInfo) Edition() string {
+	return o.edition
+}
+
+// EditionId returns the edition identifier of the operating system.
+func (o *OSInfo) EditionId() string {
+	return o.editionId
+}
+
+// Families returns the families of the operating system.
+func (o *OSInfo) Families() util.ReadOnlySet[string] {
+	return o.families
+}
+
+// ToMapOfCtyValues converts the OSInfo into a map of cty.Values.
+func (o *OSInfo) ToMapOfCtyValues() map[string]cty.Value {
+	values := make(map[string]cty.Value)
+
+	if o.id == "" {
+		values["os_id"] = cty.NullVal(cty.String)
+	} else {
+		values["os_id"] = cty.StringVal(o.id)
+	}
+
+	if o.friendlyName == "" {
+		values["os_friendly_name"] = cty.NullVal(cty.String)
+	} else {
+		values["os_friendly_name"] = cty.StringVal(o.friendlyName)
+	}
+
+	if o.release == "" {
+		values["os_release"] = cty.NullVal(cty.String)
+	} else {
+		values["os_release"] = cty.StringVal(o.release)
+	}
+
+	if o.releaseId == "" {
+		values["os_release_id"] = cty.NullVal(cty.String)
+	} else {
+		values["os_release_id"] = cty.StringVal(o.releaseId)
+	}
+
+	if o.majorVersion == "" {
+		values["os_major_version"] = cty.NullVal(cty.String)
+	} else {
+		values["os_major_version"] = cty.StringVal(o.majorVersion)
+	}
+
+	if o.version == "" {
+		values["os_version"] = cty.NullVal(cty.String)
+	} else {
+		values["os_version"] = cty.StringVal(o.version)
+	}
+
+	if o.edition == "" {
+		values["os_edition"] = cty.NullVal(cty.String)
+	} else {
+		values["os_edition"] = cty.StringVal(o.edition)
+	}
+
+	if o.editionId == "" {
+		values["os_edition_id"] = cty.NullVal(cty.String)
+	} else {
+		values["os_edition_id"] = cty.StringVal(o.editionId)
+	}
+
+	if o.families.Size() > 0 {
+		families := make([]cty.Value, 0, o.families.Size())
+		for _, family := range o.families.Items() {
+			families = append(families, cty.StringVal(family))
+		}
+
+		values["os_families"] = cty.SetVal(families)
+	} else {
+		values["os_families"] = cty.NullVal(cty.Set(cty.String))
+	}
+
+	return values
+}
+
+// FromProtobuf populates the OSInfo fields from a protobuf OSInfoResponse.
+func (o *OSInfo) FromProtobuf(response *OSInfoResponse) {
+	o.id = response.Id
+	o.friendlyName = response.FriendlyName
+	o.release = response.Release
+	o.releaseId = response.ReleaseId
+	o.majorVersion = response.MajorVersion
+	o.version = response.Version
+	o.edition = response.Edition
+	o.editionId = response.EditionId
+	o.families = util.NewSet(response.Families...)
+}
+
+// String returns a string representation of the OS information.
+//
+// This is useful for logging or debugging purposes.
+func (o *OSInfo) String() string {
+	stringBuilder := &strings.Builder{}
+
+	stringBuilder.WriteString("os_id: ")
+	stringBuilder.WriteString(o.id)
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_friendly_name: ")
+	stringBuilder.WriteString(o.friendlyName)
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_release: ")
+	stringBuilder.WriteString(o.release)
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_release_id: ")
+	stringBuilder.WriteString(o.releaseId)
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_major_version: ")
+	stringBuilder.WriteString(o.majorVersion)
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_version: ")
+	stringBuilder.WriteString(o.version)
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_edition: ")
+	stringBuilder.WriteString(o.edition)
+	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_edition_id: ")
+	stringBuilder.WriteString(o.editionId)
+	stringBuilder.WriteString("\n")
+	stringBuilder.WriteString("os_families: ")
+
+	if o.families.Size() == 0 {
+		stringBuilder.WriteString("none\n")
+	} else {
+		for i, family := range o.families.Items() {
+			if i > 0 {
+				stringBuilder.WriteString(", ")
+			}
+
+			stringBuilder.WriteString(family)
+		}
+
+		stringBuilder.WriteString("\n")
+	}
+
+	return stringBuilder.String()
+}
+
+// NewOSInfo creates a new OSInfo instance.
+func NewOSInfo() *OSInfo {
+	return &OSInfo{
+		families: util.NewSet[string](),
+	}
+}
