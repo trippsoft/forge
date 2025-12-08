@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/trippsoft/forge/pkg/discover"
+	"github.com/trippsoft/forge/pkg/plugin"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 )
@@ -33,14 +33,10 @@ type SSHTransportBuilder struct {
 
 	connectionTimeout time.Duration
 
-	minLocalPluginPort uint16
-	maxLocalPluginPort uint16
+	minPluginPort uint16
+	maxPluginPort uint16
 
-	minRemotePluginPort uint16
-	maxRemotePluginPort uint16
-
-	discoveryPluginBasePath string
-	tempPath                string
+	tempPath string
 }
 
 // WithHost sets the host for the SSH transport.
@@ -129,15 +125,8 @@ func (b *SSHTransportBuilder) WithConnectionTimeout(timeout time.Duration) *SSHT
 
 // WithPluginPortRange sets the plugin port range for the SSH transport.
 func (b *SSHTransportBuilder) WithPluginPortRange(minPluginPort, maxPluginPort uint16) *SSHTransportBuilder {
-	b.minRemotePluginPort = minPluginPort
-	b.maxRemotePluginPort = maxPluginPort
-	return b
-}
-
-// WithLocalPluginPortRange sets the local plugin port range for the SSH transport.
-func (b *SSHTransportBuilder) WithLocalPluginPortRange(minPluginPort, maxPluginPort uint16) *SSHTransportBuilder {
-	b.minLocalPluginPort = minPluginPort
-	b.maxLocalPluginPort = maxPluginPort
+	b.minPluginPort = minPluginPort
+	b.maxPluginPort = maxPluginPort
 	return b
 }
 
@@ -177,51 +166,27 @@ func (b *SSHTransportBuilder) Build() (Transport, error) {
 		return nil, errors.New("connectionTimeout must be greater than zero")
 	}
 
-	if b.minRemotePluginPort > 0 && b.minRemotePluginPort < 1024 {
+	if b.minPluginPort > 0 && b.minPluginPort < 1024 {
 		return nil, errors.New("minPluginPort must be at least 1024")
 	}
 
-	if b.maxRemotePluginPort > 0 && b.maxRemotePluginPort < 1024 {
+	if b.maxPluginPort > 0 && b.maxPluginPort < 1024 {
 		return nil, errors.New("maxPluginPort must be at least 1024")
 	}
 
-	if b.minLocalPluginPort > 0 && b.minLocalPluginPort < 1024 {
-		return nil, errors.New("minLocalPluginPort must be at least 1024")
-	}
-
-	if b.maxLocalPluginPort > 0 && b.maxLocalPluginPort < 1024 {
-		return nil, errors.New("maxLocalPluginPort must be at least 1024")
-	}
-
-	if b.minRemotePluginPort == 0 {
-		if b.maxRemotePluginPort != 0 && b.maxRemotePluginPort < DefaultMinPluginPort {
-			b.minRemotePluginPort = b.maxRemotePluginPort
+	if b.minPluginPort == 0 {
+		if b.maxPluginPort != 0 && b.maxPluginPort < plugin.DefaultRemotePluginMinPort {
+			b.minPluginPort = b.maxPluginPort
 		} else {
-			b.minRemotePluginPort = DefaultMinPluginPort
+			b.minPluginPort = plugin.DefaultRemotePluginMinPort
 		}
 	}
 
-	if b.maxRemotePluginPort == 0 {
-		if b.minRemotePluginPort != 0 && b.minRemotePluginPort > DefaultMaxPluginPort {
-			b.maxRemotePluginPort = b.minRemotePluginPort
+	if b.maxPluginPort == 0 {
+		if b.minPluginPort != 0 && b.minPluginPort > plugin.DefaultRemotePluginMaxPort {
+			b.maxPluginPort = b.minPluginPort
 		} else {
-			b.maxRemotePluginPort = DefaultMaxPluginPort
-		}
-	}
-
-	if b.minLocalPluginPort == 0 {
-		if b.maxLocalPluginPort != 0 && b.maxLocalPluginPort < DefaultMinPluginPort {
-			b.minLocalPluginPort = b.maxLocalPluginPort
-		} else {
-			b.minLocalPluginPort = DefaultMinPluginPort
-		}
-	}
-
-	if b.maxLocalPluginPort == 0 {
-		if b.minLocalPluginPort != 0 && b.minLocalPluginPort > DefaultMaxPluginPort {
-			b.maxLocalPluginPort = b.minLocalPluginPort
-		} else {
-			b.maxLocalPluginPort = DefaultMaxPluginPort
+			b.maxPluginPort = plugin.DefaultRemotePluginMaxPort
 		}
 	}
 
@@ -270,15 +235,12 @@ func (b *SSHTransportBuilder) Build() (Transport, error) {
 	}
 
 	return &sshTransport{
-		host:                    b.host,
-		port:                    b.port,
-		config:                  clientConfig,
-		minLocalPluginPort:      b.minLocalPluginPort,
-		maxLocalPluginPort:      b.maxLocalPluginPort,
-		minRemotePluginPort:     b.minRemotePluginPort,
-		maxRemotePluginPort:     b.maxRemotePluginPort,
-		discoveryPluginBasePath: b.discoveryPluginBasePath,
-		tempPath:                b.tempPath,
+		host:          b.host,
+		port:          b.port,
+		config:        clientConfig,
+		minPluginPort: b.minPluginPort,
+		maxPluginPort: b.maxPluginPort,
+		tempPath:      b.tempPath,
 	}, nil
 }
 
@@ -290,9 +252,8 @@ func NewSSHBuilder() (*SSHTransportBuilder, error) {
 	}
 
 	return &SSHTransportBuilder{
-		port:                    22,               // Default SSH port
-		connectionTimeout:       10 * time.Second, // Default connection timeout
-		knownHostsPath:          knownHostsPath,
-		discoveryPluginBasePath: discover.DefaultDiscoverPluginBasePath(),
+		port:              22,               // Default SSH port
+		connectionTimeout: 10 * time.Second, // Default connection timeout
+		knownHostsPath:    knownHostsPath,
 	}, nil
 }

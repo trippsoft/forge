@@ -7,6 +7,7 @@ package discover
 
 import (
 	"errors"
+	"runtime"
 	"strings"
 
 	ps "github.com/bhendo/go-powershell"
@@ -21,7 +22,10 @@ func discoverOSInfo() (*OSInfoResponse, error) {
 	}
 	defer shell.Exit()
 
-	osInfo := &OSInfoResponse{}
+	osInfo := &OSInfoResponse{
+		Kernel: "windows",
+		Arch:   runtime.GOARCH,
+	}
 
 	stdout, _, err := shell.Execute("[System.Environment]::OSVersion.Version.ToString()")
 	if err != nil {

@@ -13,6 +13,7 @@ import (
 
 // OSInfo contains detailed information about the operating system of a managed host.
 type OSInfo struct {
+	kernel       string
 	id           string
 	friendlyName string
 	release      string
@@ -21,8 +22,14 @@ type OSInfo struct {
 	version      string
 	edition      string
 	editionId    string
+	arch         string
 
 	families *util.Set[string]
+}
+
+// Kernel returns the kernel of the operating system.
+func (o *OSInfo) Kernel() string {
+	return o.kernel
 }
 
 // ID returns the identifier of the operating system.
@@ -65,6 +72,11 @@ func (o *OSInfo) EditionId() string {
 	return o.editionId
 }
 
+// Arch returns the architecture of the operating system.
+func (o *OSInfo) Arch() string {
+	return o.arch
+}
+
 // Families returns the families of the operating system.
 func (o *OSInfo) Families() util.ReadOnlySet[string] {
 	return o.families
@@ -73,6 +85,12 @@ func (o *OSInfo) Families() util.ReadOnlySet[string] {
 // ToMapOfCtyValues converts the OSInfo into a map of cty.Values.
 func (o *OSInfo) ToMapOfCtyValues() map[string]cty.Value {
 	values := make(map[string]cty.Value)
+
+	if o.kernel == "" {
+		values["os_kernel"] = cty.NullVal(cty.String)
+	} else {
+		values["os_kernel"] = cty.StringVal(o.kernel)
+	}
 
 	if o.id == "" {
 		values["os_id"] = cty.NullVal(cty.String)
@@ -122,6 +140,12 @@ func (o *OSInfo) ToMapOfCtyValues() map[string]cty.Value {
 		values["os_edition_id"] = cty.StringVal(o.editionId)
 	}
 
+	if o.arch == "" {
+		values["os_arch"] = cty.NullVal(cty.String)
+	} else {
+		values["os_arch"] = cty.StringVal(o.arch)
+	}
+
 	if o.families.Size() > 0 {
 		families := make([]cty.Value, 0, o.families.Size())
 		for _, family := range o.families.Items() {
@@ -138,6 +162,7 @@ func (o *OSInfo) ToMapOfCtyValues() map[string]cty.Value {
 
 // FromProtobuf populates the OSInfo fields from a protobuf OSInfoResponse.
 func (o *OSInfo) FromProtobuf(response *discover.OSInfoResponse) {
+	o.kernel = response.Kernel
 	o.id = response.Id
 	o.friendlyName = response.FriendlyName
 	o.release = response.Release
@@ -146,6 +171,7 @@ func (o *OSInfo) FromProtobuf(response *discover.OSInfoResponse) {
 	o.version = response.Version
 	o.edition = response.Edition
 	o.editionId = response.EditionId
+	o.arch = response.Arch
 	o.families = util.NewSet(response.Families...)
 }
 
@@ -154,6 +180,10 @@ func (o *OSInfo) FromProtobuf(response *discover.OSInfoResponse) {
 // This is useful for logging or debugging purposes.
 func (o *OSInfo) String() string {
 	stringBuilder := &strings.Builder{}
+
+	stringBuilder.WriteString("os_kernel: ")
+	stringBuilder.WriteString(o.kernel)
+	stringBuilder.WriteString("\n")
 
 	stringBuilder.WriteString("os_id: ")
 	stringBuilder.WriteString(o.id)
@@ -186,6 +216,11 @@ func (o *OSInfo) String() string {
 	stringBuilder.WriteString("os_edition_id: ")
 	stringBuilder.WriteString(o.editionId)
 	stringBuilder.WriteString("\n")
+
+	stringBuilder.WriteString("os_arch: ")
+	stringBuilder.WriteString(o.arch)
+	stringBuilder.WriteString("\n")
+
 	stringBuilder.WriteString("os_families: ")
 
 	if o.families.Size() == 0 {

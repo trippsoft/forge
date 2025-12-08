@@ -6,15 +6,17 @@ option go_package = "github.com/trippsoft/forge/pkg/discover";
 message DiscoverInfoRequest {}
 
 message OSInfoResponse {
-  string id = 1;
-  string friendly_name = 2;
-  string release = 3;
-  string release_id = 4;
-  string major_version = 5;
-  string version = 6;
-  string edition = 7;
-  string edition_id = 8;
-  repeated string families = 9;
+  string kernel = 1;
+  string id = 2;
+  string friendly_name = 3;
+  string release = 4;
+  string release_id = 5;
+  string major_version = 6;
+  string version = 7;
+  string edition = 8;
+  string edition_id = 9;
+  string arch = 10;
+  repeated string families = 11;
 }
 
 message FIPSInfoResponse {

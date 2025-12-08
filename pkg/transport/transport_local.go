@@ -11,13 +11,14 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/trippsoft/forge/pkg/discover"
+	"github.com/trippsoft/forge/pkg/plugin"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type localTransport struct {
-	discoveryPluginBasePath string
-	minPluginPort           uint16
-	maxPluginPort           uint16
+	minPluginPort uint16
+	maxPluginPort uint16
 }
 
 // Type implements Transport.
@@ -45,24 +46,22 @@ func (l *localTransport) Close() error {
 	return nil
 }
 
-// StartDiscovery implements Transport.
-func (l *localTransport) StartDiscovery() (*discover.DiscoveryClient, error) {
-	var extension string
-	if runtime.GOOS == "windows" {
-		extension = ".exe"
+// StartPlugin implements Transport.
+func (l *localTransport) StartPlugin(
+	namespace string,
+	pluginName string,
+	escalation *Escalation,
+) (*grpc.ClientConn, func(), error) {
+	// TODO - handle escalation if needed
+
+	pluginPath, err := plugin.FindPluginPath(namespace, pluginName, runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	pluginPath := fmt.Sprintf(
-		"%sforge-discover_%s_%s%s",
-		l.discoveryPluginBasePath,
-		runtime.GOOS,
-		runtime.GOARCH,
-		extension,
-	)
-
-	cmd, port, err := l.startDiscoveryPlugin(pluginPath)
+	cmd, port, err := l.startPlugin(pluginPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	cleanup := func() {
@@ -70,12 +69,17 @@ func (l *localTransport) StartDiscovery() (*discover.DiscoveryClient, error) {
 		cmd.Wait()
 	}
 
-	discoveryClient := discover.NewDiscoveryClient(port, cleanup)
+	address := fmt.Sprintf("127.0.0.1:%d", port)
+	connection, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
 
-	return discoveryClient, nil
+	return connection, cleanup, nil
 }
 
-func (l *localTransport) startDiscoveryPlugin(path string) (*exec.Cmd, uint16, error) {
+func (l *localTransport) startPlugin(path string) (*exec.Cmd, uint16, error) {
 	cmd := exec.Command(path)
 
 	cmd.Env = append(cmd.Env, fmt.Sprintf("FORGE_PLUGIN_MIN_PORT=%d", l.minPluginPort))
@@ -84,7 +88,7 @@ func (l *localTransport) startDiscoveryPlugin(path string) (*exec.Cmd, uint16, e
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, 0, fmt.Errorf(
-			"failed to get stdout pipe for discovery plugin at '%s': %w",
+			"failed to get stdout pipe for plugin at '%s': %w",
 			path,
 			err,
 		)
@@ -96,7 +100,7 @@ func (l *localTransport) startDiscoveryPlugin(path string) (*exec.Cmd, uint16, e
 	err = cmd.Start()
 	if err != nil {
 		return nil, 0, fmt.Errorf(
-			"failed to start discovery plugin at '%s': %w - %s",
+			"failed to start plugin at '%s': %w - %s",
 			path,
 			err,
 			errBuf.String(),
@@ -116,7 +120,7 @@ func (l *localTransport) startDiscoveryPlugin(path string) (*exec.Cmd, uint16, e
 		cmd.Process.Kill()
 		cmd.Wait()
 		return nil, 0, fmt.Errorf(
-			"invalid port output from discovery plugin at '%s': %w - %s",
+			"invalid port output from plugin at '%s': %w - %s",
 			path,
 			err,
 			errBuf.String(),
@@ -149,15 +153,12 @@ func (b *LocalTransportBuilder) WithPluginPortRange(minPluginPort, maxPluginPort
 // Build constructs the LocalTransport based on the builder's configuration.
 func (b *LocalTransportBuilder) Build() Transport {
 	return &localTransport{
-		discoveryPluginBasePath: b.discoveryPluginBasePath,
-		minPluginPort:           b.minPluginPort,
-		maxPluginPort:           b.maxPluginPort,
+		minPluginPort: b.minPluginPort,
+		maxPluginPort: b.maxPluginPort,
 	}
 }
 
 // NewLocalTransportBuilder creates a new LocalTransportBuilder.
 func NewLocalTransportBuilder() *LocalTransportBuilder {
-	return &LocalTransportBuilder{
-		discoveryPluginBasePath: discover.DefaultDiscoverPluginBasePath(),
-	}
+	return &LocalTransportBuilder{}
 }

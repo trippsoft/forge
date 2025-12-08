@@ -18,10 +18,12 @@ import (
 	"time"
 
 	"github.com/pkg/sftp"
-	"github.com/trippsoft/forge/pkg/discover"
 	"github.com/trippsoft/forge/pkg/network"
+	"github.com/trippsoft/forge/pkg/plugin"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -29,9 +31,6 @@ const (
 	DefaultUseKnownHostsFile     bool          = true
 	DefaultAddUnknownHostsToFile bool          = true
 	DefaultSSHConnectionTimeout  time.Duration = 10 * time.Second
-
-	DefaultMinPluginPort uint16 = 25000
-	DefaultMaxPluginPort uint16 = 40000
 
 	sshSudoPrompt = "forge_sudo_prompt"
 )
@@ -49,17 +48,13 @@ type sshTransport struct {
 	host string
 	port uint16
 
-	minLocalPluginPort uint16
-	maxLocalPluginPort uint16
-
-	minRemotePluginPort uint16
-	maxRemotePluginPort uint16
+	minPluginPort uint16
+	maxPluginPort uint16
 
 	os   string
 	arch string
 
-	discoveryPluginBasePath string
-	tempPath                string
+	tempPath string
 
 	config     *ssh.ClientConfig
 	client     *ssh.Client
@@ -129,152 +124,6 @@ func (s *sshTransport) Connect() error {
 	}
 
 	return nil
-}
-
-// Close implements Transport.
-func (s *sshTransport) Close() error {
-	if s.sftpClient != nil {
-		_ = s.sftpClient.Close() // Close the SFTP client if it exists
-	}
-
-	if s.client == nil {
-		return nil // No client to close
-	}
-
-	err := s.client.Close()
-	s.client = nil
-	if err != nil {
-		return fmt.Errorf("failed to close SSH client: %w", err)
-	}
-
-	return nil
-}
-
-// StartDiscovery implements Transport.
-func (s *sshTransport) StartDiscovery() (*discover.DiscoveryClient, error) {
-	err := s.Connect()
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to SSH server: %w", err)
-	}
-
-	var extension string
-	if s.os == "windows" {
-		extension = ".exe"
-	}
-
-	localPluginPath := fmt.Sprintf(
-		"%sforge-discover_%s_%s%s",
-		s.discoveryPluginBasePath,
-		s.os,
-		s.arch,
-		extension,
-	)
-
-	remotePluginPath := fmt.Sprintf("%s/forge-discover%s", s.tempPath, extension)
-
-	if s.sftpClient == nil {
-		sftpClient, err := sftp.NewClient(s.client)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create SFTP client: %w", err)
-		}
-		s.sftpClient = sftpClient
-	}
-
-	err = s.sftpClient.MkdirAll(s.tempPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create remote temp path '%s': %w", s.tempPath, err)
-	}
-
-	err = s.uploadFile(localPluginPath, remotePluginPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to upload discovery plugin to remote path '%s': %w", remotePluginPath, err)
-	}
-
-	if s.os != "windows" {
-		session, err := s.client.NewSession()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create SSH session: %w", err)
-		}
-
-		err = session.Run(fmt.Sprintf("chmod +x %s", remotePluginPath))
-		session.Close()
-		if err != nil {
-			return nil, fmt.Errorf("failed to make discovery plugin executable: %w", err)
-		}
-	}
-
-	session, err := s.client.NewSession()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create session: %w", err)
-	}
-
-	stdout, err := session.StdoutPipe()
-	if err != nil {
-		session.Close()
-		return nil, fmt.Errorf("failed to get stdout pipe: %w", err)
-	}
-
-	stderr, err := session.StderrPipe()
-	if err != nil {
-		session.Close()
-		return nil, fmt.Errorf("failed to get stderr pipe: %w", err)
-	}
-
-	// Start the plugin
-	err = session.Start(
-		fmt.Sprintf(
-			"FORGE_DISCOVERY_MIN_PORT=%d FORGE_DISCOVERY_MAX_PORT=%d %s",
-			s.minRemotePluginPort,
-			s.maxRemotePluginPort,
-			remotePluginPath,
-		),
-	)
-
-	if err != nil {
-		session.Close()
-		return nil, fmt.Errorf("failed to start plugin: %w", err)
-	}
-
-	// Read port from stdout
-	scanner := bufio.NewScanner(stdout)
-	var portOutput string
-	for scanner.Scan() {
-		portOutput = scanner.Text()
-		break
-	}
-
-	if portOutput == "" {
-		errBuf := &bytes.Buffer{}
-		errBuf.ReadFrom(stderr)
-		session.Close()
-		return nil, fmt.Errorf("no port output from plugin: %s", errBuf.String())
-	}
-
-	remotePort, err := strconv.ParseUint(portOutput, 10, 16)
-	if err != nil {
-		session.Close()
-		return nil, fmt.Errorf("invalid port output: %w", err)
-	}
-
-	// TODO - Implement configurable local port range
-	listener, localPort, err := network.GetListenerAndPortInRange(s.minLocalPluginPort, s.maxLocalPluginPort)
-	if err != nil {
-		session.Close()
-		return nil, fmt.Errorf("failed to get local listener: %w", err)
-	}
-
-	go s.forwardConnections(listener, uint16(remotePort))
-
-	cleanup := func() {
-		listener.Close()
-		session.Signal(ssh.SIGTERM)
-		session.Close()
-		s.sftpClient.Remove(remotePluginPath)
-	}
-
-	discoveryClient := discover.NewDiscoveryClient(localPort, cleanup)
-
-	return discoveryClient, nil
 }
 
 func (s *sshTransport) populatePlatformInfo() error {
@@ -453,6 +302,160 @@ func (s *sshTransport) populatePosixTempPath() error {
 	homeDir := strings.TrimSpace(string(homeOutput))
 	s.tempPath = fmt.Sprintf("%s/.local/share/forge-tmp", homeDir)
 	return nil
+}
+
+// Close implements Transport.
+func (s *sshTransport) Close() error {
+	if s.sftpClient != nil {
+		_ = s.sftpClient.Close() // Close the SFTP client if it exists
+	}
+
+	if s.client == nil {
+		return nil // No client to close
+	}
+
+	err := s.client.Close()
+	s.client = nil
+	if err != nil {
+		return fmt.Errorf("failed to close SSH client: %w", err)
+	}
+
+	return nil
+}
+
+// StartPlugin implements Transport.
+func (s *sshTransport) StartPlugin(
+	namespace string,
+	pluginName string,
+	escalation *Escalation,
+) (*grpc.ClientConn, func(), error) {
+	// TODO - handle escalation if needed
+
+	err := s.Connect()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to connect to SSH server: %w", err)
+	}
+
+	localPluginPath, err := plugin.FindPluginPath(namespace, pluginName, s.os, s.arch)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to find local plugin path: %w", err)
+	}
+
+	var extension string
+	if s.os == "windows" {
+		extension = ".exe"
+	}
+
+	remotePluginPath := fmt.Sprintf("%s/%s-%s%s", s.tempPath, namespace, pluginName, extension)
+
+	if s.sftpClient == nil {
+		sftpClient, err := sftp.NewClient(s.client)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create SFTP client: %w", err)
+		}
+		s.sftpClient = sftpClient
+	}
+
+	err = s.sftpClient.MkdirAll(s.tempPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create remote temp path '%s': %w", s.tempPath, err)
+	}
+
+	err = s.uploadFile(localPluginPath, remotePluginPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to upload discovery plugin to remote path '%s': %w", remotePluginPath, err)
+	}
+
+	if s.os != "windows" {
+		session, err := s.client.NewSession()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create SSH session: %w", err)
+		}
+
+		err = session.Run(fmt.Sprintf("chmod +x %s", remotePluginPath))
+		session.Close()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to make discovery plugin executable: %w", err)
+		}
+	}
+
+	session, err := s.client.NewSession()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create session: %w", err)
+	}
+
+	stdout, err := session.StdoutPipe()
+	if err != nil {
+		session.Close()
+		return nil, nil, fmt.Errorf("failed to get stdout pipe: %w", err)
+	}
+
+	stderr, err := session.StderrPipe()
+	if err != nil {
+		session.Close()
+		return nil, nil, fmt.Errorf("failed to get stderr pipe: %w", err)
+	}
+
+	// Start the plugin
+	err = session.Start(
+		fmt.Sprintf(
+			"FORGE_PLUGIN_MIN_PORT=%d FORGE_PLUGIN_MAX_PORT=%d %s",
+			s.minPluginPort,
+			s.maxPluginPort,
+			remotePluginPath,
+		),
+	)
+
+	if err != nil {
+		session.Close()
+		return nil, nil, fmt.Errorf("failed to start plugin: %w", err)
+	}
+
+	// Read port from stdout
+	scanner := bufio.NewScanner(stdout)
+	var portOutput string
+	for scanner.Scan() {
+		portOutput = scanner.Text()
+		break
+	}
+
+	if portOutput == "" {
+		errBuf := &bytes.Buffer{}
+		errBuf.ReadFrom(stderr)
+		session.Close()
+		return nil, nil, fmt.Errorf("no port output from plugin: %s", errBuf.String())
+	}
+
+	remotePort, err := strconv.ParseUint(portOutput, 10, 16)
+	if err != nil {
+		session.Close()
+		return nil, nil, fmt.Errorf("invalid port output: %w", err)
+	}
+
+	// TODO - Implement configurable local port range
+	listener, localPort, err := network.GetListenerAndPortInRange(plugin.LocalPluginMinPort, plugin.LocalPluginMinPort)
+	if err != nil {
+		session.Close()
+		return nil, nil, fmt.Errorf("failed to get local listener: %w", err)
+	}
+
+	go s.forwardConnections(listener, uint16(remotePort))
+
+	cleanup := func() {
+		listener.Close()
+		session.Signal(ssh.SIGTERM)
+		session.Close()
+		s.sftpClient.Remove(remotePluginPath)
+	}
+
+	address := fmt.Sprintf("127.0.0.1:%d", localPort)
+	connection, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("failed to create gRPC client connection: %w", err)
+	}
+
+	return connection, cleanup, nil
 }
 
 func (s *sshTransport) uploadFile(localPath, remotePath string) error {

@@ -70,7 +70,11 @@ var (
 )
 
 func discoverOSInfo() (*OSInfoResponse, error) {
-	osInfo := &OSInfoResponse{}
+	osInfo := &OSInfoResponse{
+		Kernel: runtime.GOOS,
+		Arch:   runtime.GOARCH,
+	}
+
 	osReleaseErr := populateFromOsReleaseFile(osInfo)
 	lsbReleaseErr := populateFromLsbRelease(osInfo)
 

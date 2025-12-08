@@ -6,7 +6,7 @@ package transport
 import (
 	"runtime"
 
-	"github.com/trippsoft/forge/pkg/discover"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -43,8 +43,13 @@ func (w *MockTransport) Close() error {
 	return nil
 }
 
-// StartDiscovery implements Transport.
-func (w *MockTransport) StartDiscovery() (*discover.DiscoveryClient, error) {
+// StartPlugin implements Transport.
+func (w *MockTransport) StartPlugin(
+	namespace string,
+	pluginName string,
+	escalation *Escalation,
+) (*grpc.ClientConn, func(), error) {
+
 	panic("unimplemented") // TODO: Implement mock discovery client if needed
 }
 

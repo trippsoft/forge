@@ -9,14 +9,17 @@ import (
 	"bytes"
 	"errors"
 	"os/exec"
+	"runtime"
 	"strings"
 )
 
 func discoverOSInfo() (*OSInfoResponse, error) {
 	osInfo := &OSInfoResponse{
+		Kernel:    "darwin",
 		Id:        "macos",
 		Edition:   "",
 		EditionId: "",
+		Arch:      runtime.GOARCH,
 		Families:  []string{"posix", "darwin", "macos"},
 	}
 

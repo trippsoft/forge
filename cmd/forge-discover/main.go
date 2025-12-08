@@ -49,7 +49,7 @@ func realMain() error {
 }
 
 func getMinimumPort() uint16 {
-	env := os.Getenv("FORGE_DISCOVERY_MIN_PORT")
+	env := os.Getenv("FORGE_PLUGIN_MIN_PORT")
 	if env != "" {
 		minPort, err := strconv.ParseUint(env, 10, 16)
 		if err == nil {
@@ -61,7 +61,7 @@ func getMinimumPort() uint16 {
 }
 
 func getMaximumPort() uint16 {
-	env := os.Getenv("FORGE_DISCOVERY_MAX_PORT")
+	env := os.Getenv("FORGE_PLUGIN_MAX_PORT")
 	if env != "" {
 		maxPort, err := strconv.ParseUint(env, 10, 16)
 		if err == nil {

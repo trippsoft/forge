@@ -3,7 +3,9 @@
 
 package transport
 
-import "github.com/trippsoft/forge/pkg/discover"
+import (
+	"google.golang.org/grpc"
+)
 
 // TransportType represents the type of transport used for connecting to managed systems.
 type TransportType string
@@ -26,5 +28,7 @@ type Transport interface {
 	//
 	// basePath specifies the base path for discovery plugins. The OS, architecture, and extension if applicable will be
 	// appended to this path. (e.g., <basePath>_windows_amd64.exe)
-	StartDiscovery() (*discover.DiscoveryClient, error)
+	// It returns a gRPC client connection to the discovery plugin and a cleanup function to terminate the plugin
+	// process.
+	StartPlugin(namespace, pluginName string, escalation *Escalation) (*grpc.ClientConn, func(), error)
 }
