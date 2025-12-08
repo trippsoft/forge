@@ -70,8 +70,8 @@ func (h *Host) Vars() map[string]cty.Value {
 }
 
 // PopulateInfo populates the host's information using its transport.
-func (h *Host) PopulateInfo(runtimeOnly bool) *result.Result {
-	return h.info.Populate(h.transport, runtimeOnly)
+func (h *Host) PopulateInfo() *result.Result {
+	return h.info.Populate(h.transport)
 }
 
 // GetCurrentContextSteps retrieves the current step context for the host.
@@ -188,7 +188,7 @@ func (b *HostBuilder) Build() (*Host, error) {
 		name:           b.name,
 		transport:      b.transport,
 		escalateConfig: b.escalateConfig,
-		info:           &info.HostInfo{},
+		info:           info.NewHostInfo(),
 		vars:           b.vars,
 	}, nil
 }

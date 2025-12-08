@@ -70,20 +70,17 @@ func (p *Process) Run(wc *WorkflowContext) (map[string]map[string]cty.Value, err
 }
 
 func (p *Process) discoverInfoForTargets(wc *WorkflowContext) error {
-	var header string
-	if p.discoverInfo {
-		header = "Discovering Host Info"
-	} else {
-		header = "Discovering Runtime Info Only"
+	if !p.discoverInfo {
+		return nil
 	}
 
-	wc.ui.PrintHeader(ui.HeaderLevel2, header)
+	wc.ui.PrintHeader(ui.HeaderLevel2, "Discovering Host Info")
 
 	errChannel := make(chan error)
 	var err error
 	for _, target := range p.allTargets {
 		go func(host *inventory.Host) {
-			result := host.PopulateInfo(!p.discoverInfo)
+			result := host.PopulateInfo()
 
 			var e error
 			if result.Err != nil {

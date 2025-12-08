@@ -26,11 +26,7 @@ type HostInfo struct {
 }
 
 // Populate retrieves and populates the HostInfo using the provided transport.
-func (i *HostInfo) Populate(t transport.Transport, runtimeOnly bool) *result.Result {
-	if runtimeOnly {
-		return result.NewSuccess(false, nil)
-	}
-
+func (i *HostInfo) Populate(t transport.Transport) *result.Result {
 	connection, cleanup, err := t.StartPlugin("forge", "discover", nil)
 	if err != nil {
 		err = fmt.Errorf("failed to start discovery client: %w", err)
