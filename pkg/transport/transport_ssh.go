@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -44,6 +43,21 @@ func DefaultKnownHostsPath() (string, error) {
 	return filepath.Join(homeDir, ".ssh", "known_hosts"), nil
 }
 
+type sshPlatform interface {
+	OS() string
+	Arch() string
+	PathSeparator() string
+	PluginExtension() string
+
+	GetDefaultTempPath() (string, error)
+
+	PopulateInfo() error
+
+	MkdirAll(path string) error
+	UploadFile(localPath, remotePath string) error
+	FormatCommand(cmd string, env ...string) string
+}
+
 type sshTransport struct {
 	host string
 	port uint16
@@ -51,8 +65,7 @@ type sshTransport struct {
 	minPluginPort uint16
 	maxPluginPort uint16
 
-	os   string
-	arch string
+	platform sshPlatform
 
 	tempPath string
 
@@ -68,26 +81,26 @@ func (s *sshTransport) Type() TransportType {
 
 // OS implements Transport.
 func (s *sshTransport) OS() (string, error) {
-	if s.os == "" {
+	if s.platform == nil || s.platform.OS() == "" {
 		err := s.Connect()
 		if err != nil {
 			return "", err
 		}
 	}
 
-	return s.os, nil
+	return s.platform.OS(), nil
 }
 
 // Arch implements Transport.
 func (s *sshTransport) Arch() (string, error) {
-	if s.arch == "" {
+	if s.platform == nil || s.platform.Arch() == "" {
 		err := s.Connect()
 		if err != nil {
 			return "", err
 		}
 	}
 
-	return s.arch, nil
+	return s.platform.Arch(), nil
 }
 
 // Connect implements Transport.
@@ -104,7 +117,7 @@ func (s *sshTransport) Connect() error {
 
 	s.client = client
 
-	if s.os != "" && s.arch != "" && s.tempPath != "" {
+	if s.platform != nil && s.platform.OS() != "" && s.platform.Arch() != "" && s.tempPath != "" {
 		session, err := s.client.NewSession()
 		if err != nil {
 			s.client.Close()
@@ -137,170 +150,23 @@ func (s *sshTransport) populatePlatformInfo() error {
 	psErr := session.Run(powershellCheckCmd)
 	session.Close()
 	if psErr == nil {
-		return s.populateWindowsInfo()
+		s.platform = newSSHWindowsPlatform(s)
+	} else {
+		s.platform = newSSHPosixPlatform(s)
 	}
 
-	return s.populatePosixInfo()
-}
-
-func (s *sshTransport) populateWindowsInfo() error {
-	s.os = "windows"
-	err := s.populateWindowsArch()
+	err = s.platform.PopulateInfo()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to populate platform info: %w", err)
 	}
 
 	if s.tempPath == "" {
-		err = s.populateWindowsTempPath()
+		s.tempPath, err = s.platform.GetDefaultTempPath()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get default temp path: %w", err)
 		}
 	}
 
-	return nil
-}
-
-func (s *sshTransport) populateWindowsArch() error {
-	session, err := s.client.NewSession()
-	if err != nil {
-		return fmt.Errorf("failed to create SSH session: %w", err)
-	}
-	defer session.Close()
-
-	archCmd := "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command " +
-		`"$env:PROCESSOR_ARCHITECTURE"`
-	archOutput, err := session.CombinedOutput(archCmd)
-	if err != nil {
-		return fmt.Errorf("failed to execute architecture detection command: %w", err)
-	}
-
-	arch := strings.TrimSpace(strings.ToLower(string(archOutput)))
-
-	switch arch {
-	case "amd64", "arm64":
-		s.arch = arch
-		return nil
-	case "x86":
-		s.arch = "386"
-		return nil
-	}
-
-	return fmt.Errorf("unknown or unsupported architecture: %s", arch)
-}
-
-func (s *sshTransport) populateWindowsTempPath() error {
-	session, err := s.client.NewSession()
-	if err != nil {
-		return fmt.Errorf("failed to create SSH session: %w", err)
-	}
-
-	homeCmd := "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command " +
-		`"$env:USERPROFILE"`
-	homeOutput, err := session.CombinedOutput(homeCmd)
-	session.Close()
-	if err != nil {
-		return fmt.Errorf("failed to execute home directory detection command: %w", err)
-	}
-
-	homeDir := strings.TrimSpace(string(homeOutput))
-	s.tempPath = fmt.Sprintf(`%s\AppData\Local\Temp\Forge`, homeDir)
-	return nil
-}
-
-func (s *sshTransport) populatePosixInfo() error {
-	err := s.populatePosixOS()
-	if err != nil {
-		return err
-	}
-
-	err = s.populatePosixArch()
-	if err != nil {
-		return err
-	}
-
-	if s.tempPath == "" {
-		err = s.populatePosixTempPath()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s *sshTransport) populatePosixOS() error {
-	session, err := s.client.NewSession()
-	if err != nil {
-		return fmt.Errorf("failed to create SSH session: %w", err)
-	}
-	defer session.Close()
-
-	osCmd := "uname -s"
-	osOutput, err := session.CombinedOutput(osCmd)
-	if err != nil {
-		return fmt.Errorf("failed to execute OS detection command: %w", err)
-	}
-
-	os := strings.TrimSpace(strings.ToLower(string(osOutput)))
-
-	switch os {
-	case "aix", "darwin", "dragonfly", "freebsd", "illumos", "linux", "netbsd", "openbsd", "plan9", "solaris":
-		s.os = os
-	default:
-		return fmt.Errorf("unknown or unsupported POSIX OS: %s", os)
-	}
-
-	return nil
-}
-
-func (s *sshTransport) populatePosixArch() error {
-	session, err := s.client.NewSession()
-	if err != nil {
-		return fmt.Errorf("failed to create SSH session: %w", err)
-	}
-	defer session.Close()
-
-	archCmd := "uname -m"
-	archOutput, err := session.CombinedOutput(archCmd)
-	if err != nil {
-		return fmt.Errorf("failed to execute architecture detection command: %w", err)
-	}
-
-	arch := strings.TrimSpace(strings.ToLower(string(archOutput)))
-
-	switch arch {
-	case "x86_64":
-		s.arch = "amd64"
-	case "aarch64":
-		s.arch = "arm64"
-	case "i386", "i486", "i586", "i686", "i786", "x86":
-		s.arch = "386"
-	case "armv6l", "armv7l":
-		s.arch = "arm"
-	case "386", "amd64", "arm", "arm64", "mips", "mips64", "ppc64", "ppc64le", "riscv64", "s390x":
-		s.arch = arch
-	default:
-		return fmt.Errorf("unknown or unsupported architecture: %s", arch)
-	}
-
-	return nil
-}
-
-func (s *sshTransport) populatePosixTempPath() error {
-	session, err := s.client.NewSession()
-	if err != nil {
-		return fmt.Errorf("failed to create SSH session: %w", err)
-	}
-	defer session.Close()
-
-	homeCmd := "echo $HOME"
-	homeOutput, err := session.CombinedOutput(homeCmd)
-	if err != nil {
-		return fmt.Errorf("failed to execute home directory detection command: %w", err)
-	}
-
-	homeDir := strings.TrimSpace(string(homeOutput))
-	s.tempPath = fmt.Sprintf("%s/.local/share/forge-tmp", homeDir)
 	return nil
 }
 
@@ -336,37 +202,34 @@ func (s *sshTransport) StartPlugin(
 		return nil, nil, fmt.Errorf("failed to connect to SSH server: %w", err)
 	}
 
-	localPluginPath, err := plugin.FindPluginPath(namespace, pluginName, s.os, s.arch)
+	localPluginPath, err := plugin.FindPluginPath(namespace, pluginName, s.platform.OS(), s.platform.Arch())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to find local plugin path: %w", err)
 	}
 
-	var extension string
-	if s.os == "windows" {
-		extension = ".exe"
-	}
+	remotePluginPath := fmt.Sprintf(
+		"%s%s%s-%s%s",
+		s.tempPath,
+		s.platform.PathSeparator(),
+		namespace,
+		pluginName,
+		s.platform.PluginExtension(),
+	)
 
-	remotePluginPath := fmt.Sprintf("%s/%s-%s%s", s.tempPath, namespace, pluginName, extension)
-
-	if s.sftpClient == nil {
-		sftpClient, err := sftp.NewClient(s.client)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to create SFTP client: %w", err)
-		}
-		s.sftpClient = sftpClient
-	}
-
-	err = s.sftpClient.MkdirAll(s.tempPath)
+	err = s.platform.MkdirAll(s.tempPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create remote temp path '%s': %w", s.tempPath, err)
 	}
 
-	err = s.uploadFile(localPluginPath, remotePluginPath)
+	err = s.platform.UploadFile(localPluginPath, remotePluginPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to upload discovery plugin to remote path '%s': %w", remotePluginPath, err)
 	}
 
-	if s.os != "windows" {
+	envMinPort := fmt.Sprintf("FORGE_PLUGIN_MIN_PORT=%d", s.minPluginPort)
+	envMaxPort := fmt.Sprintf("FORGE_PLUGIN_MAX_PORT=%d", s.maxPluginPort)
+
+	if s.platform.OS() != "windows" {
 		session, err := s.client.NewSession()
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create SSH session: %w", err)
@@ -378,6 +241,8 @@ func (s *sshTransport) StartPlugin(
 			return nil, nil, fmt.Errorf("failed to make discovery plugin executable: %w", err)
 		}
 	}
+
+	cmd := s.platform.FormatCommand(remotePluginPath, envMinPort, envMaxPort)
 
 	session, err := s.client.NewSession()
 	if err != nil {
@@ -397,14 +262,7 @@ func (s *sshTransport) StartPlugin(
 	}
 
 	// Start the plugin
-	err = session.Start(
-		fmt.Sprintf(
-			"FORGE_PLUGIN_MIN_PORT=%d FORGE_PLUGIN_MAX_PORT=%d %s",
-			s.minPluginPort,
-			s.maxPluginPort,
-			remotePluginPath,
-		),
-	)
+	err = session.Start(cmd)
 
 	if err != nil {
 		session.Close()
@@ -432,8 +290,7 @@ func (s *sshTransport) StartPlugin(
 		return nil, nil, fmt.Errorf("invalid port output: %w", err)
 	}
 
-	// TODO - Implement configurable local port range
-	listener, localPort, err := network.GetListenerAndPortInRange(plugin.LocalPluginMinPort, plugin.LocalPluginMinPort)
+	listener, localPort, err := network.GetListenerAndPortInRange(plugin.LocalPluginMinPort, plugin.LocalPluginMaxPort)
 	if err != nil {
 		session.Close()
 		return nil, nil, fmt.Errorf("failed to get local listener: %w", err)
@@ -456,35 +313,6 @@ func (s *sshTransport) StartPlugin(
 	}
 
 	return connection, cleanup, nil
-}
-
-func (s *sshTransport) uploadFile(localPath, remotePath string) error {
-	if s.sftpClient == nil {
-		sftpClient, err := sftp.NewClient(s.client)
-		if err != nil {
-			return fmt.Errorf("failed to create SFTP client: %w", err)
-		}
-		s.sftpClient = sftpClient
-	}
-
-	localFile, err := os.Open(localPath)
-	if err != nil {
-		return fmt.Errorf("failed to open local file '%s': %w", localPath, err)
-	}
-	defer localFile.Close()
-
-	remoteFile, err := s.sftpClient.Create(remotePath)
-	if err != nil {
-		return fmt.Errorf("failed to create remote file '%s': %w", remotePath, err)
-	}
-	defer remoteFile.Close()
-
-	_, err = remoteFile.ReadFrom(localFile)
-	if err != nil {
-		return fmt.Errorf("failed to upload file to '%s': %w", remotePath, err)
-	}
-
-	return nil
 }
 
 func (s *sshTransport) forwardConnections(localListener net.Listener, remotePort uint16) {

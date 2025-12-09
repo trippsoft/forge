@@ -152,6 +152,7 @@ type ExpectedOSInfo struct {
 	ID           string
 	FriendlyName string
 	Release      string
+	ReleaseId    string
 	MajorVersion string
 	Version      string
 	Edition      string
@@ -194,6 +195,10 @@ func (e *ExpectedOSInfo) Verify(t *testing.T, actual *info.OSInfo) {
 
 	if actual.Release() != e.Release {
 		t.Errorf("expected OS release to be %q, got %q", e.Release, actual.Release())
+	}
+
+	if actual.ReleaseId() != e.ReleaseId {
+		t.Errorf("expected OS release ID to be %q, got %q", e.ReleaseId, actual.ReleaseId())
 	}
 
 	if actual.MajorVersion() != e.MajorVersion {

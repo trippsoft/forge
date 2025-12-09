@@ -1,0 +1,16 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+    config.vm.define "cmd" do |cmd|
+        cmd.vm.box = "jtarpley/w2025_cis"
+        cmd.vm.provision "shell", inline: <<-SHELL
+        powershell.exe -NoProfile -NoLogo -Command "New-ItemProperty -Path 'HKLM:\\SOFTWARE\\OpenSSH' -Name DefaultShell -Value 'C:\\Windows\\System32\\cmd.exe' -PropertyType String -Force"
+        powershell.exe -NoProfile -NoLogo -Command "Restart-Service sshd"
+        SHELL
+    end
+
+    config.vm.define "windows" do |windows|
+        windows.vm.box = "jtarpley/w2025_cis"
+    end
+end

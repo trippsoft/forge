@@ -5,7 +5,12 @@
 
 package discover
 
-import "golang.org/x/sys/windows/registry"
+import (
+	"errors"
+	"os"
+
+	"golang.org/x/sys/windows/registry"
+)
 
 func discoverFIPSInfo() (*FIPSInfoResponse, error) {
 	fipsInfo := &FIPSInfoResponse{
@@ -19,7 +24,7 @@ func discoverFIPSInfo() (*FIPSInfoResponse, error) {
 	)
 
 	// If the key doesn't exist, FIPS is not enabled.
-	if registry.ErrNotExist.Is(err) {
+	if errors.Is(err, os.ErrNotExist) {
 		fipsInfo.Enabled = false
 		return fipsInfo, nil
 	}
