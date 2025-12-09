@@ -302,6 +302,7 @@ func (s *sshTransport) StartPlugin(
 		listener.Close()
 		session.Signal(ssh.SIGTERM)
 		session.Close()
+		session.Wait()
 		s.sftpClient.Remove(remotePluginPath)
 	}
 

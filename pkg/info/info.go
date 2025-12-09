@@ -37,6 +37,7 @@ func (i *HostInfo) Populate(t transport.Transport) *result.Result {
 
 	client := discover.NewDiscoveryPluginClient(connection)
 	response, err := client.DiscoverInfo(context.Background(), &discover.DiscoverInfoRequest{})
+	_, _ = client.Shutdown(context.Background(), &discover.ShutdownRequest{})
 	if err != nil {
 		err = fmt.Errorf("failed to discover host info: %w", err)
 		return result.NewFailure(err, err.Error())
