@@ -23,11 +23,11 @@ func TestCommentsWhitespace(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
-	copyModule := createMockModule()
+	shellModule := createMockModule("shell")
+	copyModule := createMockModule("copy")
 
-	moduleRegistry.Register("shell", shellModule)
-	moduleRegistry.Register("copy", copyModule)
+	moduleRegistry.Register(shellModule)
+	moduleRegistry.Register(copyModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -85,9 +85,9 @@ func TestDataTypesInput(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -147,9 +147,9 @@ func TestEmptyEscalateBlock(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -229,9 +229,9 @@ func TestEmptyInputBlock(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -280,9 +280,9 @@ func TestEmptyOutputBlock(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -369,9 +369,9 @@ func TestLongNames(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	module := createMockModule()
+	module := createMockModule("module-with-long-name")
 
-	moduleRegistry.Register("module-with-long-name", module)
+	moduleRegistry.Register(module)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -452,9 +452,9 @@ func TestSingleTargetString(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -505,9 +505,9 @@ func TestTargetInheritance(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 

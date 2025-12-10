@@ -26,35 +26,6 @@ func TestAssertModuleInputSpec(t *testing.T) {
 	}
 }
 
-func TestAssertModuleValidate(t *testing.T) {
-	m := &AssertModule{}
-
-	input := map[string]cty.Value{
-		"condition": cty.BoolVal(true),
-	}
-
-	mockTransport := transport.NewMockTransport()
-	escalateConfig := inventory.NewEscalateConfig("")
-	hostBuilder := inventory.NewHostBuilder()
-	host, _ := hostBuilder.
-		WithName("linux").
-		WithTransport(mockTransport).
-		WithEscalateConfig(escalateConfig).
-		Build()
-
-	config := &RunConfig{
-		Transport:  mockTransport,
-		HostInfo:   host.Info(),
-		Escalation: nil,
-		Input:      input,
-	}
-
-	err := m.Validate(config)
-	if err != nil {
-		t.Fatalf("Expected no error from Validate(), got: %q", err.Error())
-	}
-}
-
 func TestAssertModuleRun(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -92,7 +63,6 @@ func TestAssertModuleRun(t *testing.T) {
 			ctx := context.Background()
 
 			config := &RunConfig{
-				Transport:  mockTransport,
 				HostInfo:   host.Info(),
 				Escalation: nil,
 				Input:      tt.input,

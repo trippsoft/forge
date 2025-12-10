@@ -19,32 +19,51 @@ import (
 )
 
 type mockModule struct {
+	name         string
 	inputSpec    *hclspec.Spec
 	validateFunc func(config *module.RunConfig) error
 	Result       *result.Result
 }
 
-func newMockModule(spec *hclspec.Spec, validate func(config *module.RunConfig) error) *mockModule {
+func newMockModule(name string, spec *hclspec.Spec, validate func(config *module.RunConfig) error) *mockModule {
 	return &mockModule{
+		name:         name,
 		inputSpec:    spec,
 		validateFunc: validate,
 	}
+}
+
+func (m *mockModule) Info() *module.ModuleInfo {
+	return module.NewModuleInfo("", "", m.name)
 }
 
 func (m *mockModule) InputSpec() *hclspec.Spec {
 	return m.inputSpec
 }
 
-func (m *mockModule) Validate(config *module.RunConfig) error {
-	if m.validateFunc == nil {
-		return nil
-	}
+func (m *mockModule) PrepareExecution(ctx context.Context, config *module.RunConfig) error {
+	return nil
+}
 
-	return m.validateFunc(config)
+func (m *mockModule) GetModuleExecutor() module.ModuleExecutor {
+	return m
 }
 
 func (m *mockModule) Run(ctx context.Context, config *module.RunConfig) *result.Result {
+	if m.validateFunc == nil {
+		return m.Result
+	}
+
+	err := m.validateFunc(config)
+	if err != nil {
+		return result.NewFailure(err, "")
+	}
+
 	return m.Result
+}
+
+func (m *mockModule) Cleanup() error {
+	return nil
 }
 
 func createMockHost(name string) *inventory.Host {
@@ -74,8 +93,8 @@ func createMockInventory(h ...*inventory.Host) *inventory.Inventory {
 	return inventory.NewInventory(hosts, groups, targets)
 }
 
-func createMockModule() *mockModule {
-	return newMockModule(&hclspec.Spec{}, nil)
+func createMockModule(name string) *mockModule {
+	return newMockModule(name, &hclspec.Spec{}, nil)
 }
 
 type expectedLoop struct {

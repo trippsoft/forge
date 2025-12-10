@@ -26,35 +26,6 @@ func TestMessageModuleInputSpec(t *testing.T) {
 	}
 }
 
-func TestMessageModuleValidate(t *testing.T) {
-	m := &MessageModule{}
-
-	input := map[string]cty.Value{
-		"message": cty.StringVal("Hello, World!"),
-	}
-
-	mockTransport := transport.NewMockTransport()
-	escalateConfig := inventory.NewEscalateConfig("")
-	hostBuilder := inventory.NewHostBuilder()
-	host, _ := hostBuilder.
-		WithName("linux").
-		WithTransport(mockTransport).
-		WithEscalateConfig(escalateConfig).
-		Build()
-
-	config := &RunConfig{
-		Transport:  mockTransport,
-		HostInfo:   host.Info(),
-		Escalation: nil,
-		Input:      input,
-	}
-
-	err := m.Validate(config)
-	if err != nil {
-		t.Fatalf("Expected no error from Validate(), got: %q", err.Error())
-	}
-}
-
 func TestMessageModuleRun(t *testing.T) {
 	mockTransport := transport.NewMockTransport()
 	escalateConfig := inventory.NewEscalateConfig("")
@@ -72,7 +43,6 @@ func TestMessageModuleRun(t *testing.T) {
 	}
 
 	config := &RunConfig{
-		Transport:  mockTransport,
 		HostInfo:   host.Info(),
 		Escalation: nil,
 		Input:      input,

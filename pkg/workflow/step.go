@@ -599,23 +599,16 @@ func (s *SingleStep) runHostIteration(hwc *HostWorkflowContext, iteration *StepI
 	}
 
 	config := &module.RunConfig{
-		Transport:  hwc.host.Transport(),
 		HostInfo:   hwc.host.Info(),
 		Escalation: escalation,
 		WhatIf:     whatIf,
 		Input:      input,
 	}
 
-	err = s.module.Validate(config)
-	if err != nil {
-		result := result.NewFailure(err, err.Error())
-		return s.handleHostIterationResult(hwc, iteration, result), err
-	}
-
 	runCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	result := s.module.Run(runCtx, config)
+	result := s.module.GetModuleExecutor().Run(runCtx, config)
 	if result == nil || s.output == nil {
 		return s.handleHostIterationResult(hwc, iteration, result), nil
 	}

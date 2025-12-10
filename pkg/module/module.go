@@ -22,11 +22,27 @@ const (
 )
 
 var (
-	localModules = map[string]Module{
-		"assert":  &AssertModule{},
-		"message": &MessageModule{},
+	localModules = []Module{
+		&AssertModule{},
+		&MessageModule{},
 	}
 )
+
+// ModuleInfo provides metadata about a module.
+type ModuleInfo struct {
+	namespace  string
+	pluginName string
+	name       string
+}
+
+// NewModuleInfo creates a new ModuleInfo instance.
+func NewModuleInfo(namespace, pluginName, name string) *ModuleInfo {
+	return &ModuleInfo{
+		namespace:  namespace,
+		pluginName: pluginName,
+		name:       name,
+	}
+}
 
 // RunConfig provides the context for running a module on a specific host.
 type RunConfig struct {
@@ -37,17 +53,22 @@ type RunConfig struct {
 	Input      map[string]cty.Value  // Input variables for the module.
 }
 
+// ModuleExecutor defines an interface for executing modules.
+type ModuleExecutor interface {
+	// Run runs the module with the given context and configuration.
+	Run(ctx context.Context, config *RunConfig) *result.Result
+}
+
 // Module abstracts local and plugin modules.
 type Module interface {
+	// Info returns the module information.
+	Info() *ModuleInfo
+
 	// InputSpec returns the specification for the module's input.
 	InputSpec() *hclspec.Spec
 
-	// Validate checks if the module input is valid.
-	// This validation is done after ensuring the input matches the InputSpec.
-	Validate(config *RunConfig) error
-
-	// Run executes the module with the provided host and input.
-	Run(ctx context.Context, config *RunConfig) *result.Result
+	// GetModuleExecutor returns the executor for the module.
+	GetModuleExecutor() ModuleExecutor
 }
 
 // Registry manages a collection of modules.
@@ -58,10 +79,25 @@ type Registry struct {
 }
 
 // Register adds a new module to the registry.
-func (r *Registry) Register(name string, module Module) error {
+func (r *Registry) Register(module Module) error {
 	if r.modules == nil {
 		r.modules = make(map[string]Module)
 	}
+
+	if module.Info() == nil {
+		return errors.New("module info cannot be nil")
+	}
+
+	var name string
+	if module.Info().namespace != "" {
+		name = module.Info().namespace + "/"
+	}
+
+	if module.Info().pluginName != "" {
+		name += module.Info().pluginName + "/"
+	}
+
+	name += module.Info().name
 
 	if _, exists := r.modules[name]; exists {
 		return fmt.Errorf("module %q is already registered", name)
@@ -74,8 +110,8 @@ func (r *Registry) Register(name string, module Module) error {
 // RegisterLocalModules registers the built-in local modules to the registry.
 func (r *Registry) RegisterLocalModules() error {
 	var err error
-	for name, module := range localModules {
-		regErr := r.Register(name, module)
+	for _, module := range localModules {
+		regErr := r.Register(module)
 		if regErr != nil {
 			err = errors.Join(err, regErr)
 		}

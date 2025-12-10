@@ -24,9 +24,9 @@ func TestInvalidBlockType(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -81,9 +81,9 @@ func TestInvalidStepAttribute(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -138,9 +138,9 @@ func TestLoopMissingItems(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -179,9 +179,9 @@ func TestMissingProcessName(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -220,9 +220,9 @@ func TestMissingProcessTargets(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -261,9 +261,9 @@ func TestMissingStepModule(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -302,9 +302,9 @@ func TestMissingStepName(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -343,9 +343,9 @@ func TestMultipleEscalateBlocks(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -384,9 +384,9 @@ func TestMultipleInputBlocks(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -425,9 +425,9 @@ func TestMulitpleLoopBlocks(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -466,9 +466,9 @@ func TestProcessWithLabels(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -507,9 +507,9 @@ func TestStepMissingLabel(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -548,9 +548,9 @@ func TestStepTooManyLabels(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -589,9 +589,9 @@ func TestSyntaxErrorMissingBrace(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -630,9 +630,9 @@ func TestSyntaxErrorMissingQuotes(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 

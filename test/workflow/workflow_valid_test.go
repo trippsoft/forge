@@ -25,9 +25,9 @@ func TestBasicProcess(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -79,11 +79,11 @@ func TestComplexProcess(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	backupModule := createMockModule()
-	maintenanceModule := createMockModule()
+	backupModule := createMockModule("backup")
+	maintenanceModule := createMockModule("maintenance")
 
-	moduleRegistry.Register("backup", backupModule)
-	moduleRegistry.Register("maintenance", maintenanceModule)
+	moduleRegistry.Register(backupModule)
+	moduleRegistry.Register(maintenanceModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -168,11 +168,11 @@ func TestEscalationProcess(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	packageModule := createMockModule()
-	serviceModule := createMockModule()
+	packageModule := createMockModule("package")
+	serviceModule := createMockModule("service")
 
-	moduleRegistry.Register("package", packageModule)
-	moduleRegistry.Register("service", serviceModule)
+	moduleRegistry.Register(packageModule)
+	moduleRegistry.Register(serviceModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -241,9 +241,9 @@ func TestInputOutputProcess(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	configModule := createMockModule()
+	configModule := createMockModule("config")
 
-	moduleRegistry.Register("config", configModule)
+	moduleRegistry.Register(configModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -308,9 +308,9 @@ func TestLoopProcess(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	deployModule := createMockModule()
+	deployModule := createMockModule("deploy")
 
-	moduleRegistry.Register("deploy", deployModule)
+	moduleRegistry.Register(deployModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -370,13 +370,13 @@ func TestMultiStepProcess(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
-	configModule := createMockModule()
-	deployModule := createMockModule()
+	shellModule := createMockModule("shell")
+	configModule := createMockModule("config")
+	deployModule := createMockModule("deploy")
 
-	moduleRegistry.Register("shell", shellModule)
-	moduleRegistry.Register("config", configModule)
-	moduleRegistry.Register("deploy", deployModule)
+	moduleRegistry.Register(shellModule)
+	moduleRegistry.Register(configModule)
+	moduleRegistry.Register(deployModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -457,13 +457,13 @@ func TestMultipleProcesses(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
-	copyModule := createMockModule()
-	serviceModule := createMockModule()
+	shellModule := createMockModule("shell")
+	copyModule := createMockModule("copy")
+	serviceModule := createMockModule("service")
 
-	moduleRegistry.Register("shell", shellModule)
-	moduleRegistry.Register("copy", copyModule)
-	moduleRegistry.Register("service", serviceModule)
+	moduleRegistry.Register(shellModule)
+	moduleRegistry.Register(copyModule)
+	moduleRegistry.Register(serviceModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 
@@ -578,9 +578,9 @@ func TestMissingTarget(t *testing.T) {
 
 	moduleRegistry := module.NewRegistry()
 
-	shellModule := createMockModule()
+	shellModule := createMockModule("shell")
 
-	moduleRegistry.Register("shell", shellModule)
+	moduleRegistry.Register(shellModule)
 
 	parser := workflow.NewParser(i, moduleRegistry)
 

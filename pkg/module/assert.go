@@ -24,23 +24,29 @@ var (
 		hclspec.OptionalField("failure_message", hclspec.String).WithDefaultValue(cty.StringVal(defaultFailureMessage)),
 	))
 
-	_ Module = (*AssertModule)(nil)
+	_ Module         = (*AssertModule)(nil)
+	_ ModuleExecutor = (*AssertModule)(nil)
 )
 
 // AssertModule defines the assert module that checks conditions.
 type AssertModule struct{}
 
-// InputSpec implements module.Module.
+// Info implements Module.
+func (m *AssertModule) Info() *ModuleInfo {
+	return NewModuleInfo("", "", "assert")
+}
+
+// InputSpec implements Module.
 func (m *AssertModule) InputSpec() *hclspec.Spec {
 	return assertInputSpec
 }
 
-// Validate implements module.Module.
-func (m *AssertModule) Validate(config *RunConfig) error {
-	return nil
+// GetModuleExecutor implements Module.
+func (m *AssertModule) GetModuleExecutor() ModuleExecutor {
+	return m
 }
 
-// Run implements module.Module.
+// Run implements Module.
 func (m *AssertModule) Run(ctx context.Context, config *RunConfig) *result.Result {
 	if config == nil {
 		return result.NewFailure(errors.New("config is nil"), "")

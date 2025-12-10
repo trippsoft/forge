@@ -16,23 +16,29 @@ import (
 var (
 	inputSpec = hclspec.NewSpec(hclspec.Object(hclspec.RequiredField("message", hclspec.Raw)))
 
-	_ Module = (*MessageModule)(nil)
+	_ Module         = (*MessageModule)(nil)
+	_ ModuleExecutor = (*MessageModule)(nil)
 )
 
 // Module defines the message module that displays messages to the console.
 type MessageModule struct{}
 
-// InputSpec implements module.Module.
+// Info implements Module.
+func (s *MessageModule) Info() *ModuleInfo {
+	return NewModuleInfo("", "", "message")
+}
+
+// InputSpec implements Module.
 func (s *MessageModule) InputSpec() *hclspec.Spec {
 	return inputSpec
 }
 
-// Validate implements module.Module.
-func (s *MessageModule) Validate(config *RunConfig) error {
-	return nil // No specific validation needed for this module.
+// GetModuleExecutor implements Module.
+func (s *MessageModule) GetModuleExecutor() ModuleExecutor {
+	return s
 }
 
-// Run implements module.Module.
+// Run implements ModuleExecutor.
 func (s *MessageModule) Run(ctx context.Context, config *RunConfig) *result.Result {
 	if config == nil {
 		return result.NewFailure(errors.New("config cannot be nil"), "")
