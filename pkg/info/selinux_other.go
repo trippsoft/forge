@@ -3,10 +3,10 @@
 
 //go:build !linux
 
-package discover
+package info
 
-func discoverSELinuxInfo() (*SELinuxInfoResponse, error) {
-	return &SELinuxInfoResponse{
+func discoverSELinuxInfo() (*SELinuxInfo, error) {
+	return &SELinuxInfo{
 		Supported: false,
 		Installed: false,
 		Status:    "",

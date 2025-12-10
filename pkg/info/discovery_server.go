@@ -1,7 +1,7 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package discover
+package info
 
 import (
 	context "context"
@@ -65,13 +65,17 @@ func (s *DiscoveryServer) DiscoverInfo(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &DiscoverInfoResponse{
+	hostInfo := &HostInfo{
 		Os:             osInfo,
 		Fips:           fipsInfo,
 		AppArmor:       appArmorInfo,
 		Selinux:        seLinuxInfo,
 		PackageManager: packageManagerInfo,
 		ServiceManager: serviceManagerInfo,
+	}
+
+	return &DiscoverInfoResponse{
+		HostInfo: hostInfo,
 	}, nil
 }
 

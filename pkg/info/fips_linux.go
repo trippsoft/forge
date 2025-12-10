@@ -3,15 +3,15 @@
 
 //go:build linux
 
-package discover
+package info
 
 import (
 	"bytes"
 	"os"
 )
 
-func discoverFIPSInfo() (*FIPSInfoResponse, error) {
-	fipsInfo := &FIPSInfoResponse{
+func discoverFIPSInfo() (*FIPSInfo, error) {
+	fipsInfo := &FIPSInfo{
 		Known: true,
 	}
 

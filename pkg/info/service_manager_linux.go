@@ -3,7 +3,7 @@
 
 //go:build linux
 
-package discover
+package info
 
 import (
 	"os"
@@ -11,8 +11,8 @@ import (
 	"strings"
 )
 
-func discoverServiceManagerInfo() (*ServiceManagerInfoResponse, error) {
-	serviceManagerInfo := &ServiceManagerInfoResponse{}
+func discoverServiceManagerInfo() (*ServiceManagerInfo, error) {
+	serviceManagerInfo := &ServiceManagerInfo{}
 
 	_, err := exec.LookPath("systemctl")
 	if err == nil {

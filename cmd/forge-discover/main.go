@@ -9,7 +9,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/trippsoft/forge/pkg/discover"
+	"github.com/trippsoft/forge/pkg/info"
 	"github.com/trippsoft/forge/pkg/network"
 	"google.golang.org/grpc"
 )
@@ -31,8 +31,8 @@ func realMain() error {
 	defer listener.Close()
 
 	s := grpc.NewServer()
-	discoveryServer := discover.NewDiscoveryServer()
-	discover.RegisterDiscoveryPluginServer(s, discoveryServer)
+	discoveryServer := info.NewDiscoveryServer()
+	info.RegisterDiscoveryPluginServer(s, discoveryServer)
 
 	go func() {
 		err = s.Serve(listener)

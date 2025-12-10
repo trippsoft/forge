@@ -3,7 +3,7 @@
 
 //go:build !darwin && !windows
 
-package discover
+package info
 
 import (
 	"bytes"
@@ -13,8 +13,8 @@ import (
 	"strings"
 )
 
-func discoverPackageManagerInfo(osInfo *OSInfoResponse) (*PackageManagerInfoResponse, error) {
-	packageManagerInfo := &PackageManagerInfoResponse{}
+func discoverPackageManagerInfo(osInfo *OSInfo) (*PackageManagerInfo, error) {
+	packageManagerInfo := &PackageManagerInfo{}
 
 	if slices.Contains(osInfo.Families, "archlinux") {
 		err := populateArchLinuxPackageManagerInfo(packageManagerInfo)
@@ -67,7 +67,7 @@ func discoverPackageManagerInfo(osInfo *OSInfoResponse) (*PackageManagerInfoResp
 	return packageManagerInfo, nil
 }
 
-func populateArchLinuxPackageManagerInfo(packageManagerInfo *PackageManagerInfoResponse) error {
+func populateArchLinuxPackageManagerInfo(packageManagerInfo *PackageManagerInfo) error {
 	fileInfo, err := os.Stat("/usr/bin/pacman")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		packageManagerInfo.Name = "pacman"
@@ -78,7 +78,7 @@ func populateArchLinuxPackageManagerInfo(packageManagerInfo *PackageManagerInfoR
 	return populateOtherLinuxPackageManagerInfo(packageManagerInfo)
 }
 
-func populateDebianPackageManagerInfo(packageManagerInfo *PackageManagerInfoResponse) error {
+func populateDebianPackageManagerInfo(packageManagerInfo *PackageManagerInfo) error {
 	fileInfo, err := os.Stat("/usr/bin/apt-get")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		fileInfo, err := os.Stat("/usr/bin/rpm")
@@ -108,7 +108,7 @@ func populateDebianPackageManagerInfo(packageManagerInfo *PackageManagerInfoResp
 	return populateOtherLinuxPackageManagerInfo(packageManagerInfo)
 }
 
-func populateEnterpriseLinuxPackageManagerInfo(packageManagerInfo *PackageManagerInfoResponse) error {
+func populateEnterpriseLinuxPackageManagerInfo(packageManagerInfo *PackageManagerInfo) error {
 	fileInfo, err := os.Stat("/usr/bin/dnf5")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		packageManagerInfo.Name = "dnf5"
@@ -140,7 +140,7 @@ func populateEnterpriseLinuxPackageManagerInfo(packageManagerInfo *PackageManage
 	return populateOtherLinuxPackageManagerInfo(packageManagerInfo)
 }
 
-func populateGentooPackageManagerInfo(packageManagerInfo *PackageManagerInfoResponse) error {
+func populateGentooPackageManagerInfo(packageManagerInfo *PackageManagerInfo) error {
 	fileInfo, err := os.Stat("/usr/bin/emerge")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		packageManagerInfo.Name = "emerge"
@@ -151,7 +151,7 @@ func populateGentooPackageManagerInfo(packageManagerInfo *PackageManagerInfoResp
 	return populateOtherLinuxPackageManagerInfo(packageManagerInfo)
 }
 
-func populateSUSEPackageManagerInfo(packageManagerInfo *PackageManagerInfoResponse) error {
+func populateSUSEPackageManagerInfo(packageManagerInfo *PackageManagerInfo) error {
 	fileInfo, err := os.Stat("/usr/bin/zypper")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		packageManagerInfo.Name = "zypper"
@@ -162,7 +162,7 @@ func populateSUSEPackageManagerInfo(packageManagerInfo *PackageManagerInfoRespon
 	return populateOtherLinuxPackageManagerInfo(packageManagerInfo)
 }
 
-func populateOtherLinuxPackageManagerInfo(packageManagerInfo *PackageManagerInfoResponse) error {
+func populateOtherLinuxPackageManagerInfo(packageManagerInfo *PackageManagerInfo) error {
 	fileInfo, err := os.Stat("/QOpenSys/pkgs/bin/yum")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		packageManagerInfo.Name = "yum"

@@ -3,7 +3,7 @@
 
 //go:build windows
 
-package discover
+package info
 
 import (
 	"errors"
@@ -14,7 +14,7 @@ import (
 	"github.com/bhendo/go-powershell/backend"
 )
 
-func discoverOSInfo() (*OSInfoResponse, error) {
+func discoverOSInfo() (*OSInfo, error) {
 	b := &backend.Local{}
 	shell, err := ps.New(b)
 	if err != nil {
@@ -22,7 +22,7 @@ func discoverOSInfo() (*OSInfoResponse, error) {
 	}
 	defer shell.Exit()
 
-	osInfo := &OSInfoResponse{
+	osInfo := &OSInfo{
 		Kernel: "windows",
 		Arch:   runtime.GOARCH,
 	}

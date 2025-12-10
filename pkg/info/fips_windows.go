@@ -3,7 +3,7 @@
 
 //go:build windows
 
-package discover
+package info
 
 import (
 	"errors"
@@ -12,8 +12,8 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-func discoverFIPSInfo() (*FIPSInfoResponse, error) {
-	fipsInfo := &FIPSInfoResponse{
+func discoverFIPSInfo() (*FIPSInfo, error) {
+	fipsInfo := &FIPSInfo{
 		Known: true,
 	}
 

@@ -3,12 +3,12 @@
 
 //go:build windows
 
-package discover
+package info
 
-func discoverPackageManagerInfo(_ *OSInfoResponse) (*PackageManagerInfoResponse, error) {
+func discoverPackageManagerInfo(_ *OSInfo) (*PackageManagerInfo, error) {
 	// Windows package managers are not handled in this implementation.
 	// Winget and Chocolatey implementations are to be separate.
-	return &PackageManagerInfoResponse{
+	return &PackageManagerInfo{
 		Name: "",
 		Path: "",
 	}, nil

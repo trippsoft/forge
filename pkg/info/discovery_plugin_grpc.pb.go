@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v3.19.6
-// source: discovery_plugin.proto
+// source: pkg/info/discovery_plugin.proto
 
-package discover
+package info
 
 import (
 	context "context"
@@ -60,14 +60,15 @@ func (c *discoveryPluginClient) Shutdown(ctx context.Context, in *ShutdownReques
 }
 
 // DiscoveryPluginServer is the server API for DiscoveryPlugin service.
-// All implementations should embed UnimplementedDiscoveryPluginServer
+// All implementations must embed UnimplementedDiscoveryPluginServer
 // for forward compatibility
 type DiscoveryPluginServer interface {
 	DiscoverInfo(context.Context, *DiscoverInfoRequest) (*DiscoverInfoResponse, error)
 	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)
+	mustEmbedUnimplementedDiscoveryPluginServer()
 }
 
-// UnimplementedDiscoveryPluginServer should be embedded to have forward compatible implementations.
+// UnimplementedDiscoveryPluginServer must be embedded to have forward compatible implementations.
 type UnimplementedDiscoveryPluginServer struct {
 }
 
@@ -77,6 +78,7 @@ func (UnimplementedDiscoveryPluginServer) DiscoverInfo(context.Context, *Discove
 func (UnimplementedDiscoveryPluginServer) Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Shutdown not implemented")
 }
+func (UnimplementedDiscoveryPluginServer) mustEmbedUnimplementedDiscoveryPluginServer() {}
 
 // UnsafeDiscoveryPluginServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to DiscoveryPluginServer will
@@ -142,5 +144,5 @@ var DiscoveryPlugin_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "discovery_plugin.proto",
+	Metadata: "pkg/info/discovery_plugin.proto",
 }

@@ -16,7 +16,7 @@ func TestHostInfo(t *testing.T) {
 		OS: integration.ExpectedOSInfo{
 			Families:     []string{"windows", "windows-server"},
 			Kernel:       "windows",
-			ID:           "windows-server",
+			Id:           "windows-server",
 			FriendlyName: "Microsoft Windows Server 2025 Datacenter",
 			Release:      "Server 2025",
 			ReleaseId:    "server-2025",

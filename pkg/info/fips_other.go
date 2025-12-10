@@ -3,10 +3,10 @@
 
 //go:build !linux && !windows
 
-package discover
+package info
 
-func discoverFIPSInfo() (*FIPSInfoResponse, error) {
-	return &FIPSInfoResponse{
+func discoverFIPSInfo() (*FIPSInfo, error) {
+	return &FIPSInfo{
 		Known:   false,
 		Enabled: false,
 	}, nil

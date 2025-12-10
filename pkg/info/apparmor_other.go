@@ -3,10 +3,10 @@
 
 //go:build !linux
 
-package discover
+package info
 
-func discoverAppArmorInfo() (*AppArmorInfoResponse, error) {
-	return &AppArmorInfoResponse{
+func discoverAppArmorInfo() (*AppArmorInfo, error) {
+	return &AppArmorInfo{
 		Supported: false,
 		Enabled:   false,
 	}, nil

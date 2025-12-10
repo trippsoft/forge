@@ -3,7 +3,7 @@
 
 //go:build linux
 
-package discover
+package info
 
 import (
 	"bufio"
@@ -11,8 +11,8 @@ import (
 	"strings"
 )
 
-func discoverSELinuxInfo() (*SELinuxInfoResponse, error) {
-	seLinuxInfo := &SELinuxInfoResponse{
+func discoverSELinuxInfo() (*SELinuxInfo, error) {
+	seLinuxInfo := &SELinuxInfo{
 		Supported: true,
 	}
 

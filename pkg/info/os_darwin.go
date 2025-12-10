@@ -3,7 +3,7 @@
 
 //go:build darwin
 
-package discover
+package info
 
 import (
 	"bytes"
@@ -13,8 +13,8 @@ import (
 	"strings"
 )
 
-func discoverOSInfo() (*OSInfoResponse, error) {
-	osInfo := &OSInfoResponse{
+func discoverOSInfo() (*OSInfo, error) {
+	osInfo := &OSInfo{
 		Kernel:    "darwin",
 		Id:        "macos",
 		Edition:   "",

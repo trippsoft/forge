@@ -3,12 +3,12 @@
 
 //go:build darwin
 
-package discover
+package info
 
 import "os"
 
-func discoverPackageManagerInfo(_ *OSInfoResponse) (*PackageManagerInfoResponse, error) {
-	packageManagerInfo := &PackageManagerInfoResponse{}
+func discoverPackageManagerInfo(_ *OSInfo) (*PackageManagerInfo, error) {
+	packageManagerInfo := &PackageManagerInfo{}
 
 	fileInfo, err := os.Stat("/opt/homebrew/bin/brew")
 	if err == nil && fileInfo.Mode().IsRegular() {

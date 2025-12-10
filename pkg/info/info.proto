@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package info;
+
+option go_package = "github.com/trippsoft/forge/pkg/info";
+
+message OSInfo {
+  string kernel = 1;
+  string id = 2;
+  string friendly_name = 3;
+  string release = 4;
+  string release_id = 5;
+  string major_version = 6;
+  string version = 7;
+  string edition = 8;
+  string edition_id = 9;
+  string arch = 10;
+  repeated string families = 11;
+}
+
+message FIPSInfo {
+  bool known = 1;
+  bool enabled = 2;
+}
+
+message AppArmorInfo {
+  bool supported = 1;
+  bool enabled = 2;
+}
+
+message SELinuxInfo {
+  bool supported = 1;
+  bool installed = 2;
+  string status = 3;
+  string type = 4;
+}
+
+message PackageManagerInfo {
+  string name = 1;
+  string path = 2;
+}
+
+message ServiceManagerInfo {
+  string name = 1;
+}
+
+message HostInfo {
+    OSInfo os = 1;
+    FIPSInfo fips = 2;
+    AppArmorInfo app_armor = 3;
+    SELinuxInfo selinux = 4;
+    PackageManagerInfo package_manager = 5;
+    ServiceManagerInfo service_manager = 6;
+}

@@ -20,7 +20,7 @@ func TestHostInfo(t *testing.T) {
 				OS: integration.ExpectedOSInfo{
 					Families:     []string{"posix", "linux", "debian"},
 					Kernel:       "linux",
-					ID:           "debian",
+					Id:           "debian",
 					FriendlyName: "Debian GNU/Linux 13 (trixie)",
 					Release:      "trixie",
 					ReleaseId:    "trixie",
@@ -59,7 +59,7 @@ func TestHostInfo(t *testing.T) {
 				OS: integration.ExpectedOSInfo{
 					Families:     []string{"posix", "linux", "debian"},
 					Kernel:       "linux",
-					ID:           "debian",
+					Id:           "debian",
 					FriendlyName: "Debian GNU/Linux 12 (bookworm)",
 					Release:      "bookworm",
 					ReleaseId:    "bookworm",
@@ -98,7 +98,7 @@ func TestHostInfo(t *testing.T) {
 				OS: integration.ExpectedOSInfo{
 					Families:     []string{"posix", "linux", "el", "fedora"},
 					Kernel:       "linux",
-					ID:           "fedora",
+					Id:           "fedora",
 					FriendlyName: "Fedora Linux 42 (Container Image)",
 					Release:      "",
 					ReleaseId:    "",
@@ -137,7 +137,7 @@ func TestHostInfo(t *testing.T) {
 				OS: integration.ExpectedOSInfo{
 					Families:     []string{"posix", "linux", "el", "fedora"},
 					Kernel:       "linux",
-					ID:           "fedora",
+					Id:           "fedora",
 					FriendlyName: "Fedora Linux 41 (Container Image)",
 					Release:      "",
 					ReleaseId:    "",
@@ -176,7 +176,7 @@ func TestHostInfo(t *testing.T) {
 				OS: integration.ExpectedOSInfo{
 					Families:     []string{"posix", "linux", "el", "rocky"},
 					Kernel:       "linux",
-					ID:           "rocky",
+					Id:           "rocky",
 					FriendlyName: "Rocky Linux 10.0 (Red Quartz)",
 					Release:      "",
 					ReleaseId:    "",
@@ -215,7 +215,7 @@ func TestHostInfo(t *testing.T) {
 				OS: integration.ExpectedOSInfo{
 					Families:     []string{"posix", "linux", "el", "rocky"},
 					Kernel:       "linux",
-					ID:           "rocky",
+					Id:           "rocky",
 					FriendlyName: "Rocky Linux 9.6 (Blue Onyx)",
 					Release:      "",
 					ReleaseId:    "",
@@ -254,7 +254,7 @@ func TestHostInfo(t *testing.T) {
 				OS: integration.ExpectedOSInfo{
 					Families:     []string{"posix", "linux", "el", "rocky"},
 					Kernel:       "linux",
-					ID:           "rocky",
+					Id:           "rocky",
 					FriendlyName: "Rocky Linux 8.10 (Green Obsidian)",
 					Release:      "",
 					ReleaseId:    "",
@@ -293,7 +293,7 @@ func TestHostInfo(t *testing.T) {
 				OS: integration.ExpectedOSInfo{
 					Families:     []string{"posix", "linux", "debian", "ubuntu"},
 					Kernel:       "linux",
-					ID:           "ubuntu",
+					Id:           "ubuntu",
 					FriendlyName: "Ubuntu 24.04.3 LTS",
 					Release:      "noble",
 					ReleaseId:    "noble",
@@ -332,7 +332,7 @@ func TestHostInfo(t *testing.T) {
 				OS: integration.ExpectedOSInfo{
 					Families:     []string{"posix", "linux", "debian", "ubuntu"},
 					Kernel:       "linux",
-					ID:           "ubuntu",
+					Id:           "ubuntu",
 					FriendlyName: "Ubuntu 22.04.5 LTS",
 					Release:      "jammy",
 					ReleaseId:    "jammy",

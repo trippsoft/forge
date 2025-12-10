@@ -3,15 +3,15 @@
 
 //go:build linux
 
-package discover
+package info
 
 import (
 	"errors"
 	"os"
 )
 
-func discoverAppArmorInfo() (*AppArmorInfoResponse, error) {
-	appArmorInfo := &AppArmorInfoResponse{
+func discoverAppArmorInfo() (*AppArmorInfo, error) {
+	appArmorInfo := &AppArmorInfo{
 		Supported: true,
 	}
 

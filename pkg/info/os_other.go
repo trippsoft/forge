@@ -3,7 +3,7 @@
 
 //go:build !darwin && !windows
 
-package discover
+package info
 
 import (
 	"bufio"
@@ -69,8 +69,8 @@ var (
 	}
 )
 
-func discoverOSInfo() (*OSInfoResponse, error) {
-	osInfo := &OSInfoResponse{
+func discoverOSInfo() (*OSInfo, error) {
+	osInfo := &OSInfo{
 		Kernel: runtime.GOOS,
 		Arch:   runtime.GOARCH,
 	}
@@ -112,7 +112,7 @@ func discoverOSInfo() (*OSInfoResponse, error) {
 	return osInfo, nil
 }
 
-func populateFromOsReleaseFile(osInfo *OSInfoResponse) error {
+func populateFromOsReleaseFile(osInfo *OSInfo) error {
 	file, err := os.Open("/etc/os-release")
 	if err != nil {
 		file, err = os.Open("/usr/lib/os-release")
@@ -187,7 +187,7 @@ func populateFromOsReleaseFile(osInfo *OSInfoResponse) error {
 	return nil
 }
 
-func populateFromLsbRelease(osInfo *OSInfoResponse) error {
+func populateFromLsbRelease(osInfo *OSInfo) error {
 	if osInfo.Id == "" {
 		cmd := exec.Command("lsb_release", "-si")
 		stdout := &bytes.Buffer{}

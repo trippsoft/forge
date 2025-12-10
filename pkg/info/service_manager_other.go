@@ -3,12 +3,12 @@
 
 //go:build !aix && !darwin && !linux && !windows
 
-package discover
+package info
 
 import "os"
 
-func discoverServiceManagerInfo() (*ServiceManagerInfoResponse, error) {
-	serviceManagerInfo := &ServiceManagerInfoResponse{}
+func discoverServiceManagerInfo() (*ServiceManagerInfo, error) {
+	serviceManagerInfo := &ServiceManagerInfo{}
 
 	fileInfo, err := os.Lstat("/sbin/init")
 	if err != nil {

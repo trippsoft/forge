@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package info;
+
+option go_package = "github.com/trippsoft/forge/pkg/info";
+
+import "pkg/info/info.proto";
+
+message DiscoverInfoRequest {}
+
+message DiscoverInfoResponse {
+  HostInfo host_info = 1;
+}
+
+service DiscoveryPlugin {
+  rpc DiscoverInfo(DiscoverInfoRequest) returns (DiscoverInfoResponse);
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+}
+
+message ShutdownRequest {}
+message ShutdownResponse {}
