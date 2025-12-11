@@ -80,6 +80,26 @@ func (m *mapType) ValidateSpec() error {
 	return m.valueType.ValidateSpec()
 }
 
+// ToProtobuf implements Type.
+func (m *mapType) ToProtobuf() (*TypePB, error) {
+	if m == nil {
+		return nil, errors.New("map type is nil")
+	}
+
+	valueTypePB, err := m.valueType.ToProtobuf()
+	if err != nil {
+		return nil, err
+	}
+
+	return &TypePB{
+		Type: &TypePB_Map{
+			Map: &MapTypePB{
+				ElementType: valueTypePB,
+			},
+		},
+	}, nil
+}
+
 // String represents the map type as a friendly string.
 func (m *mapType) String() string {
 	return m.CtyType().FriendlyName()
@@ -88,4 +108,22 @@ func (m *mapType) String() string {
 // Map creates a new mapType representing a map of string keys to the given value type.
 func Map(valueType Type) Type {
 	return &mapType{valueType: valueType}
+}
+
+// ToMapType converts a protobuf MapTypePB to a mapType instance.
+func (m *MapTypePB) ToMapType() (Type, error) {
+	if m == nil {
+		return nil, errors.New("MapTypePB is nil")
+	}
+
+	if m.ElementType == nil {
+		return nil, errors.New("ElementType in MapTypePB is nil")
+	}
+
+	elementType, err := m.ElementType.ToType()
+	if err != nil {
+		return nil, err
+	}
+
+	return Map(elementType), nil
 }

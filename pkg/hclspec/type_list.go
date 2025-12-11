@@ -100,6 +100,26 @@ func (l *listType) ValidateSpec() error {
 	return l.elementType.ValidateSpec()
 }
 
+// ToProtobuf implements Type.
+func (l *listType) ToProtobuf() (*TypePB, error) {
+	if l == nil {
+		return nil, errors.New("list type is nil")
+	}
+
+	elemPB, err := l.elementType.ToProtobuf()
+	if err != nil {
+		return nil, err
+	}
+
+	return &TypePB{
+		Type: &TypePB_List{
+			List: &ListTypePB{
+				ElementType: elemPB,
+			},
+		},
+	}, nil
+}
+
 // String represents the list type as a friendly string.
 func (l *listType) String() string {
 	return l.CtyType().FriendlyName()
@@ -108,4 +128,22 @@ func (l *listType) String() string {
 // List creates a new listType representing a list of the given element type.
 func List(elementType Type) Type {
 	return &listType{elementType: elementType}
+}
+
+// ToListType converts a protobuf ListTypePB to a listType instance.
+func (l *ListTypePB) ToListType() (Type, error) {
+	if l == nil {
+		return nil, errors.New("ListTypePB is nil")
+	}
+
+	if l.ElementType == nil {
+		return nil, errors.New("ElementType in ListTypePB is nil")
+	}
+
+	elementType, err := l.ElementType.ToType()
+	if err != nil {
+		return nil, err
+	}
+
+	return List(elementType), nil
 }

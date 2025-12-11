@@ -99,9 +99,47 @@ func (s *setType) ValidateSpec() error {
 	return s.elementType.ValidateSpec()
 }
 
+// ToProtobuf implements Type.
+func (s *setType) ToProtobuf() (*TypePB, error) {
+	if s == nil {
+		return nil, errors.New("set type is nil")
+	}
+
+	elemPB, err := s.elementType.ToProtobuf()
+	if err != nil {
+		return nil, err
+	}
+
+	return &TypePB{
+		Type: &TypePB_Set{
+			Set: &SetTypePB{
+				ElementType: elemPB,
+			},
+		},
+	}, nil
+}
+
 // String represents the set type as a friendly string.
 func (s *setType) String() string {
 	return s.CtyType().FriendlyName()
+}
+
+// ToSetType converts a protobuf SetTypePB to a setType instance.
+func (s *SetTypePB) ToSetType() (Type, error) {
+	if s == nil {
+		return nil, errors.New("SetTypePB is nil")
+	}
+
+	if s.ElementType == nil {
+		return nil, errors.New("ElementType in SetTypePB is nil")
+	}
+
+	elemType, err := s.ElementType.ToType()
+	if err != nil {
+		return nil, err
+	}
+
+	return Set(elemType), nil
 }
 
 // Set creates a new setType representing a set of the given element type.

@@ -53,6 +53,33 @@ type Type interface {
 	// This function will be called by input specifications to ensure they are valid.
 	// This is primarily used for validating nested object types.
 	ValidateSpec() error
+
+	// ToProtobuf converts the Type to its protobuf representation.
+	ToProtobuf() (*TypePB, error)
+}
+
+// ToType converts a TypePB to its Type representation.
+func (t *TypePB) ToType() (Type, error) {
+	switch typ := t.Type.(type) {
+	case *TypePB_Object:
+		return typ.Object.ToObjectType()
+	case *TypePB_List:
+		return typ.List.ToListType()
+	case *TypePB_Set:
+		return typ.Set.ToSetType()
+	case *TypePB_Map:
+		return typ.Map.ToMapType()
+	case *TypePB_Primitive:
+		return typ.Primitive.ToPrimitiveType()
+	case *TypePB_Duration:
+		return typ.Duration.ToDurationType()
+	case *TypePB_SensitiveString:
+		return typ.SensitiveString.ToSensitiveStringType()
+	case *TypePB_Raw:
+		return typ.Raw.ToRawType()
+	default:
+		return nil, fmt.Errorf("unsupported type: %T", t.Type)
+	}
 }
 
 type primitiveType struct {
@@ -99,9 +126,48 @@ func (p *primitiveType) ValidateSpec() error {
 	return nil
 }
 
+// ToProtobuf implements Type.
+func (p *primitiveType) ToProtobuf() (*TypePB, error) {
+	if p == nil {
+		return nil, errors.New("primitive type is nil")
+	}
+
+	var prim PrimitiveTypePB
+	switch {
+	case p.t.Equals(cty.String):
+		prim = PrimitiveTypePB_STRING
+	case p.t.Equals(cty.Number):
+		prim = PrimitiveTypePB_NUMBER
+	case p.t.Equals(cty.Bool):
+		prim = PrimitiveTypePB_BOOL
+	default:
+		return nil, fmt.Errorf("unsupported primitive type: %q", p.t.FriendlyName())
+	}
+
+	return &TypePB{
+		Type: &TypePB_Primitive{
+			Primitive: prim,
+		},
+	}, nil
+}
+
 // String represents the primitive type as a friendly string.
 func (p *primitiveType) String() string {
 	return p.t.FriendlyName()
+}
+
+// ToPrimitiveType converts a PrimitiveTypePB to its Type representation.
+func (p *PrimitiveTypePB) ToPrimitiveType() (Type, error) {
+	switch *p {
+	case PrimitiveTypePB_STRING:
+		return &primitiveType{t: cty.String}, nil
+	case PrimitiveTypePB_NUMBER:
+		return &primitiveType{t: cty.Number}, nil
+	case PrimitiveTypePB_BOOL:
+		return &primitiveType{t: cty.Bool}, nil
+	default:
+		return nil, fmt.Errorf("unsupported primitive type: %v", *p)
+	}
 }
 
 type durationType struct{}
@@ -139,9 +205,27 @@ func (d *durationType) ValidateSpec() error {
 	return nil
 }
 
+// ToProtobuf implements Type.
+func (d *durationType) ToProtobuf() (*TypePB, error) {
+	if d == nil {
+		return nil, errors.New("duration type is nil")
+	}
+
+	return &TypePB{
+		Type: &TypePB_Duration{
+			Duration: &DurationTypePB{},
+		},
+	}, nil
+}
+
 // String represents the duration type as a friendly string.
 func (d *durationType) String() string {
 	return "duration"
+}
+
+// ToDurationType converts a DurationTypePB to its Type representation.
+func (d *DurationTypePB) ToDurationType() (Type, error) {
+	return &durationType{}, nil
 }
 
 type sensitiveStringType struct{}
@@ -179,6 +263,19 @@ func (s *sensitiveStringType) ValidateSpec() error {
 	return nil
 }
 
+// ToProtobuf implements Type.
+func (s *sensitiveStringType) ToProtobuf() (*TypePB, error) {
+	if s == nil {
+		return nil, errors.New("sensitive string type is nil")
+	}
+
+	return &TypePB{
+		Type: &TypePB_SensitiveString{
+			SensitiveString: &SensitiveStringTypePB{},
+		},
+	}, nil
+}
+
 // String represents the sensitive string type as a friendly string.
 func (s *sensitiveStringType) String() string {
 	return "sensitive string"
@@ -194,6 +291,11 @@ func (s *sensitiveStringType) AddToFilter(value cty.Value) {
 	if v != "" {
 		ui.SecretFilter.AddSecret(v)
 	}
+}
+
+// ToSensitiveStringType converts a SensitiveStringTypePB to its Type representation.
+func (s *SensitiveStringTypePB) ToSensitiveStringType() (Type, error) {
+	return &sensitiveStringType{}, nil
 }
 
 type rawType struct{}
@@ -226,9 +328,27 @@ func (r *rawType) ValidateSpec() error {
 	return nil
 }
 
+// ToProtobuf implements Type.
+func (r *rawType) ToProtobuf() (*TypePB, error) {
+	if r == nil {
+		return nil, errors.New("raw type is nil")
+	}
+
+	return &TypePB{
+		Type: &TypePB_Raw{
+			Raw: &RawTypePB{},
+		},
+	}, nil
+}
+
 // String represents the raw type as a friendly string.
 func (r *rawType) String() string {
 	return r.CtyType().FriendlyName()
+}
+
+// ToRawType converts a RawTypePB to its Type representation.
+func (r *RawTypePB) ToRawType() (Type, error) {
+	return &rawType{}, nil
 }
 
 func convertCtyType(value cty.Value, targetType cty.Type) (cty.Value, error) {

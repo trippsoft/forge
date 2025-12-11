@@ -62,9 +62,52 @@ func (s *Spec) ValidateSpec() error {
 	return s.object.ValidateSpec()
 }
 
+// ToProtobuf converts the Spec to its protobuf representation.
+func (s *Spec) ToProtobuf() (*SpecPB, error) {
+	if s == nil {
+		return nil, fmt.Errorf("spec is nil")
+	}
+
+	if s.object == nil {
+		return nil, fmt.Errorf("object type is nil")
+	}
+
+	typ, err := s.object.ToProtobuf()
+	if err != nil {
+		return nil, err
+	}
+
+	objPB, ok := typ.Type.(*TypePB_Object)
+	if !ok {
+		return nil, fmt.Errorf("expected object type protobuf, got %T", typ.Type)
+	}
+
+	return &SpecPB{
+		Object: objPB.Object,
+	}, nil
+}
+
 // NewSpec creates a new Spec instance.
 func NewSpec(object *objectType) *Spec {
 	return &Spec{
 		object: object,
 	}
+}
+
+// ToSpec converts a protobuf SpecPB to a Spec instance.
+func (s *SpecPB) ToSpec() (*Spec, error) {
+	if s == nil {
+		return nil, fmt.Errorf("SpecPB is nil")
+	}
+
+	if s.Object == nil {
+		return nil, fmt.Errorf("Object in SpecPB is nil")
+	}
+
+	obj, err := s.Object.ToObjectType()
+	if err != nil {
+		return nil, err
+	}
+
+	return NewSpec(obj), nil
 }
