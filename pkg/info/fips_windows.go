@@ -12,10 +12,8 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-func discoverFIPSInfo() (*FIPSInfo, error) {
-	fipsInfo := &FIPSInfo{
-		Known: true,
-	}
+func (f *FIPSInfoPB) discover() error {
+	f.Known = true
 
 	key, err := registry.OpenKey(
 		registry.LOCAL_MACHINE,
@@ -25,21 +23,21 @@ func discoverFIPSInfo() (*FIPSInfo, error) {
 
 	// If the key doesn't exist, FIPS is not enabled.
 	if errors.Is(err, os.ErrNotExist) {
-		fipsInfo.Enabled = false
-		return fipsInfo, nil
+		f.Enabled = false
+		return nil
 	}
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer key.Close()
 
 	val, _, err := key.GetIntegerValue("")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	fipsInfo.Enabled = val != 0
+	f.Enabled = val != 0
 
-	return fipsInfo, nil
+	return nil
 }

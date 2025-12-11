@@ -10,37 +10,35 @@ import (
 	"os"
 )
 
-func discoverFIPSInfo() (*FIPSInfo, error) {
-	fipsInfo := &FIPSInfo{
-		Known: true,
-	}
+func (f *FIPSInfoPB) discover() error {
+	f.Known = true
 
 	fileInfo, err := os.Stat("/proc/sys/crypto/fips_enabled")
 	if os.IsNotExist(err) {
-		fipsInfo.Enabled = false
-		return fipsInfo, nil
+		f.Enabled = false
+		return nil
 	}
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if !fileInfo.Mode().IsRegular() {
-		fipsInfo.Enabled = false
-		return fipsInfo, nil
+		f.Enabled = false
+		return nil
 	}
 
 	data, err := os.ReadFile("/proc/sys/crypto/fips_enabled")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	content := string(bytes.TrimSpace(data))
 	if content == "1" {
-		fipsInfo.Enabled = true
+		f.Enabled = true
 	} else {
-		fipsInfo.Enabled = false
+		f.Enabled = false
 	}
 
-	return fipsInfo, nil
+	return nil
 }

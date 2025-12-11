@@ -7,31 +7,29 @@ package info
 
 import "os"
 
-func discoverPackageManagerInfo(_ *OSInfo) (*PackageManagerInfo, error) {
-	packageManagerInfo := &PackageManagerInfo{}
-
+func (p *PackageManagerInfoPB) discover(_ *OSInfoPB) error {
 	fileInfo, err := os.Stat("/opt/homebrew/bin/brew")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "homebrew"
-		packageManagerInfo.Path = "/opt/homebrew/bin/brew"
-		return packageManagerInfo, nil
+		p.Name = "homebrew"
+		p.Path = "/opt/homebrew/bin/brew"
+		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/local/bin/brew")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "homebrew"
-		packageManagerInfo.Path = "/usr/local/bin/brew"
-		return packageManagerInfo, nil
+		p.Name = "homebrew"
+		p.Path = "/usr/local/bin/brew"
+		return nil
 	}
 
 	fileInfo, err = os.Stat("/opt/local/bin/port")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "macports"
-		packageManagerInfo.Path = "/opt/local/bin/port"
-		return packageManagerInfo, nil
+		p.Name = "macports"
+		p.Path = "/opt/local/bin/port"
+		return nil
 	}
 
-	packageManagerInfo.Name = ""
-	packageManagerInfo.Path = ""
-	return packageManagerInfo, nil
+	p.Name = ""
+	p.Path = ""
+	return nil
 }

@@ -5,11 +5,10 @@
 
 package info
 
-func discoverPackageManagerInfo(_ *OSInfo) (*PackageManagerInfo, error) {
+func (p *PackageManagerInfoPB) discover(_ *OSInfoPB) error {
 	// Windows package managers are not handled in this implementation.
 	// Winget and Chocolatey implementations are to be separate.
-	return &PackageManagerInfo{
-		Name: "",
-		Path: "",
-	}, nil
+	p.Name = ""
+	p.Path = ""
+	return nil
 }

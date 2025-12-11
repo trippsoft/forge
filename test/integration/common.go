@@ -169,55 +169,55 @@ func (e *ExpectedOSInfo) Verify(t *testing.T, actual *info.OSInfo) {
 	}
 
 	for _, family := range e.Families {
-		if !slices.Contains(actual.Families, family) {
-			t.Errorf("expected OS families to contain %q, got %v", family, actual.Families)
+		if !actual.Families().Contains(family) {
+			t.Errorf("expected OS families to contain %q, got %v", family, actual.Families())
 		}
 	}
 
-	for _, family := range actual.Families {
+	for _, family := range actual.Families().Items() {
 		if !slices.Contains(e.Families, family) {
 			t.Errorf("unexpected OS family %q found, expected only %v", family, e.Families)
 		}
 	}
 
-	if actual.Kernel != e.Kernel {
-		t.Errorf("expected OS kernel to be %q, got %q", e.Kernel, actual.Kernel)
+	if actual.Kernel() != e.Kernel {
+		t.Errorf("expected OS kernel to be %q, got %q", e.Kernel, actual.Kernel())
 	}
 
-	if actual.Id != e.Id {
-		t.Errorf("expected OS ID to be %q, got %q", e.Id, actual.Id)
+	if actual.Id() != e.Id {
+		t.Errorf("expected OS ID to be %q, got %q", e.Id, actual.Id())
 	}
 
-	if actual.FriendlyName != e.FriendlyName {
-		t.Errorf("expected OS friendly name to be %q, got %q", e.FriendlyName, actual.FriendlyName)
+	if actual.FriendlyName() != e.FriendlyName {
+		t.Errorf("expected OS friendly name to be %q, got %q", e.FriendlyName, actual.FriendlyName())
 	}
 
-	if actual.Release != e.Release {
-		t.Errorf("expected OS release to be %q, got %q", e.Release, actual.Release)
+	if actual.Release() != e.Release {
+		t.Errorf("expected OS release to be %q, got %q", e.Release, actual.Release())
 	}
 
-	if actual.ReleaseId != e.ReleaseId {
-		t.Errorf("expected OS release ID to be %q, got %q", e.ReleaseId, actual.ReleaseId)
+	if actual.ReleaseId() != e.ReleaseId {
+		t.Errorf("expected OS release ID to be %q, got %q", e.ReleaseId, actual.ReleaseId())
 	}
 
-	if actual.MajorVersion != e.MajorVersion {
-		t.Errorf("expected OS major version to be %q, got %q", e.MajorVersion, actual.MajorVersion)
+	if actual.MajorVersion() != e.MajorVersion {
+		t.Errorf("expected OS major version to be %q, got %q", e.MajorVersion, actual.MajorVersion())
 	}
 
-	if actual.Version != e.Version {
-		t.Errorf("expected OS version to be %q, got %q", e.Version, actual.Version)
+	if actual.Version() != e.Version {
+		t.Errorf("expected OS version to be %q, got %q", e.Version, actual.Version())
 	}
 
-	if actual.Edition != e.Edition {
-		t.Errorf("expected OS edition to be %q, got %q", e.Edition, actual.Edition)
+	if actual.Edition() != e.Edition {
+		t.Errorf("expected OS edition to be %q, got %q", e.Edition, actual.Edition())
 	}
 
-	if actual.EditionId != e.EditionID {
-		t.Errorf("expected OS edition ID to be %q, got %q", e.EditionID, actual.EditionId)
+	if actual.EditionId() != e.EditionID {
+		t.Errorf("expected OS edition ID to be %q, got %q", e.EditionID, actual.EditionId())
 	}
 
-	if actual.Arch != e.Arch {
-		t.Errorf("expected OS architecture to be %q, got %q", e.Arch, actual.Arch)
+	if actual.Arch() != e.Arch {
+		t.Errorf("expected OS architecture to be %q, got %q", e.Arch, actual.Arch())
 	}
 }
 
@@ -234,20 +234,20 @@ func (e *ExpectedSELinuxInfo) Verify(t *testing.T, actual *info.SELinuxInfo) {
 		return
 	}
 
-	if actual.Supported != e.Supported {
-		t.Errorf("expected SELinux supported to be %t, got %t", e.Supported, actual.Supported)
+	if actual.Supported() != e.Supported {
+		t.Errorf("expected SELinux supported to be %t, got %t", e.Supported, actual.Supported())
 	}
 
-	if actual.Installed != e.Installed {
-		t.Errorf("expected SELinux installed to be %t, got %t", e.Installed, actual.Installed)
+	if actual.Installed() != e.Installed {
+		t.Errorf("expected SELinux installed to be %t, got %t", e.Installed, actual.Installed())
 	}
 
-	if actual.Status != e.Status {
-		t.Errorf("expected SELinux status to be %q, got %q", e.Status, actual.Status)
+	if actual.Status() != e.Status {
+		t.Errorf("expected SELinux status to be %q, got %q", e.Status, actual.Status())
 	}
 
-	if actual.Type != e.Type {
-		t.Errorf("expected SELinux type to be %q, got %q", e.Type, actual.Type)
+	if actual.Type() != e.Type {
+		t.Errorf("expected SELinux type to be %q, got %q", e.Type, actual.Type())
 	}
 }
 
@@ -262,12 +262,12 @@ func (e *ExpectedAppArmorInfo) Verify(t *testing.T, actual *info.AppArmorInfo) {
 		return
 	}
 
-	if actual.Supported != e.Supported {
-		t.Errorf("expected AppArmor supported to be %t, got %t", e.Supported, actual.Supported)
+	if actual.Supported() != e.Supported {
+		t.Errorf("expected AppArmor supported to be %t, got %t", e.Supported, actual.Supported())
 	}
 
-	if actual.Enabled != e.Enabled {
-		t.Errorf("expected AppArmor enabled to be %t, got %t", e.Enabled, actual.Enabled)
+	if actual.Enabled() != e.Enabled {
+		t.Errorf("expected AppArmor enabled to be %t, got %t", e.Enabled, actual.Enabled())
 	}
 }
 
@@ -282,12 +282,12 @@ func (e *ExpectedFIPSInfo) Verify(t *testing.T, actual *info.FIPSInfo) {
 		return
 	}
 
-	if actual.Known != e.Known {
-		t.Errorf("expected FIPS known to be %t, got %t", e.Known, actual.Known)
+	if actual.Known() != e.Known {
+		t.Errorf("expected FIPS known to be %t, got %t", e.Known, actual.Known())
 	}
 
-	if actual.Enabled != e.Enabled {
-		t.Errorf("expected FIPS enabled to be %t, got %t", e.Enabled, actual.Enabled)
+	if actual.Enabled() != e.Enabled {
+		t.Errorf("expected FIPS enabled to be %t, got %t", e.Enabled, actual.Enabled())
 	}
 }
 
@@ -302,12 +302,12 @@ func (e *ExpectedPackageManagerInfo) Verify(t *testing.T, actual *info.PackageMa
 		return
 	}
 
-	if actual.Name != e.Name {
-		t.Errorf("expected Package Manager name to be %q, got %q", e.Name, actual.Name)
+	if actual.Name() != e.Name {
+		t.Errorf("expected Package Manager name to be %q, got %q", e.Name, actual.Name())
 	}
 
-	if actual.Path != e.Path {
-		t.Errorf("expected Package Manager path to be %q, got %q", e.Path, actual.Path)
+	if actual.Path() != e.Path {
+		t.Errorf("expected Package Manager path to be %q, got %q", e.Path, actual.Path())
 	}
 }
 
@@ -321,8 +321,8 @@ func (e *ExpectedServiceManagerInfo) Verify(t *testing.T, actual *info.ServiceMa
 		return
 	}
 
-	if actual.Name != e.Name {
-		t.Errorf("expected Service Manager name to be %q, got %q", e.Name, actual.Name)
+	if actual.Name() != e.Name {
+		t.Errorf("expected Service Manager name to be %q, got %q", e.Name, actual.Name())
 	}
 }
 
@@ -341,12 +341,12 @@ func (e *ExpectedHostInfo) Verify(t *testing.T, actual *info.HostInfo) {
 		return
 	}
 
-	e.OS.Verify(t, actual.Os)
-	e.SELinux.Verify(t, actual.Selinux)
-	e.AppArmor.Verify(t, actual.AppArmor)
-	e.FIPS.Verify(t, actual.Fips)
-	e.PackageManager.Verify(t, actual.PackageManager)
-	e.ServiceManager.Verify(t, actual.ServiceManager)
+	e.OS.Verify(t, actual.OS())
+	e.SELinux.Verify(t, actual.SELinux())
+	e.AppArmor.Verify(t, actual.AppArmor())
+	e.FIPS.Verify(t, actual.FIPS())
+	e.PackageManager.Verify(t, actual.PackageManager())
+	e.ServiceManager.Verify(t, actual.ServiceManager())
 }
 
 func ParseWorkflow(

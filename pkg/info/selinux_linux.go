@@ -11,30 +11,28 @@ import (
 	"strings"
 )
 
-func discoverSELinuxInfo() (*SELinuxInfo, error) {
-	seLinuxInfo := &SELinuxInfo{
-		Supported: true,
-	}
+func (s *SELinuxInfoPB) discover() error {
+	s.Supported = true
 
 	fileInfo, err := os.Stat("/etc/selinux/config")
 	if os.IsNotExist(err) {
-		seLinuxInfo.Installed = false
-		return seLinuxInfo, nil
+		s.Installed = false
+		return nil
 	}
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if !fileInfo.Mode().IsRegular() {
-		seLinuxInfo.Installed = false
-		return seLinuxInfo, nil
+		s.Installed = false
+		return nil
 	}
 
-	seLinuxInfo.Installed = true
+	s.Installed = true
 	file, err := os.Open("/etc/selinux/config")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer file.Close()
 
@@ -59,11 +57,11 @@ func discoverSELinuxInfo() (*SELinuxInfo, error) {
 
 		switch key {
 		case "SELINUX":
-			seLinuxInfo.Status = value
+			s.Status = value
 		case "SELINUXTYPE":
-			seLinuxInfo.Type = value
+			s.Type = value
 		}
 	}
 
-	return seLinuxInfo, nil
+	return nil
 }

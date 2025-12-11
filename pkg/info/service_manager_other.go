@@ -7,19 +7,19 @@ package info
 
 import "os"
 
-func discoverServiceManagerInfo() (*ServiceManagerInfo, error) {
-	serviceManagerInfo := &ServiceManagerInfo{}
+func (s *ServiceManagerInfoPB) discover() error {
+	s.Name = ""
 
 	fileInfo, err := os.Lstat("/sbin/init")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if (fileInfo.Mode() & os.ModeSymlink) == 0 {
 		// Assume BSD-style init system for other Unix-like OSes
-		serviceManagerInfo.Name = "bsdinit"
-		return serviceManagerInfo, nil
+		s.Name = "bsdinit"
+		return nil
 	}
 
-	return serviceManagerInfo, nil
+	return nil
 }

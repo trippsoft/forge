@@ -5,8 +5,7 @@
 
 package info
 
-func discoverServiceManagerInfo() (*ServiceManagerInfo, error) {
-	return &ServiceManagerInfo{
-		Name: "launchd",
-	}, nil
+func (s *ServiceManagerInfoPB) discover() error {
+	s.Name = "launchd"
+	return nil
 }

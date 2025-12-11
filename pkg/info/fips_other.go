@@ -5,9 +5,8 @@
 
 package info
 
-func discoverFIPSInfo() (*FIPSInfo, error) {
-	return &FIPSInfo{
-		Known:   false,
-		Enabled: false,
-	}, nil
+func (f *FIPSInfoPB) discover() error {
+	f.Known = false
+	f.Enabled = false
+	return nil
 }

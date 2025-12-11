@@ -69,50 +69,48 @@ var (
 	}
 )
 
-func discoverOSInfo() (*OSInfo, error) {
-	osInfo := &OSInfo{
-		Kernel: runtime.GOOS,
-		Arch:   runtime.GOARCH,
-	}
+func (o *OSInfoPB) discover() error {
+	o.Kernel = runtime.GOOS
+	o.Arch = runtime.GOARCH
 
-	osReleaseErr := populateFromOsReleaseFile(osInfo)
-	lsbReleaseErr := populateFromLsbRelease(osInfo)
+	osReleaseErr := o.populateFromOsReleaseFile()
+	lsbReleaseErr := o.populateFromLsbRelease()
 
 	if osReleaseErr != nil && lsbReleaseErr != nil {
-		return nil, errors.Join(osReleaseErr, lsbReleaseErr)
+		return errors.Join(osReleaseErr, lsbReleaseErr)
 	}
 
-	if osInfo.Release != "" {
-		osInfo.ReleaseId = strings.ReplaceAll(strings.ToLower(osInfo.Release), " ", "-")
+	if o.Release != "" {
+		o.ReleaseId = strings.ReplaceAll(strings.ToLower(o.Release), " ", "-")
 	}
 
-	if osInfo.Version != "" {
-		versionParts := strings.SplitN(osInfo.Version, ".", 2)
+	if o.Version != "" {
+		versionParts := strings.SplitN(o.Version, ".", 2)
 		if len(versionParts) >= 1 {
-			osInfo.MajorVersion = versionParts[0]
+			o.MajorVersion = versionParts[0]
 		}
 	}
 
-	correctedID, exists := osIDCorrectionMap[osInfo.Id]
+	correctedID, exists := osIDCorrectionMap[o.Id]
 	if exists {
-		osInfo.Id = correctedID
+		o.Id = correctedID
 	}
 
 	families := []string{runtime.GOOS, "posix"}
-	matchingFamilies, exists := osFamiliesMap[osInfo.Id]
+	matchingFamilies, exists := osFamiliesMap[o.Id]
 	if exists {
 		families = append(families, matchingFamilies...)
 	}
 
-	if osInfo.Id != "" {
-		families = append(families, osInfo.Id)
+	if o.Id != "" {
+		families = append(families, o.Id)
 	}
-	osInfo.Families = families
+	o.Families = families
 
-	return osInfo, nil
+	return nil
 }
 
-func populateFromOsReleaseFile(osInfo *OSInfo) error {
+func (o *OSInfoPB) populateFromOsReleaseFile() error {
 	file, err := os.Open("/etc/os-release")
 	if err != nil {
 		file, err = os.Open("/usr/lib/os-release")
@@ -156,39 +154,39 @@ func populateFromOsReleaseFile(osInfo *OSInfo) error {
 
 	id, ok := contents["ID"]
 	if ok && id != "" && id != "n/a" {
-		osInfo.Id = strings.ToLower(id)
+		o.Id = strings.ToLower(id)
 	}
 
 	friendlyName, ok := contents["PRETTY_NAME"]
 	if ok && friendlyName != "" && friendlyName != "n/a" {
-		osInfo.FriendlyName = friendlyName
+		o.FriendlyName = friendlyName
 	}
 
 	release, ok := contents["VERSION_CODENAME"]
 	if ok && release != "" && release != "n/a" {
-		osInfo.Release = release
+		o.Release = release
 	}
 
 	version, ok := contents["VERSION_ID"]
 	if ok && version != "" && version != "n/a" {
-		osInfo.Version = version
+		o.Version = version
 	}
 
 	edition, ok := contents["VARIANT"]
 	if ok && edition != "" && edition != "n/a" {
-		osInfo.Edition = edition
+		o.Edition = edition
 	}
 
 	editionId, ok := contents["VARIANT_ID"]
 	if ok && editionId != "" && editionId != "n/a" {
-		osInfo.EditionId = editionId
+		o.EditionId = editionId
 	}
 
 	return nil
 }
 
-func populateFromLsbRelease(osInfo *OSInfo) error {
-	if osInfo.Id == "" {
+func (o *OSInfoPB) populateFromLsbRelease() error {
+	if o.Id == "" {
 		cmd := exec.Command("lsb_release", "-si")
 		stdout := &bytes.Buffer{}
 		stderr := &bytes.Buffer{}
@@ -202,11 +200,11 @@ func populateFromLsbRelease(osInfo *OSInfo) error {
 
 		id := strings.ToLower(strings.TrimSpace(stdout.String()))
 		if id != "" && id != "n/a" {
-			osInfo.Id = id
+			o.Id = id
 		}
 	}
 
-	if osInfo.FriendlyName == "" {
+	if o.FriendlyName == "" {
 		cmd := exec.Command("lsb_release", "-sd")
 		stdout := &bytes.Buffer{}
 		stderr := &bytes.Buffer{}
@@ -220,11 +218,11 @@ func populateFromLsbRelease(osInfo *OSInfo) error {
 
 		friendlyName := strings.TrimSpace(stdout.String())
 		if friendlyName != "" && friendlyName != "n/a" {
-			osInfo.FriendlyName = friendlyName
+			o.FriendlyName = friendlyName
 		}
 	}
 
-	if osInfo.Version == "" {
+	if o.Version == "" {
 		cmd := exec.Command("lsb_release", "-sr")
 		stdout := &bytes.Buffer{}
 		stderr := &bytes.Buffer{}
@@ -238,11 +236,11 @@ func populateFromLsbRelease(osInfo *OSInfo) error {
 
 		version := strings.TrimSpace(stdout.String())
 		if version != "" && version != "n/a" {
-			osInfo.Version = version
+			o.Version = version
 		}
 	}
 
-	if osInfo.Release == "" {
+	if o.Release == "" {
 		cmd := exec.Command("lsb_release", "-sc")
 		stdout := &bytes.Buffer{}
 		stderr := &bytes.Buffer{}
@@ -256,7 +254,7 @@ func populateFromLsbRelease(osInfo *OSInfo) error {
 
 		release := strings.TrimSpace(stdout.String())
 		if release != "" && release != "n/a" {
-			osInfo.Release = release
+			o.Release = release
 		}
 	}
 

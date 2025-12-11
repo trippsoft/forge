@@ -10,26 +10,24 @@ import (
 	"os"
 )
 
-func discoverAppArmorInfo() (*AppArmorInfo, error) {
-	appArmorInfo := &AppArmorInfo{
-		Supported: true,
-	}
+func (a *AppArmorInfoPB) discover() error {
+	a.Supported = true
 
 	fileInfo, err := os.Stat("/sys/kernel/security/apparmor")
 	if errors.Is(err, os.ErrNotExist) {
-		appArmorInfo.Enabled = false
-		return appArmorInfo, nil
+		a.Enabled = false
+		return nil
 	}
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if !fileInfo.IsDir() {
-		appArmorInfo.Enabled = false
-		return appArmorInfo, nil
+		a.Enabled = false
+		return nil
 	}
 
-	appArmorInfo.Enabled = true
-	return appArmorInfo, nil
+	a.Enabled = true
+	return nil
 }

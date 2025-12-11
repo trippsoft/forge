@@ -5,11 +5,10 @@
 
 package info
 
-func discoverSELinuxInfo() (*SELinuxInfo, error) {
-	return &SELinuxInfo{
-		Supported: false,
-		Installed: false,
-		Status:    "",
-		Type:      "",
-	}, nil
+func (s *SELinuxInfoPB) discover() error {
+	s.Supported = false
+	s.Installed = false
+	s.Status = ""
+	s.Type = ""
+	return nil
 }

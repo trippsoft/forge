@@ -5,9 +5,8 @@
 
 package info
 
-func discoverAppArmorInfo() (*AppArmorInfo, error) {
-	return &AppArmorInfo{
-		Supported: false,
-		Enabled:   false,
-	}, nil
+func (a *AppArmorInfoPB) discover() error {
+	a.Supported = false
+	a.Enabled = false
+	return nil
 }

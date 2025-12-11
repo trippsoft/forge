@@ -35,43 +35,9 @@ func (s *DiscoveryServer) DiscoverInfo(
 
 	defer s.waitGroup.Done()
 
-	osInfo, err := discoverOSInfo()
+	hostInfo, err := discoverHostInfo()
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	fipsInfo, err := discoverFIPSInfo()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	appArmorInfo, err := discoverAppArmorInfo()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	seLinuxInfo, err := discoverSELinuxInfo()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	packageManagerInfo, err := discoverPackageManagerInfo(osInfo)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	serviceManagerInfo, err := discoverServiceManagerInfo()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	hostInfo := &HostInfo{
-		Os:             osInfo,
-		Fips:           fipsInfo,
-		AppArmor:       appArmorInfo,
-		Selinux:        seLinuxInfo,
-		PackageManager: packageManagerInfo,
-		ServiceManager: serviceManagerInfo,
 	}
 
 	return &DiscoverInfoResponse{

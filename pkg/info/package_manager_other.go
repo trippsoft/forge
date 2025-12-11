@@ -13,72 +13,65 @@ import (
 	"strings"
 )
 
-func discoverPackageManagerInfo(osInfo *OSInfo) (*PackageManagerInfo, error) {
-	packageManagerInfo := &PackageManagerInfo{}
-
+func (p *PackageManagerInfoPB) discover(osInfo *OSInfoPB) error {
 	if slices.Contains(osInfo.Families, "archlinux") {
-		err := populateArchLinuxPackageManagerInfo(packageManagerInfo)
+		err := p.populateArchLinuxPackageManagerInfo()
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
 	if slices.Contains(osInfo.Families, "debian") || slices.Contains(osInfo.Families, "altlinux") {
-		err := populateDebianPackageManagerInfo(packageManagerInfo)
+		err := p.populateDebianPackageManagerInfo()
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		return packageManagerInfo, nil
-	}
-
-	if slices.Contains(osInfo.Families, "el") {
-		err := populateEnterpriseLinuxPackageManagerInfo(packageManagerInfo)
-		if err != nil {
-			return nil, err
-		}
-
-		return packageManagerInfo, nil
-	}
-
-	if slices.Contains(osInfo.Families, "gentoo") {
-		err := populateGentooPackageManagerInfo(packageManagerInfo)
-		if err != nil {
-			return nil, err
-		}
-
-		return packageManagerInfo, nil
-	}
-
-	if slices.Contains(osInfo.Families, "suse") {
-		err := populateSUSEPackageManagerInfo(packageManagerInfo)
-		if err != nil {
-			return nil, err
-		}
-
-		return packageManagerInfo, nil
-	}
-
-	err := populateOtherLinuxPackageManagerInfo(packageManagerInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	return packageManagerInfo, nil
-}
-
-func populateArchLinuxPackageManagerInfo(packageManagerInfo *PackageManagerInfo) error {
-	fileInfo, err := os.Stat("/usr/bin/pacman")
-	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "pacman"
-		packageManagerInfo.Path = "/usr/bin/pacman"
 		return nil
 	}
 
-	return populateOtherLinuxPackageManagerInfo(packageManagerInfo)
+	if slices.Contains(osInfo.Families, "el") {
+		err := p.populateEnterpriseLinuxPackageManagerInfo()
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	if slices.Contains(osInfo.Families, "gentoo") {
+		err := p.populateGentooPackageManagerInfo()
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	if slices.Contains(osInfo.Families, "suse") {
+		err := p.populateSUSEPackageManagerInfo()
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	return p.populateOtherLinuxPackageManagerInfo()
 }
 
-func populateDebianPackageManagerInfo(packageManagerInfo *PackageManagerInfo) error {
+func (p *PackageManagerInfoPB) populateArchLinuxPackageManagerInfo() error {
+	fileInfo, err := os.Stat("/usr/bin/pacman")
+	if err == nil && fileInfo.Mode().IsRegular() {
+		p.Name = "pacman"
+		p.Path = "/usr/bin/pacman"
+		return nil
+	}
+
+	return p.populateOtherLinuxPackageManagerInfo()
+}
+
+func (p *PackageManagerInfoPB) populateDebianPackageManagerInfo() error {
 	fileInfo, err := os.Stat("/usr/bin/apt-get")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		fileInfo, err := os.Stat("/usr/bin/rpm")
@@ -93,227 +86,227 @@ func populateDebianPackageManagerInfo(packageManagerInfo *PackageManagerInfo) er
 			if err == nil {
 				output := strings.TrimSpace(stdout.String())
 				if output != "" {
-					packageManagerInfo.Name = "apt-rpm"
-					packageManagerInfo.Path = "/usr/bin/apt-get"
+					p.Name = "apt-rpm"
+					p.Path = "/usr/bin/apt-get"
 					return nil
 				}
 			}
 		}
 
-		packageManagerInfo.Name = "apt"
-		packageManagerInfo.Path = "/usr/bin/apt-get"
+		p.Name = "apt"
+		p.Path = "/usr/bin/apt-get"
 		return nil
 	}
 
-	return populateOtherLinuxPackageManagerInfo(packageManagerInfo)
+	return p.populateOtherLinuxPackageManagerInfo()
 }
 
-func populateEnterpriseLinuxPackageManagerInfo(packageManagerInfo *PackageManagerInfo) error {
+func (p *PackageManagerInfoPB) populateEnterpriseLinuxPackageManagerInfo() error {
 	fileInfo, err := os.Stat("/usr/bin/dnf5")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "dnf5"
-		packageManagerInfo.Path = "/usr/bin/dnf5"
+		p.Name = "dnf5"
+		p.Path = "/usr/bin/dnf5"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/bin/dnf-3")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "dnf"
-		packageManagerInfo.Path = "/usr/bin/dnf-3"
+		p.Name = "dnf"
+		p.Path = "/usr/bin/dnf-3"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/bin/dnf")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "dnf"
-		packageManagerInfo.Path = "/usr/bin/dnf"
+		p.Name = "dnf"
+		p.Path = "/usr/bin/dnf"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/bin/yum")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "yum"
-		packageManagerInfo.Path = "/usr/bin/yum"
+		p.Name = "yum"
+		p.Path = "/usr/bin/yum"
 		return nil
 	}
 
-	return populateOtherLinuxPackageManagerInfo(packageManagerInfo)
+	return p.populateOtherLinuxPackageManagerInfo()
 }
 
-func populateGentooPackageManagerInfo(packageManagerInfo *PackageManagerInfo) error {
+func (p *PackageManagerInfoPB) populateGentooPackageManagerInfo() error {
 	fileInfo, err := os.Stat("/usr/bin/emerge")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "emerge"
-		packageManagerInfo.Path = "/usr/bin/emerge"
+		p.Name = "emerge"
+		p.Path = "/usr/bin/emerge"
 		return nil
 	}
 
-	return populateOtherLinuxPackageManagerInfo(packageManagerInfo)
+	return p.populateOtherLinuxPackageManagerInfo()
 }
 
-func populateSUSEPackageManagerInfo(packageManagerInfo *PackageManagerInfo) error {
+func (p *PackageManagerInfoPB) populateSUSEPackageManagerInfo() error {
 	fileInfo, err := os.Stat("/usr/bin/zypper")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "zypper"
-		packageManagerInfo.Path = "/usr/bin/zypper"
+		p.Name = "zypper"
+		p.Path = "/usr/bin/zypper"
 		return nil
 	}
 
-	return populateOtherLinuxPackageManagerInfo(packageManagerInfo)
+	return p.populateOtherLinuxPackageManagerInfo()
 }
 
-func populateOtherLinuxPackageManagerInfo(packageManagerInfo *PackageManagerInfo) error {
+func (p *PackageManagerInfoPB) populateOtherLinuxPackageManagerInfo() error {
 	fileInfo, err := os.Stat("/QOpenSys/pkgs/bin/yum")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "yum"
-		packageManagerInfo.Path = "/QOpenSys/pkgs/bin/yum"
+		p.Name = "yum"
+		p.Path = "/QOpenSys/pkgs/bin/yum"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/bin/installp")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "installp"
-		packageManagerInfo.Path = "/usr/bin/installp"
+		p.Name = "installp"
+		p.Path = "/usr/bin/installp"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/sbin/sorcery")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "sorcery"
-		packageManagerInfo.Path = "/usr/sbin/sorcery"
+		p.Name = "sorcery"
+		p.Path = "/usr/sbin/sorcery"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/bin/swupd")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "swupd"
-		packageManagerInfo.Path = "/usr/bin/swupd"
+		p.Name = "swupd"
+		p.Path = "/usr/bin/swupd"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/local/sbin/pkg")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "pkgng"
-		packageManagerInfo.Path = "/usr/local/sbin/pkg"
+		p.Name = "pkgng"
+		p.Path = "/usr/local/sbin/pkg"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/bin/xbps-install")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "xbps"
-		packageManagerInfo.Path = "/usr/bin/xbps-install"
+		p.Name = "xbps"
+		p.Path = "/usr/bin/xbps-install"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/bin/pkg")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "pkg5"
-		packageManagerInfo.Path = "/usr/bin/pkg"
+		p.Name = "pkg5"
+		p.Path = "/usr/bin/pkg"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/sbin/pkgadd")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "svr4pkg"
-		packageManagerInfo.Path = "/usr/sbin/pkgadd"
+		p.Name = "svr4pkg"
+		p.Path = "/usr/sbin/pkgadd"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/bin/emerge")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "portage"
-		packageManagerInfo.Path = "/usr/bin/emerge"
+		p.Name = "portage"
+		p.Path = "/usr/bin/emerge"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/sbin/swlist")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "swdepot"
-		packageManagerInfo.Path = "/usr/sbin/swlist"
+		p.Name = "swdepot"
+		p.Path = "/usr/sbin/swlist"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/sbin/pkg")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "pkgng"
-		packageManagerInfo.Path = "/usr/sbin/pkg"
+		p.Name = "pkgng"
+		p.Path = "/usr/sbin/pkg"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/sbin/apk")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "apk"
-		packageManagerInfo.Path = "/sbin/apk"
+		p.Name = "apk"
+		p.Path = "/sbin/apk"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/opt/homebrew/bin/brew")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "homebrew"
-		packageManagerInfo.Path = "/opt/homebrew/bin/brew"
+		p.Name = "homebrew"
+		p.Path = "/opt/homebrew/bin/brew"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/local/bin/brew")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "homebrew"
-		packageManagerInfo.Path = "/usr/local/bin/brew"
+		p.Name = "homebrew"
+		p.Path = "/usr/local/bin/brew"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/opt/local/bin/port")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "macports"
-		packageManagerInfo.Path = "/opt/local/bin/port"
+		p.Name = "macports"
+		p.Path = "/opt/local/bin/port"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/opt/tools/bin/pkgin")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "pkgin"
-		packageManagerInfo.Path = "/opt/tools/bin/pkgin"
+		p.Name = "pkgin"
+		p.Path = "/opt/tools/bin/pkgin"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/opt/local/bin/pkgin")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "pkgin"
-		packageManagerInfo.Path = "/opt/local/bin/pkgin"
+		p.Name = "pkgin"
+		p.Path = "/opt/local/bin/pkgin"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/pkg/bin/pkgin")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "pkgin"
-		packageManagerInfo.Path = "/usr/pkg/bin/pkgin"
+		p.Name = "pkgin"
+		p.Path = "/usr/pkg/bin/pkgin"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/bin/opkg")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "opkg"
-		packageManagerInfo.Path = "/bin/opkg"
+		p.Name = "opkg"
+		p.Path = "/bin/opkg"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/bin/pacman")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "pacman"
-		packageManagerInfo.Path = "/usr/bin/pacman"
+		p.Name = "pacman"
+		p.Path = "/usr/bin/pacman"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/sbin/urpmi")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "urpmi"
-		packageManagerInfo.Path = "/usr/sbin/urpmi"
+		p.Name = "urpmi"
+		p.Path = "/usr/sbin/urpmi"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/bin/zypper")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "zypper"
-		packageManagerInfo.Path = "/usr/bin/zypper"
+		p.Name = "zypper"
+		p.Path = "/usr/bin/zypper"
 		return nil
 	}
 
@@ -331,47 +324,47 @@ func populateOtherLinuxPackageManagerInfo(packageManagerInfo *PackageManagerInfo
 			if err == nil {
 				output := strings.TrimSpace(stdout.String())
 				if output != "" {
-					packageManagerInfo.Name = "apt-rpm"
-					packageManagerInfo.Path = "/usr/bin/apt-get"
+					p.Name = "apt-rpm"
+					p.Path = "/usr/bin/apt-get"
 					return nil
 				}
 			}
 		}
 
-		packageManagerInfo.Name = "apt"
-		packageManagerInfo.Path = "/usr/bin/apt-get"
+		p.Name = "apt"
+		p.Path = "/usr/bin/apt-get"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/bin/dnf5")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "dnf5"
-		packageManagerInfo.Path = "/usr/bin/dnf5"
+		p.Name = "dnf5"
+		p.Path = "/usr/bin/dnf5"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/bin/dnf-3")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "dnf"
-		packageManagerInfo.Path = "/usr/bin/dnf-3"
+		p.Name = "dnf"
+		p.Path = "/usr/bin/dnf-3"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/bin/dnf")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "dnf"
-		packageManagerInfo.Path = "/usr/bin/dnf"
+		p.Name = "dnf"
+		p.Path = "/usr/bin/dnf"
 		return nil
 	}
 
 	fileInfo, err = os.Stat("/usr/bin/yum")
 	if err == nil && fileInfo.Mode().IsRegular() {
-		packageManagerInfo.Name = "yum"
-		packageManagerInfo.Path = "/usr/bin/yum"
+		p.Name = "yum"
+		p.Path = "/usr/bin/yum"
 		return nil
 	}
 
-	packageManagerInfo.Name = ""
-	packageManagerInfo.Path = ""
+	p.Name = ""
+	p.Path = ""
 	return nil
 }

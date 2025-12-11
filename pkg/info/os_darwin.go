@@ -13,15 +13,13 @@ import (
 	"strings"
 )
 
-func discoverOSInfo() (*OSInfo, error) {
-	osInfo := &OSInfo{
-		Kernel:    "darwin",
-		Id:        "macos",
-		Edition:   "",
-		EditionId: "",
-		Arch:      runtime.GOARCH,
-		Families:  []string{"posix", "darwin", "macos"},
-	}
+func (o *OSInfoPB) discover() error {
+	o.Kernel = "darwin"
+	o.Id = "macos"
+	o.Edition = ""
+	o.EditionId = ""
+	o.Arch = runtime.GOARCH
+	o.Families = []string{"posix", "darwin", "macos"}
 
 	cmd := exec.Command("sw_vers", "-productVersion")
 	stdout := &bytes.Buffer{}
@@ -31,76 +29,76 @@ func discoverOSInfo() (*OSInfo, error) {
 
 	err := cmd.Run()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	osInfo.Version = string(bytes.TrimSpace(stdout.Bytes()))
-	osInfo.FriendlyName = "macOS " + osInfo.Version
-	versionParts := strings.Split(osInfo.Version, ".")
+	o.Version = string(bytes.TrimSpace(stdout.Bytes()))
+	o.FriendlyName = "macOS " + o.Version
+	versionParts := strings.Split(o.Version, ".")
 	if len(versionParts) < 2 {
-		return nil, errors.New("invalid version format")
+		return errors.New("invalid version format")
 	}
 
-	osInfo.MajorVersion = versionParts[0]
+	o.MajorVersion = versionParts[0]
 	minorVersion := versionParts[1]
 
-	switch osInfo.MajorVersion {
+	switch o.MajorVersion {
 	case "10":
 		switch minorVersion {
 		case "6":
-			osInfo.Release = "Snow Leopard"
-			osInfo.ReleaseId = "snow-leopard"
+			o.Release = "Snow Leopard"
+			o.ReleaseId = "snow-leopard"
 		case "7":
-			osInfo.Release = "Lion"
-			osInfo.ReleaseId = "lion"
+			o.Release = "Lion"
+			o.ReleaseId = "lion"
 		case "8":
-			osInfo.Release = "Mountain Lion"
-			osInfo.ReleaseId = "mountain-lion"
+			o.Release = "Mountain Lion"
+			o.ReleaseId = "mountain-lion"
 		case "9":
-			osInfo.Release = "Mavericks"
-			osInfo.ReleaseId = "mavericks"
+			o.Release = "Mavericks"
+			o.ReleaseId = "mavericks"
 		case "10":
-			osInfo.Release = "Yosemite"
-			osInfo.ReleaseId = "yosemite"
+			o.Release = "Yosemite"
+			o.ReleaseId = "yosemite"
 		case "11":
-			osInfo.Release = "El Capitan"
-			osInfo.ReleaseId = "el-capitan"
+			o.Release = "El Capitan"
+			o.ReleaseId = "el-capitan"
 		case "12":
-			osInfo.Release = "Sierra"
-			osInfo.ReleaseId = "sierra"
+			o.Release = "Sierra"
+			o.ReleaseId = "sierra"
 		case "13":
-			osInfo.Release = "High Sierra"
-			osInfo.ReleaseId = "high-sierra"
+			o.Release = "High Sierra"
+			o.ReleaseId = "high-sierra"
 		case "14":
-			osInfo.Release = "Mojave"
-			osInfo.ReleaseId = "mojave"
+			o.Release = "Mojave"
+			o.ReleaseId = "mojave"
 		case "15":
-			osInfo.Release = "Catalina"
-			osInfo.ReleaseId = "catalina"
+			o.Release = "Catalina"
+			o.ReleaseId = "catalina"
 		default:
-			return nil, errors.New("unknown macOS release for version 10." + minorVersion)
+			return errors.New("unknown macOS release for version 10." + minorVersion)
 		}
 	case "11":
-		osInfo.Release = "Big Sur"
-		osInfo.ReleaseId = "big-sur"
+		o.Release = "Big Sur"
+		o.ReleaseId = "big-sur"
 	case "12":
-		osInfo.Release = "Monterey"
-		osInfo.ReleaseId = "monterey"
+		o.Release = "Monterey"
+		o.ReleaseId = "monterey"
 	case "13":
-		osInfo.Release = "Ventura"
-		osInfo.ReleaseId = "ventura"
+		o.Release = "Ventura"
+		o.ReleaseId = "ventura"
 	case "14":
-		osInfo.Release = "Sonoma"
-		osInfo.ReleaseId = "sonoma"
+		o.Release = "Sonoma"
+		o.ReleaseId = "sonoma"
 	case "15":
-		osInfo.Release = "Sequoia"
-		osInfo.ReleaseId = "sequoia"
+		o.Release = "Sequoia"
+		o.ReleaseId = "sequoia"
 	case "26":
-		osInfo.Release = "Tahoe"
-		osInfo.ReleaseId = "tahoe"
+		o.Release = "Tahoe"
+		o.ReleaseId = "tahoe"
 	default:
-		return nil, errors.New("unknown macOS major version: " + osInfo.MajorVersion)
+		return errors.New("unknown macOS major version: " + o.MajorVersion)
 	}
 
-	return osInfo, nil
+	return nil
 }
