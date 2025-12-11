@@ -11,6 +11,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// DiscoveryServer implements the DiscoveryPluginServer interface.
+//
+// It provides information about the host environment and manages graceful shutdown.
 type DiscoveryServer struct {
 	UnimplementedDiscoveryPluginServer
 
@@ -20,6 +23,7 @@ type DiscoveryServer struct {
 	isShutdown   bool
 }
 
+// DiscoverInfo provides information about the host environment.
 func (s *DiscoveryServer) DiscoverInfo(
 	ctx context.Context,
 	request *DiscoverInfoRequest,
@@ -37,7 +41,7 @@ func (s *DiscoveryServer) DiscoverInfo(
 
 	hostInfo, err := discoverHostInfo()
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
 	return &DiscoverInfoResponse{
@@ -45,6 +49,7 @@ func (s *DiscoveryServer) DiscoverInfo(
 	}, nil
 }
 
+// Shutdown initiates a graceful shutdown of the server.
 func (s *DiscoveryServer) Shutdown(
 	ctx context.Context,
 	request *ShutdownRequest,
@@ -73,11 +78,13 @@ func (s *DiscoveryServer) Shutdown(
 	}
 }
 
+// WaitForShutdown blocks until the server has completed its shutdown process.
 func (s *DiscoveryServer) WaitForShutdown() {
 	<-s.shutdownChan
 	s.waitGroup.Wait()
 }
 
+// NewDiscoveryServer creates a new instance of DiscoveryServer.
 func NewDiscoveryServer() *DiscoveryServer {
 	return &DiscoveryServer{
 		shutdownChan: make(chan struct{}),
