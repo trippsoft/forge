@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package plugin.v1;
+
+option go_package = "github.com/trippsoft/forge/pkg/plugin/v1;pluginv1";
+
+import "pkg/hclspec/hclspec.proto";
+
+message GetModulesRequest {}
+
+enum ModuleType {
+    LOCAL = 0;
+    REMOTE = 1;
+}
+
+message ModuleSpec {
+    ModuleType type = 2;
+    hclspec.SpecPB spec = 3;
+}
+
+message GetModulesResponse {
+    string namespace = 1;
+    string pluginName = 2;
+    map<string, ModuleSpec> modules = 3;
+}
+
+message ShutdownRequest {}
+message ShutdownResponse {}
+
+service PluginService {
+    rpc GetModules(GetModulesRequest) returns (GetModulesResponse);
+    rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+}
