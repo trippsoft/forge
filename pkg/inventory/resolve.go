@@ -424,7 +424,7 @@ func resolveHostTransport(
 
 	combinedTransport := combineTransportsFromChain(inheritanceChain)
 	if combinedTransport == nil {
-		return transport.NewLocalTransportBuilder().Build(), diags
+		return transport.LocalTransport, diags
 	}
 
 	transport, moreDiags := createTransportFromConfig(combinedTransport, vars)
@@ -507,7 +507,7 @@ func createTransportFromConfig(
 
 	switch intermediate.name {
 	case string(transport.TransportTypeLocal):
-		return transport.NewLocalTransportBuilder().Build(), hcl.Diagnostics{}
+		return transport.LocalTransport, hcl.Diagnostics{}
 	case string(transport.TransportTypeSSH):
 		return createSSHTransport(intermediate.config, vars)
 	default:
@@ -536,14 +536,10 @@ func createSSHTransport(
 	var privateKeyPass string
 	var password string
 	useKnownHosts := transport.DefaultUseKnownHostsFile
+	var knownHostsPath string
 	var minPluginPort uint16
 	var maxPluginPort uint16
 	var tempPath string
-
-	knownHostsPath, err := transport.DefaultKnownHostsPath()
-	if err != nil {
-		knownHostsPath = "" // Fallback to empty if default path cannot be determined
-	}
 
 	addUnknownHosts := transport.DefaultAddUnknownHostsToFile
 	connectionTimeout := transport.DefaultSSHConnectionTimeout
@@ -679,16 +675,8 @@ func createSSHTransport(
 		}
 	}
 
-	builder, err := transport.NewSSHBuilder()
-	if err != nil {
-		return nil, append(diags, &hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "Failed to create SSH transport builder",
-			Detail:   fmt.Sprintf("An error occurred while creating the SSH transport builder: %v", err),
-		})
-	}
-
-	builder = builder.WithHost(host).
+	builder := transport.NewSSHBuilder().
+		WithHost(host).
 		WithPort(port).
 		WithUser(user).
 		WithConnectionTimeout(connectionTimeout).
@@ -698,6 +686,7 @@ func createSSHTransport(
 	if privateKeyPath != "" {
 		privateKey, exists := cachedPrivateKeyFiles[privateKeyPath]
 		if !exists {
+			var err error
 			privateKey, err = os.ReadFile(privateKeyPath)
 			if err != nil {
 				return nil, append(diags, &hcl.Diagnostic{
@@ -908,7 +897,7 @@ func buildFinalInventory(
 
 		t, exists := hostTransports[hostName]
 		if !exists {
-			t = transport.NewLocalTransportBuilder().Build()
+			t = transport.LocalTransport
 		}
 
 		escalateConfig, exists := hostEscalateConfigs[hostName]

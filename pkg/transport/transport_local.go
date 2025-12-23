@@ -16,10 +16,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type localTransport struct {
-	minPluginPort uint16
-	maxPluginPort uint16
-}
+var (
+	LocalTransport = &localTransport{}
+)
+
+type localTransport struct{}
 
 // Type implements Transport.
 func (l *localTransport) Type() TransportType {
@@ -82,8 +83,8 @@ func (l *localTransport) StartPlugin(
 func (l *localTransport) startPlugin(path string) (*exec.Cmd, uint16, error) {
 	cmd := exec.Command(path)
 
-	cmd.Env = append(cmd.Env, fmt.Sprintf("FORGE_PLUGIN_MIN_PORT=%d", l.minPluginPort))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("FORGE_PLUGIN_MAX_PORT=%d", l.maxPluginPort))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("FORGE_PLUGIN_MIN_PORT=%d", plugin.LocalPluginMinPort))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("FORGE_PLUGIN_MAX_PORT=%d", plugin.LocalPluginMaxPort))
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -128,37 +129,4 @@ func (l *localTransport) startPlugin(path string) (*exec.Cmd, uint16, error) {
 	}
 
 	return cmd, uint16(port), nil
-}
-
-// LocalTransportBuilder is a builder for LocalTransport.
-type LocalTransportBuilder struct {
-	discoveryPluginBasePath string
-	minPluginPort           uint16
-	maxPluginPort           uint16
-}
-
-// WithDiscoveryPluginBasePath sets the discovery plugin base path for the local transport.
-func (b *LocalTransportBuilder) WithDiscoveryPluginBasePath(path string) *LocalTransportBuilder {
-	b.discoveryPluginBasePath = path
-	return b
-}
-
-// WithPluginPortRange sets the plugin port range for the local transport.
-func (b *LocalTransportBuilder) WithPluginPortRange(minPluginPort, maxPluginPort uint16) *LocalTransportBuilder {
-	b.minPluginPort = minPluginPort
-	b.maxPluginPort = maxPluginPort
-	return b
-}
-
-// Build constructs the LocalTransport based on the builder's configuration.
-func (b *LocalTransportBuilder) Build() Transport {
-	return &localTransport{
-		minPluginPort: b.minPluginPort,
-		maxPluginPort: b.maxPluginPort,
-	}
-}
-
-// NewLocalTransportBuilder creates a new LocalTransportBuilder.
-func NewLocalTransportBuilder() *LocalTransportBuilder {
-	return &LocalTransportBuilder{}
 }

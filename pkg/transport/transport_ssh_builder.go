@@ -159,7 +159,12 @@ func (b *SSHTransportBuilder) Build() (Transport, error) {
 	}
 
 	if b.useKnownHostsFile && b.knownHostsPath == "" {
-		return nil, errors.New("knownHostsPath cannot be empty when using known hosts")
+		knownHostsPath, err := DefaultKnownHostsPath()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get default known hosts path: %w", err)
+		}
+
+		b.knownHostsPath = knownHostsPath
 	}
 
 	if b.connectionTimeout <= 0 {
@@ -245,15 +250,9 @@ func (b *SSHTransportBuilder) Build() (Transport, error) {
 }
 
 // NewSSHBuilder creates a new SSHTransportBuilder with default settings.
-func NewSSHBuilder() (*SSHTransportBuilder, error) {
-	knownHostsPath, err := DefaultKnownHostsPath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get default known hosts path: %w", err)
-	}
-
+func NewSSHBuilder() *SSHTransportBuilder {
 	return &SSHTransportBuilder{
 		port:              22,               // Default SSH port
 		connectionTimeout: 10 * time.Second, // Default connection timeout
-		knownHostsPath:    knownHostsPath,
-	}, nil
+	}
 }

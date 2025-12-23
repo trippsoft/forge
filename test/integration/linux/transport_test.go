@@ -36,12 +36,8 @@ func getContainerConfigs(t *testing.T) []containerConfig {
 func TestSSHTransportConnect_Password(t *testing.T) {
 	for _, config := range getContainerConfigs(t) {
 		t.Run(config.name, func(t *testing.T) {
-			builder, err := transport.NewSSHBuilder()
-			if err != nil {
-				t.Fatalf("NewSSHBuilder failed: %v", err)
-			}
-
-			sshTransport, err := builder.
+			sshTransport, err := transport.
+				NewSSHBuilder().
 				WithHost("127.0.0.1").
 				WithPort(config.port).
 				WithUser("forge").
@@ -67,12 +63,8 @@ func TestSSHTransportConnect_Password(t *testing.T) {
 func TestSSHTransportConnect_PrivateKey(t *testing.T) {
 	for _, config := range getContainerConfigs(t) {
 		t.Run(config.name, func(t *testing.T) {
-			builder, err := transport.NewSSHBuilder()
-			if err != nil {
-				t.Fatalf("NewSSHBuilder failed: %v", err)
-			}
-
-			sshTransport, err := builder.
+			sshTransport, err := transport.
+				NewSSHBuilder().
 				WithHost("127.0.0.1").
 				WithPort(config.port).
 				WithUser("forge").
@@ -96,12 +88,8 @@ func TestSSHTransportConnect_PrivateKey(t *testing.T) {
 }
 
 func TestSSHTransportConnect_Failure(t *testing.T) {
-	builder, err := transport.NewSSHBuilder()
-	if err != nil {
-		t.Fatalf("NewSSHBuilder failed: %v", err)
-	}
-
-	sshTransport, err := builder.
+	sshTransport, err := transport.
+		NewSSHBuilder().
 		WithHost("192.0.2.1").
 		WithPort(22).
 		WithUser("testuser").
@@ -125,12 +113,8 @@ func TestSSHTransportKnownHosts_Strict(t *testing.T) {
 	tmpKnownHosts := createTempKnownHostsFile(t)
 	defer cleanupTempFile(t, tmpKnownHosts)
 
-	builder, err := transport.NewSSHBuilder()
-	if err != nil {
-		t.Fatalf("NewSSHBuilder failed: %v", err)
-	}
-
-	sshTransport, err := builder.
+	sshTransport, err := transport.
+		NewSSHBuilder().
 		WithHost("127.0.0.1").
 		WithPort(2201).
 		WithUser("forge").
@@ -159,11 +143,6 @@ func TestSSHTransportKnownHosts_Strict_RejectNotMatchingKey(t *testing.T) {
 	tmpKnownHosts := createTempKnownHostsFile(t)
 	defer cleanupTempFile(t, tmpKnownHosts)
 
-	builder, err := transport.NewSSHBuilder()
-	if err != nil {
-		t.Fatalf("NewSSHBuilder failed: %v", err)
-	}
-
 	file, err := os.Create(tmpKnownHosts)
 	if err != nil {
 		t.Fatalf("Failed to open temp known hosts file: %v", err)
@@ -180,7 +159,8 @@ func TestSSHTransportKnownHosts_Strict_RejectNotMatchingKey(t *testing.T) {
 		t.Fatalf("Failed to close temp known hosts file: %v", err)
 	}
 
-	sshTransport, err := builder.
+	sshTransport, err := transport.
+		NewSSHBuilder().
 		WithHost("127.0.0.1").
 		WithPort(2201).
 		WithUser("forge").
@@ -209,12 +189,8 @@ func TestSSHTransportKnownHosts_AddUnknown(t *testing.T) {
 	tmpKnownHosts := createTempKnownHostsFile(t)
 	defer cleanupTempFile(t, tmpKnownHosts)
 
-	builder, err := transport.NewSSHBuilder()
-	if err != nil {
-		t.Fatalf("NewSSHBuilder failed: %v", err)
-	}
-
-	sshTransport, err := builder.
+	sshTransport, err := transport.
+		NewSSHBuilder().
 		WithHost("127.0.0.1").
 		WithPort(2201).
 		WithUser("forge").
@@ -235,7 +211,8 @@ func TestSSHTransportKnownHosts_AddUnknown(t *testing.T) {
 	sshTransport.Close()
 
 	// Test connection again with strict host checking to verify known host was added
-	sshTransport, err = builder.
+	sshTransport, err = transport.
+		NewSSHBuilder().
 		WithHost("127.0.0.1").
 		WithPort(2201).
 		WithUser("forge").
@@ -263,11 +240,6 @@ func TestSSHTransportKnownHosts_AddUnknown_RejectNotMatchingKey(t *testing.T) {
 	tmpKnownHosts := createTempKnownHostsFile(t)
 	defer cleanupTempFile(t, tmpKnownHosts)
 
-	builder, err := transport.NewSSHBuilder()
-	if err != nil {
-		t.Fatalf("NewSSHBuilder failed: %v", err)
-	}
-
 	file, err := os.Create(tmpKnownHosts)
 	if err != nil {
 		t.Fatalf("Failed to open temp known hosts file: %v", err)
@@ -285,7 +257,8 @@ func TestSSHTransportKnownHosts_AddUnknown_RejectNotMatchingKey(t *testing.T) {
 		t.Fatalf("Failed to close temp known hosts file: %v", err)
 	}
 
-	sshTransport, err := builder.
+	sshTransport, err := transport.
+		NewSSHBuilder().
 		WithHost("127.0.0.1").
 		WithPort(2201).
 		WithUser("forge").
@@ -314,12 +287,8 @@ func TestSSHTransportKnownHosts_AddUnknown_NonExistentFile(t *testing.T) {
 	nonExistentPath := "/tmp/non_existent_known_hosts"
 	cleanupTempFile(t, nonExistentPath)
 
-	builder, err := transport.NewSSHBuilder()
-	if err != nil {
-		t.Fatalf("NewSSHBuilder failed: %v", err)
-	}
-
-	sshTransport, err := builder.
+	sshTransport, err := transport.
+		NewSSHBuilder().
 		WithHost("127.0.0.1").
 		WithPort(2201).
 		WithUser("forge").

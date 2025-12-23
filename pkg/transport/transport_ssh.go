@@ -31,7 +31,7 @@ const (
 	DefaultAddUnknownHostsToFile bool          = true
 	DefaultSSHConnectionTimeout  time.Duration = 10 * time.Second
 
-	sshSudoPrompt = "forge_sudo_prompt"
+	sshSudoPrompt string = "forge_sudo_prompt"
 )
 
 func DefaultKnownHostsPath() (string, error) {
