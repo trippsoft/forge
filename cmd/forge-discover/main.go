@@ -17,7 +17,8 @@ import (
 func main() {
 	err := realMain()
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+		os.Exit(1)
 	}
 }
 
