@@ -46,7 +46,7 @@ func (m *AssertModule) GetModuleExecutor() ModuleExecutor {
 	return m
 }
 
-// Run implements Module.
+// Run implements ModuleExecutor.
 func (m *AssertModule) Run(ctx context.Context, config *RunConfig) *result.Result {
 	if config == nil {
 		return result.NewFailure(errors.New("config is nil"), "")
