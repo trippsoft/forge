@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion8
 
 const (
 	PluginService_GetModules_FullMethodName = "/plugin.v1.PluginService/GetModules"
+	PluginService_RunModule_FullMethodName  = "/plugin.v1.PluginService/RunModule"
 	PluginService_Shutdown_FullMethodName   = "/plugin.v1.PluginService/Shutdown"
 )
 
@@ -28,6 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PluginServiceClient interface {
 	GetModules(ctx context.Context, in *GetModulesRequest, opts ...grpc.CallOption) (*GetModulesResponse, error)
+	RunModule(ctx context.Context, in *RunModuleRequest, opts ...grpc.CallOption) (*RunModuleResponse, error)
 	Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error)
 }
 
@@ -49,6 +51,16 @@ func (c *pluginServiceClient) GetModules(ctx context.Context, in *GetModulesRequ
 	return out, nil
 }
 
+func (c *pluginServiceClient) RunModule(ctx context.Context, in *RunModuleRequest, opts ...grpc.CallOption) (*RunModuleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunModuleResponse)
+	err := c.cc.Invoke(ctx, PluginService_RunModule_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *pluginServiceClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ShutdownResponse)
@@ -64,6 +76,7 @@ func (c *pluginServiceClient) Shutdown(ctx context.Context, in *ShutdownRequest,
 // for forward compatibility
 type PluginServiceServer interface {
 	GetModules(context.Context, *GetModulesRequest) (*GetModulesResponse, error)
+	RunModule(context.Context, *RunModuleRequest) (*RunModuleResponse, error)
 	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)
 	mustEmbedUnimplementedPluginServiceServer()
 }
@@ -74,6 +87,9 @@ type UnimplementedPluginServiceServer struct {
 
 func (UnimplementedPluginServiceServer) GetModules(context.Context, *GetModulesRequest) (*GetModulesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetModules not implemented")
+}
+func (UnimplementedPluginServiceServer) RunModule(context.Context, *RunModuleRequest) (*RunModuleResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RunModule not implemented")
 }
 func (UnimplementedPluginServiceServer) Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Shutdown not implemented")
@@ -109,6 +125,24 @@ func _PluginService_GetModules_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PluginService_RunModule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunModuleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PluginServiceServer).RunModule(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PluginService_RunModule_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PluginServiceServer).RunModule(ctx, req.(*RunModuleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PluginService_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ShutdownRequest)
 	if err := dec(in); err != nil {
@@ -137,6 +171,10 @@ var PluginService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetModules",
 			Handler:    _PluginService_GetModules_Handler,
+		},
+		{
+			MethodName: "RunModule",
+			Handler:    _PluginService_RunModule_Handler,
 		},
 		{
 			MethodName: "Shutdown",

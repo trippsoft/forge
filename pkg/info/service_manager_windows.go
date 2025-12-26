@@ -5,7 +5,7 @@
 
 package info
 
-func (s *ServiceManagerInfoPB) discover() error {
+func (s *ServiceManagerInfo) discover() error {
 	s.Name = "windows"
 	return nil
 }

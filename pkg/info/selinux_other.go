@@ -5,7 +5,7 @@
 
 package info
 
-func (s *SELinuxInfoPB) discover() error {
+func (s *SELinuxInfo) discover() error {
 	s.Supported = false
 	s.Installed = false
 	s.Status = ""

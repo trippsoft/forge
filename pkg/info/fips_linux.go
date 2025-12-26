@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-func (f *FIPSInfoPB) discover() error {
+func (f *FIPSInfo) discover() error {
 	f.Known = true
 
 	fileInfo, err := os.Stat("/proc/sys/crypto/fips_enabled")

@@ -9,7 +9,7 @@ import "pkg/info/info.proto";
 message DiscoverInfoRequest {}
 
 message DiscoverInfoResponse {
-  HostInfoPB host_info = 1;
+  HostInfo host_info = 1;
 }
 
 service DiscoveryPlugin {

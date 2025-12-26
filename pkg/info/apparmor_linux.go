@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-func (a *AppArmorInfoPB) discover() error {
+func (a *AppArmorInfo) discover() error {
 	a.Supported = true
 
 	fileInfo, err := os.Stat("/sys/kernel/security/apparmor")

@@ -7,6 +7,9 @@ import (
 	context "context"
 	sync "sync"
 
+	"github.com/trippsoft/forge/pkg/info"
+	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/json"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 )
@@ -25,6 +28,7 @@ type PluginServer struct {
 	isShutdown   bool
 }
 
+// GetModules retrieves the available plugin modules and their specifications.
 func (s *PluginServer) GetModules(
 	ctx context.Context,
 	request *GetModulesRequest,
@@ -56,6 +60,46 @@ func (s *PluginServer) GetModules(
 	}, nil
 }
 
+// RunModule executes the specified plugin module with the provided input.
+func (s *PluginServer) RunModule(
+	ctx context.Context,
+	request *RunModuleRequest,
+) (*RunModuleResponse, error) {
+
+	s.mutex.RLock()
+	if s.isShutdown {
+		s.mutex.RUnlock()
+		return nil, status.Error(codes.Unavailable, "server is shutting down")
+	}
+	s.waitGroup.Add(1)
+	s.mutex.RUnlock()
+
+	defer s.waitGroup.Done()
+
+	module, exists := s.modules[request.ModuleName]
+	if !exists {
+		return nil, status.Errorf(codes.NotFound, "module %q not found", request.ModuleName)
+	}
+
+	input := make(map[string]cty.Value, len(request.Input))
+	for key, value := range request.Input {
+		ctyValue, err := json.Unmarshal(value, cty.DynamicPseudoType)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+		input[key] = ctyValue
+	}
+
+	hostInfo := info.NewHostInfo()
+	hostInfo.CopyFrom(request.HostInfo)
+	result := module.RunModule(hostInfo, input, request.WhatIf)
+
+	return &RunModuleResponse{
+		Result: result,
+	}, nil
+}
+
+// Shutdown initiates a graceful shutdown of the plugin server.
 func (s *PluginServer) Shutdown(
 	ctx context.Context,
 	request *ShutdownRequest,
@@ -81,5 +125,18 @@ func (s *PluginServer) Shutdown(
 		return &ShutdownResponse{}, nil
 	case <-ctx.Done():
 		return nil, status.Error(codes.DeadlineExceeded, "shutdown timed out")
+	}
+}
+
+// NewPluginServer creates a new instance of PluginServer with the provided modules.
+func NewPluginServer(modules ...PluginModule) *PluginServer {
+	moduleMap := make(map[string]PluginModule, len(modules))
+	for _, module := range modules {
+		moduleMap[module.Name()] = module
+	}
+
+	return &PluginServer{
+		modules:      moduleMap,
+		shutdownChan: make(chan struct{}),
 	}
 }

@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func (s *SELinuxInfoPB) discover() error {
+func (s *SELinuxInfo) discover() error {
 	s.Supported = true
 
 	fileInfo, err := os.Stat("/etc/selinux/config")

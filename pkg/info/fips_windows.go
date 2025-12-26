@@ -12,7 +12,7 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-func (f *FIPSInfoPB) discover() error {
+func (f *FIPSInfo) discover() error {
 	f.Known = true
 
 	key, err := registry.OpenKey(

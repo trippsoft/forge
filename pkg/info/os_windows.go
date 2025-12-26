@@ -14,7 +14,7 @@ import (
 	"github.com/bhendo/go-powershell/backend"
 )
 
-func (o *OSInfoPB) discover() error {
+func (o *OSInfo) discover() error {
 	b := &backend.Local{}
 	shell, err := ps.New(b)
 	if err != nil {

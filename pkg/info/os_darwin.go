@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-func (o *OSInfoPB) discover() error {
+func (o *OSInfo) discover() error {
 	o.Kernel = "darwin"
 	o.Id = "macos"
 	o.Edition = ""

@@ -5,6 +5,7 @@ package plugin.v1;
 option go_package = "github.com/trippsoft/forge/pkg/plugin/v1;pluginv1";
 
 import "pkg/hclspec/hclspec.proto";
+import "pkg/info/info.proto";
 
 message GetModulesRequest {}
 
@@ -24,10 +25,41 @@ message GetModulesResponse {
     map<string, ModuleSpec> modules = 3;
 }
 
+message ModuleSuccess {
+    bool changed = 1;
+    map<string, bytes> output = 2;
+}
+
+message ModuleFailure {
+    string error = 1;
+    string details = 2;
+}
+
+message ModuleResult {
+    oneof result {
+        ModuleSuccess success = 1;
+        ModuleFailure failure = 2;
+    }
+    repeated string warnings = 3;
+    repeated string messages = 4;
+}
+
+message RunModuleRequest {
+    string moduleName = 1;
+    info.HostInfo hostInfo = 2;
+    bool what_if = 3;
+    map<string, bytes> input = 4;
+}
+
+message RunModuleResponse {
+    ModuleResult result = 1;
+}
+
 message ShutdownRequest {}
 message ShutdownResponse {}
 
 service PluginService {
     rpc GetModules(GetModulesRequest) returns (GetModulesResponse);
+    rpc RunModule(RunModuleRequest) returns (RunModuleResponse);
     rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
 }

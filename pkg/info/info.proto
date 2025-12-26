@@ -4,7 +4,7 @@ package info;
 
 option go_package = "github.com/trippsoft/forge/pkg/info";
 
-message OSInfoPB {
+message OSInfo {
   string kernel = 1;
   string id = 2;
   string friendly_name = 3;
@@ -18,37 +18,37 @@ message OSInfoPB {
   repeated string families = 11;
 }
 
-message FIPSInfoPB {
+message FIPSInfo {
   bool known = 1;
   bool enabled = 2;
 }
 
-message AppArmorInfoPB {
+message AppArmorInfo {
   bool supported = 1;
   bool enabled = 2;
 }
 
-message SELinuxInfoPB {
+message SELinuxInfo {
   bool supported = 1;
   bool installed = 2;
   string status = 3;
   string type = 4;
 }
 
-message PackageManagerInfoPB {
+message PackageManagerInfo {
   string name = 1;
   string path = 2;
 }
 
-message ServiceManagerInfoPB {
+message ServiceManagerInfo {
   string name = 1;
 }
 
-message HostInfoPB {
-    OSInfoPB os = 1;
-    FIPSInfoPB fips = 2;
-    AppArmorInfoPB app_armor = 3;
-    SELinuxInfoPB selinux = 4;
-    PackageManagerInfoPB package_manager = 5;
-    ServiceManagerInfoPB service_manager = 6;
+message HostInfo {
+    OSInfo os = 1;
+    FIPSInfo fips = 2;
+    AppArmorInfo app_armor = 3;
+    SELinuxInfo selinux = 4;
+    PackageManagerInfo package_manager = 5;
+    ServiceManagerInfo service_manager = 6;
 }

@@ -3,7 +3,9 @@
 
 package result
 
-import "github.com/zclconf/go-cty/cty"
+import (
+	"github.com/zclconf/go-cty/cty"
+)
 
 // Result holds the result of a module execution.
 //

@@ -69,7 +69,7 @@ var (
 	}
 )
 
-func (o *OSInfoPB) discover() error {
+func (o *OSInfo) discover() error {
 	o.Kernel = runtime.GOOS
 	o.Arch = runtime.GOARCH
 
@@ -110,7 +110,7 @@ func (o *OSInfoPB) discover() error {
 	return nil
 }
 
-func (o *OSInfoPB) populateFromOsReleaseFile() error {
+func (o *OSInfo) populateFromOsReleaseFile() error {
 	file, err := os.Open("/etc/os-release")
 	if err != nil {
 		file, err = os.Open("/usr/lib/os-release")
@@ -185,7 +185,7 @@ func (o *OSInfoPB) populateFromOsReleaseFile() error {
 	return nil
 }
 
-func (o *OSInfoPB) populateFromLsbRelease() error {
+func (o *OSInfo) populateFromLsbRelease() error {
 	if o.Id == "" {
 		cmd := exec.Command("lsb_release", "-si")
 		stdout := &bytes.Buffer{}

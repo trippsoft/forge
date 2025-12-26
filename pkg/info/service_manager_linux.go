@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func (s *ServiceManagerInfoPB) discover() error {
+func (s *ServiceManagerInfo) discover() error {
 	s.Name = ""
 
 	_, err := exec.LookPath("systemctl")

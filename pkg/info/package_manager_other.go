@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-func (p *PackageManagerInfoPB) discover(osInfo *OSInfoPB) error {
+func (p *PackageManagerInfo) discover(osInfo *OSInfo) error {
 	if slices.Contains(osInfo.Families, "archlinux") {
 		err := p.populateArchLinuxPackageManagerInfo()
 		if err != nil {
@@ -60,7 +60,7 @@ func (p *PackageManagerInfoPB) discover(osInfo *OSInfoPB) error {
 	return p.populateOtherLinuxPackageManagerInfo()
 }
 
-func (p *PackageManagerInfoPB) populateArchLinuxPackageManagerInfo() error {
+func (p *PackageManagerInfo) populateArchLinuxPackageManagerInfo() error {
 	fileInfo, err := os.Stat("/usr/bin/pacman")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		p.Name = "pacman"
@@ -71,7 +71,7 @@ func (p *PackageManagerInfoPB) populateArchLinuxPackageManagerInfo() error {
 	return p.populateOtherLinuxPackageManagerInfo()
 }
 
-func (p *PackageManagerInfoPB) populateDebianPackageManagerInfo() error {
+func (p *PackageManagerInfo) populateDebianPackageManagerInfo() error {
 	fileInfo, err := os.Stat("/usr/bin/apt-get")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		fileInfo, err := os.Stat("/usr/bin/rpm")
@@ -101,7 +101,7 @@ func (p *PackageManagerInfoPB) populateDebianPackageManagerInfo() error {
 	return p.populateOtherLinuxPackageManagerInfo()
 }
 
-func (p *PackageManagerInfoPB) populateEnterpriseLinuxPackageManagerInfo() error {
+func (p *PackageManagerInfo) populateEnterpriseLinuxPackageManagerInfo() error {
 	fileInfo, err := os.Stat("/usr/bin/dnf5")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		p.Name = "dnf5"
@@ -133,7 +133,7 @@ func (p *PackageManagerInfoPB) populateEnterpriseLinuxPackageManagerInfo() error
 	return p.populateOtherLinuxPackageManagerInfo()
 }
 
-func (p *PackageManagerInfoPB) populateGentooPackageManagerInfo() error {
+func (p *PackageManagerInfo) populateGentooPackageManagerInfo() error {
 	fileInfo, err := os.Stat("/usr/bin/emerge")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		p.Name = "emerge"
@@ -144,7 +144,7 @@ func (p *PackageManagerInfoPB) populateGentooPackageManagerInfo() error {
 	return p.populateOtherLinuxPackageManagerInfo()
 }
 
-func (p *PackageManagerInfoPB) populateSUSEPackageManagerInfo() error {
+func (p *PackageManagerInfo) populateSUSEPackageManagerInfo() error {
 	fileInfo, err := os.Stat("/usr/bin/zypper")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		p.Name = "zypper"
@@ -155,7 +155,7 @@ func (p *PackageManagerInfoPB) populateSUSEPackageManagerInfo() error {
 	return p.populateOtherLinuxPackageManagerInfo()
 }
 
-func (p *PackageManagerInfoPB) populateOtherLinuxPackageManagerInfo() error {
+func (p *PackageManagerInfo) populateOtherLinuxPackageManagerInfo() error {
 	fileInfo, err := os.Stat("/QOpenSys/pkgs/bin/yum")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		p.Name = "yum"

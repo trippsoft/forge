@@ -7,7 +7,7 @@ package info
 
 import "os"
 
-func (p *PackageManagerInfoPB) discover(_ *OSInfoPB) error {
+func (p *PackageManagerInfo) discover(_ *OSInfo) error {
 	fileInfo, err := os.Stat("/opt/homebrew/bin/brew")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		p.Name = "homebrew"
