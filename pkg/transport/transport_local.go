@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	LocalTransport = &localTransport{}
+	LocalTransport Transport = &localTransport{}
 )
 
 type localTransport struct{}
@@ -49,13 +49,14 @@ func (l *localTransport) Close() error {
 
 // StartPlugin implements Transport.
 func (l *localTransport) StartPlugin(
+	basePath string,
 	namespace string,
 	pluginName string,
 	escalation *Escalation,
 ) (*grpc.ClientConn, func(), error) {
 	// TODO - handle escalation if needed
 
-	pluginPath, err := plugin.FindPluginPath(namespace, pluginName, runtime.GOOS, runtime.GOARCH)
+	pluginPath, err := plugin.FindPluginPath(basePath, namespace, pluginName, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		return nil, nil, err
 	}

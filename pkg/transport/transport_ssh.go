@@ -191,6 +191,7 @@ func (s *sshTransport) Close() error {
 
 // StartPlugin implements Transport.
 func (s *sshTransport) StartPlugin(
+	basePath string,
 	namespace string,
 	pluginName string,
 	escalation *Escalation,
@@ -202,7 +203,7 @@ func (s *sshTransport) StartPlugin(
 		return nil, nil, fmt.Errorf("failed to connect to SSH server: %w", err)
 	}
 
-	localPluginPath, err := plugin.FindPluginPath(namespace, pluginName, s.platform.OS(), s.platform.Arch())
+	localPluginPath, err := plugin.FindPluginPath(basePath, namespace, pluginName, s.platform.OS(), s.platform.Arch())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to find local plugin path: %w", err)
 	}

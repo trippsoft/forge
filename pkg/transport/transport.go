@@ -17,7 +17,7 @@ const (
 
 // Transport defines the transport mechanism for interacting a managed system.
 type Transport interface {
-	Type() TransportType   // Type returns the type of transport.
+	Type() TransportType   // Type returns the type of transport.  This is used for testing only.
 	OS() (string, error)   // OS returns the operating system of the managed system.
 	Arch() (string, error) // Arch returns the architecture of the managed system.
 
@@ -26,9 +26,12 @@ type Transport interface {
 
 	// StartDiscovery initializes the discovery client.
 	//
-	// basePath specifies the base path for discovery plugins. The OS, architecture, and extension if applicable will be
-	// appended to this path. (e.g., <basePath>_windows_amd64.exe)
+	// basePath specifies the base path for plugins.
+	// namespace specifies the namespace of the plugin in the filename.
+	// pluginName specifies the name of the plugin in the filename.
+	// The OS, architecture, and extension, if applicable, will be appended to this path.
+	//
 	// It returns a gRPC client connection to the discovery plugin and a cleanup function to terminate the plugin
 	// process.
-	StartPlugin(namespace, pluginName string, escalation *Escalation) (*grpc.ClientConn, func(), error)
+	StartPlugin(basePath, namespace, pluginName string, escalation *Escalation) (*grpc.ClientConn, func(), error)
 }
