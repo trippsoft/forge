@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"net"
 	"os/exec"
 	"runtime"
 	"strconv"
@@ -71,7 +72,7 @@ func (l *localTransport) StartPlugin(
 		cmd.Wait()
 	}
 
-	address := fmt.Sprintf("127.0.0.1:%d", port)
+	address := net.JoinHostPort("127.0.0.1", fmt.Sprintf("%d", port))
 	connection, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		cleanup()
