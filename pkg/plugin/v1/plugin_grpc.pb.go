@@ -19,166 +19,166 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	PluginService_GetModules_FullMethodName = "/plugin.v1.PluginService/GetModules"
-	PluginService_RunModule_FullMethodName  = "/plugin.v1.PluginService/RunModule"
-	PluginService_Shutdown_FullMethodName   = "/plugin.v1.PluginService/Shutdown"
+	PluginV1Service_GetModules_FullMethodName = "/plugin.v1.PluginV1Service/GetModules"
+	PluginV1Service_RunModule_FullMethodName  = "/plugin.v1.PluginV1Service/RunModule"
+	PluginV1Service_Shutdown_FullMethodName   = "/plugin.v1.PluginV1Service/Shutdown"
 )
 
-// PluginServiceClient is the client API for PluginService service.
+// PluginV1ServiceClient is the client API for PluginV1Service service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type PluginServiceClient interface {
+type PluginV1ServiceClient interface {
 	GetModules(ctx context.Context, in *GetModulesRequest, opts ...grpc.CallOption) (*GetModulesResponse, error)
 	RunModule(ctx context.Context, in *RunModuleRequest, opts ...grpc.CallOption) (*RunModuleResponse, error)
 	Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error)
 }
 
-type pluginServiceClient struct {
+type pluginV1ServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewPluginServiceClient(cc grpc.ClientConnInterface) PluginServiceClient {
-	return &pluginServiceClient{cc}
+func NewPluginV1ServiceClient(cc grpc.ClientConnInterface) PluginV1ServiceClient {
+	return &pluginV1ServiceClient{cc}
 }
 
-func (c *pluginServiceClient) GetModules(ctx context.Context, in *GetModulesRequest, opts ...grpc.CallOption) (*GetModulesResponse, error) {
+func (c *pluginV1ServiceClient) GetModules(ctx context.Context, in *GetModulesRequest, opts ...grpc.CallOption) (*GetModulesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetModulesResponse)
-	err := c.cc.Invoke(ctx, PluginService_GetModules_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PluginV1Service_GetModules_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *pluginServiceClient) RunModule(ctx context.Context, in *RunModuleRequest, opts ...grpc.CallOption) (*RunModuleResponse, error) {
+func (c *pluginV1ServiceClient) RunModule(ctx context.Context, in *RunModuleRequest, opts ...grpc.CallOption) (*RunModuleResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RunModuleResponse)
-	err := c.cc.Invoke(ctx, PluginService_RunModule_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PluginV1Service_RunModule_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *pluginServiceClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error) {
+func (c *pluginV1ServiceClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ShutdownResponse)
-	err := c.cc.Invoke(ctx, PluginService_Shutdown_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, PluginV1Service_Shutdown_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// PluginServiceServer is the server API for PluginService service.
-// All implementations must embed UnimplementedPluginServiceServer
+// PluginV1ServiceServer is the server API for PluginV1Service service.
+// All implementations must embed UnimplementedPluginV1ServiceServer
 // for forward compatibility
-type PluginServiceServer interface {
+type PluginV1ServiceServer interface {
 	GetModules(context.Context, *GetModulesRequest) (*GetModulesResponse, error)
 	RunModule(context.Context, *RunModuleRequest) (*RunModuleResponse, error)
 	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)
-	mustEmbedUnimplementedPluginServiceServer()
+	mustEmbedUnimplementedPluginV1ServiceServer()
 }
 
-// UnimplementedPluginServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedPluginServiceServer struct {
+// UnimplementedPluginV1ServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedPluginV1ServiceServer struct {
 }
 
-func (UnimplementedPluginServiceServer) GetModules(context.Context, *GetModulesRequest) (*GetModulesResponse, error) {
+func (UnimplementedPluginV1ServiceServer) GetModules(context.Context, *GetModulesRequest) (*GetModulesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetModules not implemented")
 }
-func (UnimplementedPluginServiceServer) RunModule(context.Context, *RunModuleRequest) (*RunModuleResponse, error) {
+func (UnimplementedPluginV1ServiceServer) RunModule(context.Context, *RunModuleRequest) (*RunModuleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunModule not implemented")
 }
-func (UnimplementedPluginServiceServer) Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error) {
+func (UnimplementedPluginV1ServiceServer) Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Shutdown not implemented")
 }
-func (UnimplementedPluginServiceServer) mustEmbedUnimplementedPluginServiceServer() {}
+func (UnimplementedPluginV1ServiceServer) mustEmbedUnimplementedPluginV1ServiceServer() {}
 
-// UnsafePluginServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to PluginServiceServer will
+// UnsafePluginV1ServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to PluginV1ServiceServer will
 // result in compilation errors.
-type UnsafePluginServiceServer interface {
-	mustEmbedUnimplementedPluginServiceServer()
+type UnsafePluginV1ServiceServer interface {
+	mustEmbedUnimplementedPluginV1ServiceServer()
 }
 
-func RegisterPluginServiceServer(s grpc.ServiceRegistrar, srv PluginServiceServer) {
-	s.RegisterService(&PluginService_ServiceDesc, srv)
+func RegisterPluginV1ServiceServer(s grpc.ServiceRegistrar, srv PluginV1ServiceServer) {
+	s.RegisterService(&PluginV1Service_ServiceDesc, srv)
 }
 
-func _PluginService_GetModules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _PluginV1Service_GetModules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetModulesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PluginServiceServer).GetModules(ctx, in)
+		return srv.(PluginV1ServiceServer).GetModules(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: PluginService_GetModules_FullMethodName,
+		FullMethod: PluginV1Service_GetModules_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginServiceServer).GetModules(ctx, req.(*GetModulesRequest))
+		return srv.(PluginV1ServiceServer).GetModules(ctx, req.(*GetModulesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PluginService_RunModule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _PluginV1Service_RunModule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RunModuleRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PluginServiceServer).RunModule(ctx, in)
+		return srv.(PluginV1ServiceServer).RunModule(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: PluginService_RunModule_FullMethodName,
+		FullMethod: PluginV1Service_RunModule_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginServiceServer).RunModule(ctx, req.(*RunModuleRequest))
+		return srv.(PluginV1ServiceServer).RunModule(ctx, req.(*RunModuleRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PluginService_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _PluginV1Service_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ShutdownRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PluginServiceServer).Shutdown(ctx, in)
+		return srv.(PluginV1ServiceServer).Shutdown(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: PluginService_Shutdown_FullMethodName,
+		FullMethod: PluginV1Service_Shutdown_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PluginServiceServer).Shutdown(ctx, req.(*ShutdownRequest))
+		return srv.(PluginV1ServiceServer).Shutdown(ctx, req.(*ShutdownRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// PluginService_ServiceDesc is the grpc.ServiceDesc for PluginService service.
+// PluginV1Service_ServiceDesc is the grpc.ServiceDesc for PluginV1Service service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var PluginService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "plugin.v1.PluginService",
-	HandlerType: (*PluginServiceServer)(nil),
+var PluginV1Service_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "plugin.v1.PluginV1Service",
+	HandlerType: (*PluginV1ServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "GetModules",
-			Handler:    _PluginService_GetModules_Handler,
+			Handler:    _PluginV1Service_GetModules_Handler,
 		},
 		{
 			MethodName: "RunModule",
-			Handler:    _PluginService_RunModule_Handler,
+			Handler:    _PluginV1Service_RunModule_Handler,
 		},
 		{
 			MethodName: "Shutdown",
-			Handler:    _PluginService_Shutdown_Handler,
+			Handler:    _PluginV1Service_Shutdown_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

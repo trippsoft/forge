@@ -608,7 +608,7 @@ func (s *SingleStep) runHostIteration(hwc *HostWorkflowContext, iteration *StepI
 	runCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	result := s.module.GetModuleExecutor().Run(runCtx, config)
+	result := s.module.Run(runCtx, config)
 	if result == nil || s.output == nil {
 		return s.handleHostIterationResult(hwc, iteration, result), nil
 	}

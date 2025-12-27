@@ -8,17 +8,17 @@ import (
 	sync "sync"
 
 	"github.com/trippsoft/forge/pkg/info"
+	"github.com/trippsoft/forge/pkg/plugin"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/json"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 )
 
-// PluginServer implements the PluginServiceServer interface.
-//
-// It serves as a placeholder for future plugin-related functionalities.
-type PluginServer struct {
-	UnimplementedPluginServiceServer
+// PluginV1Server implements the PluginServiceServer and PluginV1ServiceServer interfaces.
+type PluginV1Server struct {
+	UnimplementedPluginV1ServiceServer
+	plugin.UnimplementedPluginServiceServer
 
 	modules map[string]PluginModule
 
@@ -28,8 +28,18 @@ type PluginServer struct {
 	isShutdown   bool
 }
 
-// GetModules retrieves the available plugin modules and their specifications.
-func (s *PluginServer) GetModules(
+// GetAPIVersion retrieves the API version supported by the plugin server.
+func (s *PluginV1Server) GetAPIVersion(
+	ctx context.Context,
+	request *plugin.GetAPIVersionRequest,
+) (*plugin.GetAPIVersionResponse, error) {
+	return &plugin.GetAPIVersionResponse{
+		ApiVersion: 1,
+	}, nil
+}
+
+// GetModules retrieves the plugin API version, available plugin modules, and their specifications.
+func (s *PluginV1Server) GetModules(
 	ctx context.Context,
 	request *GetModulesRequest,
 ) (*GetModulesResponse, error) {
@@ -61,7 +71,7 @@ func (s *PluginServer) GetModules(
 }
 
 // RunModule executes the specified plugin module with the provided input.
-func (s *PluginServer) RunModule(
+func (s *PluginV1Server) RunModule(
 	ctx context.Context,
 	request *RunModuleRequest,
 ) (*RunModuleResponse, error) {
@@ -100,7 +110,7 @@ func (s *PluginServer) RunModule(
 }
 
 // Shutdown initiates a graceful shutdown of the plugin server.
-func (s *PluginServer) Shutdown(
+func (s *PluginV1Server) Shutdown(
 	ctx context.Context,
 	request *ShutdownRequest,
 ) (*ShutdownResponse, error) {
@@ -129,13 +139,13 @@ func (s *PluginServer) Shutdown(
 }
 
 // NewPluginServer creates a new instance of PluginServer with the provided modules.
-func NewPluginServer(modules ...PluginModule) *PluginServer {
+func NewPluginServer(modules ...PluginModule) *PluginV1Server {
 	moduleMap := make(map[string]PluginModule, len(modules))
 	for _, module := range modules {
 		moduleMap[module.Name()] = module
 	}
 
-	return &PluginServer{
+	return &PluginV1Server{
 		modules:      moduleMap,
 		shutdownChan: make(chan struct{}),
 	}

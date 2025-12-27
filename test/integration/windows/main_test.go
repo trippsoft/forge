@@ -85,6 +85,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
+	plugin.SharedPluginBasePath = directory + "/plugins"
 	plugin.UserPluginBasePath = directory + "/plugins"
 
 	code := m.Run()
@@ -175,7 +176,7 @@ func setupVagrantEnvironment() error {
 
 	if moduleRegistry == nil {
 		moduleRegistry = module.NewRegistry()
-		moduleRegistry.RegisterLocalModules()
+		moduleRegistry.RegisterCoreModules()
 	}
 
 	return nil

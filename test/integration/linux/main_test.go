@@ -264,6 +264,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
+	plugin.SharedPluginBasePath = directory + "/plugins"
 	plugin.UserPluginBasePath = directory + "/plugins"
 
 	var diags hcl.Diagnostics
@@ -277,7 +278,7 @@ func TestMain(m *testing.M) {
 	}
 
 	moduleRegistry = module.NewRegistry()
-	moduleRegistry.RegisterLocalModules()
+	moduleRegistry.RegisterCoreModules()
 
 	privateKeyContent, _ = os.ReadFile("id_rsa")
 

@@ -16,8 +16,7 @@ import (
 var (
 	inputSpec = hclspec.NewSpec(hclspec.Object(hclspec.RequiredField("message", hclspec.Raw)))
 
-	_ Module         = (*MessageModule)(nil)
-	_ ModuleExecutor = (*MessageModule)(nil)
+	_ Module = (*MessageModule)(nil)
 )
 
 // Module defines the message module that displays messages to the console.
@@ -31,11 +30,6 @@ func (s *MessageModule) Info() *ModuleInfo {
 // InputSpec implements Module.
 func (s *MessageModule) InputSpec() *hclspec.Spec {
 	return inputSpec
-}
-
-// GetModuleExecutor implements Module.
-func (s *MessageModule) GetModuleExecutor() ModuleExecutor {
-	return s
 }
 
 // Run implements ModuleExecutor.

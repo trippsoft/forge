@@ -8,10 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"os"
+	"path"
 	"time"
 
 	"github.com/trippsoft/forge/pkg/hclspec"
 	"github.com/trippsoft/forge/pkg/info"
+	"github.com/trippsoft/forge/pkg/plugin"
+	pluginv1 "github.com/trippsoft/forge/pkg/plugin/v1"
 	"github.com/trippsoft/forge/pkg/result"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
@@ -53,12 +57,6 @@ type RunConfig struct {
 	Input      map[string]cty.Value  // Input variables for the module.
 }
 
-// ModuleExecutor defines an interface for executing modules.
-type ModuleExecutor interface {
-	// Run runs the module with the given context and configuration.
-	Run(ctx context.Context, config *RunConfig) *result.Result
-}
-
 // Module abstracts local and plugin modules.
 type Module interface {
 	// Info returns the module information.
@@ -67,8 +65,8 @@ type Module interface {
 	// InputSpec returns the specification for the module's input.
 	InputSpec() *hclspec.Spec
 
-	// GetModuleExecutor returns the executor for the module.
-	GetModuleExecutor() ModuleExecutor
+	// Run runs the module with the given context and configuration.
+	Run(ctx context.Context, config *RunConfig) *result.Result
 }
 
 // Registry manages a collection of modules.
@@ -79,6 +77,8 @@ type Registry struct {
 }
 
 // Register adds a new module to the registry.
+//
+// If a module with the same name already exists, it will be overwritten.
 func (r *Registry) Register(module Module) error {
 	if r.modules == nil {
 		r.modules = make(map[string]Module)
@@ -99,21 +99,149 @@ func (r *Registry) Register(module Module) error {
 
 	name += module.Info().name
 
-	if _, exists := r.modules[name]; exists {
-		return fmt.Errorf("module %q is already registered", name)
-	}
-
 	r.modules[name] = module
 	return nil
 }
 
-// RegisterLocalModules registers the built-in local modules to the registry.
-func (r *Registry) RegisterLocalModules() error {
+// RegisterCoreModules registers the built-in core modules to the registry.
+func (r *Registry) RegisterCoreModules() error {
 	var err error
 	for _, module := range localModules {
-		regErr := r.Register(module)
-		if regErr != nil {
-			err = errors.Join(err, regErr)
+		e := r.Register(module)
+		if e != nil {
+			err = errors.Join(err, e)
+		}
+	}
+
+	return err
+}
+
+// RegisterPluginModules registers modules provided by plugins to the registry.
+func (r *Registry) RegisterPluginModules() error {
+	var err error
+	e := r.registerPluginModulesAtBasePath(plugin.SharedPluginBasePath)
+	if e != nil {
+		err = errors.Join(err, e)
+	}
+
+	e = r.registerPluginModulesAtBasePath(plugin.UserPluginBasePath)
+	if e != nil {
+		err = errors.Join(err, e)
+	}
+
+	return err
+}
+
+func (r *Registry) registerPluginModulesAtBasePath(basePath string) error {
+	fileInfo, err := os.Stat(basePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+
+		return fmt.Errorf("failed to read base path info for %q: %w", basePath, err)
+	}
+
+	if !fileInfo.IsDir() {
+		return fmt.Errorf("base path %q is not a directory", basePath)
+	}
+
+	entries, err := os.ReadDir(basePath)
+	if err != nil {
+		return fmt.Errorf("failed to read directory entries for %q: %w", basePath, err)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue // Skip non-directory entries
+		}
+
+		e := r.registerPluginModulesAtNamespacePath(basePath, entry.Name())
+		if e != nil {
+			err = errors.Join(err, e)
+		}
+	}
+
+	return err
+}
+
+func (r *Registry) registerPluginModulesAtNamespacePath(basePath, namespace string) error {
+	namespacePath := path.Join(basePath, namespace)
+	entries, err := os.ReadDir(namespacePath)
+	if err != nil {
+		return fmt.Errorf("failed to read namespace directory entries for %q: %w", namespacePath, err)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue // Skip non-directory entries
+		}
+
+		e := r.registerPluginModulesAtPluginPath(namespacePath, namespace, entry.Name())
+		if e != nil {
+			err = errors.Join(err, e)
+		}
+	}
+
+	return err
+}
+
+func (r *Registry) registerPluginModulesAtPluginPath(basePath, namespace, pluginName string) error {
+	if namespace == "forge" && pluginName == "discover" {
+		// Skip the discover plugin.
+		return nil
+	}
+
+	connection, cleanup, err := transport.LocalTransport.StartPlugin(
+		basePath,
+		namespace,
+		pluginName,
+		nil,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to start plugin %q/%q: %w", namespace, pluginName, err)
+	}
+
+	defer connection.Close()
+	defer cleanup()
+
+	client := pluginv1.NewPluginV1ServiceClient(connection)
+	response, err := client.GetModules(context.Background(), &pluginv1.GetModulesRequest{})
+	if err != nil {
+		return fmt.Errorf("failed to get modules from plugin %q/%q: %w", namespace, pluginName, err)
+	}
+
+	for name, moduleSpec := range response.Modules {
+		spec, err := moduleSpec.Spec.ToSpec()
+		if err != nil {
+			return fmt.Errorf("failed to parse module spec for %q/%q/%q: %w", namespace, pluginName, name, err)
+		}
+
+		moduleInfo := NewModuleInfo(namespace, pluginName, name)
+
+		var module Module
+		switch moduleSpec.Type {
+		case pluginv1.ModuleType_LOCAL:
+			module = NewLocalPluginModule(basePath, moduleInfo, spec)
+		case pluginv1.ModuleType_REMOTE:
+			module = NewRemotePluginModule(basePath, moduleInfo, spec)
+		default:
+			return fmt.Errorf(
+				"unknown module type %q for %q/%q/%q",
+				moduleSpec.Type.String(),
+				namespace,
+				pluginName,
+				name,
+			)
+		}
+
+		e := r.Register(module)
+		if e != nil {
+			return errors.Join(
+				err,
+				fmt.Errorf("failed to register module %q/%q/%q: %w", namespace, pluginName, name, e),
+			)
 		}
 	}
 

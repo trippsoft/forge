@@ -45,10 +45,6 @@ func (m *mockModule) PrepareExecution(ctx context.Context, config *module.RunCon
 	return nil
 }
 
-func (m *mockModule) GetModuleExecutor() module.ModuleExecutor {
-	return m
-}
-
 func (m *mockModule) Run(ctx context.Context, config *module.RunConfig) *result.Result {
 	if m.validateFunc == nil {
 		return m.Result

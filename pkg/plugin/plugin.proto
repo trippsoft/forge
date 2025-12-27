@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package plugin;
+
+option go_package = "github.com/trippsoft/forge/pkg/plugin";
+
+message GetAPIVersionRequest {}
+message GetAPIVersionResponse {
+    int32 apiVersion = 1;
+}
+
+service PluginService {
+    rpc GetAPIVersion(GetAPIVersionRequest) returns (GetAPIVersionResponse);
+}

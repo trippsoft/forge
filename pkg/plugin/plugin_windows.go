@@ -19,13 +19,14 @@ func init() {
 	os.MkdirAll(UserPluginBasePath, 0777)
 }
 
-func FindPluginPath(namespace, pluginName, osName, arch string) (string, error) {
+func FindPluginPath(basePath, namespace, pluginName, osName, arch string) (string, error) {
 	var extension string
 	if osName == "windows" {
 		extension = ".exe"
 	}
 
-	pluginPathSuffix := fmt.Sprintf(`\%s\%s\%s-%s_%s_%s%s`,
+	pluginPath := fmt.Sprintf(`%s\%s\%s\%s-%s_%s_%s%s`,
+		basePath,
 		namespace,
 		pluginName,
 		namespace,
@@ -35,16 +36,9 @@ func FindPluginPath(namespace, pluginName, osName, arch string) (string, error) 
 		extension,
 	)
 
-	userPluginPath := UserPluginBasePath + pluginPathSuffix
-	fileInfo, err := os.Stat(userPluginPath)
+	fileInfo, err := os.Stat(pluginPath)
 	if err == nil && !fileInfo.IsDir() {
-		return userPluginPath, nil
-	}
-
-	sharedPluginPath := SharedPluginBasePath + pluginPathSuffix
-	fileInfo, err = os.Stat(sharedPluginPath)
-	if err == nil && !fileInfo.IsDir() {
-		return sharedPluginPath, nil
+		return pluginPath, nil
 	}
 
 	return "", fmt.Errorf(

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"maps"
 
+	"github.com/trippsoft/forge/pkg/plugin"
 	"github.com/trippsoft/forge/pkg/result"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
@@ -15,7 +16,7 @@ import (
 
 // Populate retrieves and populates the HostInfo using the provided transport.
 func (i *HostInfo) Populate(t transport.Transport) *result.Result {
-	connection, cleanup, err := t.StartPlugin("forge", "discover", nil)
+	connection, cleanup, err := t.StartPlugin(plugin.SharedPluginBasePath, "forge", "discover", nil)
 	if err != nil {
 		err = fmt.Errorf("failed to start discovery client: %w", err)
 		return result.NewFailure(err, err.Error())

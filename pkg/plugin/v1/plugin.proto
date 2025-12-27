@@ -58,7 +58,7 @@ message RunModuleResponse {
 message ShutdownRequest {}
 message ShutdownResponse {}
 
-service PluginService {
+service PluginV1Service {
     rpc GetModules(GetModulesRequest) returns (GetModulesResponse);
     rpc RunModule(RunModuleRequest) returns (RunModuleResponse);
     rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
