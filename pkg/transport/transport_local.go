@@ -6,11 +6,13 @@ package transport
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"os/exec"
 	"runtime"
 	"strconv"
+	"strings"
 
 	"github.com/trippsoft/forge/pkg/plugin"
 	"google.golang.org/grpc"
@@ -50,19 +52,21 @@ func (l *localTransport) Close() error {
 
 // StartPlugin implements Transport.
 func (l *localTransport) StartPlugin(
+	ctx context.Context,
 	basePath string,
 	namespace string,
 	pluginName string,
 	escalation *Escalation,
 ) (*grpc.ClientConn, func(), error) {
-	// TODO - handle escalation if needed
+
+	// Escalation is not supported for local transport
 
 	pluginPath, err := plugin.FindPluginPath(basePath, namespace, pluginName, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	cmd, port, err := l.startPlugin(pluginPath)
+	cmd, port, err := l.startPlugin(ctx, pluginPath, escalation)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -82,35 +86,36 @@ func (l *localTransport) StartPlugin(
 	return connection, cleanup, nil
 }
 
-func (l *localTransport) startPlugin(path string) (*exec.Cmd, uint16, error) {
-	cmd := exec.Command(path)
+func (l *localTransport) startPlugin(
+	ctx context.Context,
+	path string,
+	escalation *Escalation,
+) (*exec.Cmd, uint16, error) {
+
+	if escalation != nil {
+		return l.startEscalatedPlugin(ctx, path, escalation)
+	}
+
+	var errBuf bytes.Buffer
+	cmd := exec.CommandContext(ctx, path)
+	cmd.Stderr = &errBuf
 
 	cmd.Env = append(cmd.Env, fmt.Sprintf("FORGE_PLUGIN_MIN_PORT=%d", plugin.LocalPluginMinPort))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("FORGE_PLUGIN_MAX_PORT=%d", plugin.LocalPluginMaxPort))
 
-	stdout, err := cmd.StdoutPipe()
+	stdoutReader, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, 0, fmt.Errorf(
-			"failed to get stdout pipe for plugin at '%s': %w",
-			path,
-			err,
-		)
+		return nil, 0, fmt.Errorf("failed to get stdout pipe for plugin at '%s': %w", path, err)
 	}
-
-	errBuf := &bytes.Buffer{}
-	cmd.Stderr = errBuf
+	defer stdoutReader.Close()
 
 	err = cmd.Start()
 	if err != nil {
-		return nil, 0, fmt.Errorf(
-			"failed to start plugin at '%s': %w - %s",
-			path,
-			err,
-			errBuf.String(),
-		)
+		stderr := strings.TrimSpace(errBuf.String())
+		return nil, 0, fmt.Errorf("failed to start plugin at '%s': %w - %s", path, err, stderr)
 	}
 
-	scanner := bufio.NewScanner(stdout)
+	scanner := bufio.NewScanner(stdoutReader)
 	var portOutput string
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -122,12 +127,8 @@ func (l *localTransport) startPlugin(path string) (*exec.Cmd, uint16, error) {
 	if err != nil {
 		cmd.Process.Kill()
 		cmd.Wait()
-		return nil, 0, fmt.Errorf(
-			"invalid port output from plugin at '%s': %w - %s",
-			path,
-			err,
-			errBuf.String(),
-		)
+		stderr := strings.TrimSpace(errBuf.String())
+		return nil, 0, fmt.Errorf("invalid port output from plugin at '%s': %w - %s", path, err, stderr)
 	}
 
 	return cmd, uint16(port), nil

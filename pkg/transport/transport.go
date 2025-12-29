@@ -4,7 +4,14 @@
 package transport
 
 import (
+	"context"
+
 	"google.golang.org/grpc"
+)
+
+const (
+	forgeSudoPrompt  = "forge_sudo_prompt"
+	forgeGSudoPrompt = "Password for user "
 )
 
 // TransportType represents the type of transport used for connecting to managed systems.
@@ -33,5 +40,11 @@ type Transport interface {
 	//
 	// It returns a gRPC client connection to the discovery plugin and a cleanup function to terminate the plugin
 	// process.
-	StartPlugin(basePath, namespace, pluginName string, escalation *Escalation) (*grpc.ClientConn, func(), error)
+	StartPlugin(
+		ctx context.Context,
+		basePath string,
+		namespace string,
+		pluginName string,
+		escalation *Escalation,
+	) (*grpc.ClientConn, func(), error)
 }

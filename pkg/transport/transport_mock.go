@@ -4,6 +4,7 @@
 package transport
 
 import (
+	"context"
 	"runtime"
 
 	"google.golang.org/grpc"
@@ -47,6 +48,7 @@ func (m *MockTransport) Close() error {
 
 // StartPlugin implements Transport.
 func (w *MockTransport) StartPlugin(
+	ctx context.Context,
 	basePath string,
 	namespace string,
 	pluginName string,

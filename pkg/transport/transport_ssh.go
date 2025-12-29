@@ -4,25 +4,20 @@
 package transport
 
 import (
-	"bufio"
-	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/pkg/sftp"
-	"github.com/trippsoft/forge/pkg/network"
-	"github.com/trippsoft/forge/pkg/plugin"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -30,8 +25,6 @@ const (
 	DefaultUseKnownHostsFile     bool          = true
 	DefaultAddUnknownHostsToFile bool          = true
 	DefaultSSHConnectionTimeout  time.Duration = 10 * time.Second
-
-	sshSudoPrompt string = "forge_sudo_prompt"
 )
 
 func DefaultKnownHostsPath() (string, error) {
@@ -55,6 +48,13 @@ type sshPlatform interface {
 
 	MkdirAll(path string) error
 	UploadFile(localPath, remotePath string) error
+	StartPlugin(
+		ctx context.Context,
+		basePath string,
+		namespace string,
+		pluginName string,
+		escalation *Escalation,
+	) (*grpc.ClientConn, func(), error)
 	FormatCommand(cmd string, env ...string) string
 }
 
@@ -191,130 +191,19 @@ func (s *sshTransport) Close() error {
 
 // StartPlugin implements Transport.
 func (s *sshTransport) StartPlugin(
+	ctx context.Context,
 	basePath string,
 	namespace string,
 	pluginName string,
 	escalation *Escalation,
 ) (*grpc.ClientConn, func(), error) {
-	// TODO - handle escalation if needed
 
 	err := s.Connect()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect to SSH server: %w", err)
+		return nil, nil, fmt.Errorf("failed to connect before starting plugin: %w", err)
 	}
 
-	localPluginPath, err := plugin.FindPluginPath(basePath, namespace, pluginName, s.platform.OS(), s.platform.Arch())
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to find local plugin path: %w", err)
-	}
-
-	remotePluginPath := fmt.Sprintf(
-		"%s%s%s-%s%s",
-		s.tempPath,
-		s.platform.PathSeparator(),
-		namespace,
-		pluginName,
-		s.platform.PluginExtension(),
-	)
-
-	err = s.platform.MkdirAll(s.tempPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create remote temp path '%s': %w", s.tempPath, err)
-	}
-
-	err = s.platform.UploadFile(localPluginPath, remotePluginPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to upload discovery plugin to remote path '%s': %w", remotePluginPath, err)
-	}
-
-	envMinPort := fmt.Sprintf("FORGE_PLUGIN_MIN_PORT=%d", s.minPluginPort)
-	envMaxPort := fmt.Sprintf("FORGE_PLUGIN_MAX_PORT=%d", s.maxPluginPort)
-
-	if s.platform.OS() != "windows" {
-		session, err := s.client.NewSession()
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to create SSH session: %w", err)
-		}
-
-		err = session.Run(fmt.Sprintf("chmod +x %s", remotePluginPath))
-		session.Close()
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to make discovery plugin executable: %w", err)
-		}
-	}
-
-	cmd := s.platform.FormatCommand(remotePluginPath, envMinPort, envMaxPort)
-
-	session, err := s.client.NewSession()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create session: %w", err)
-	}
-
-	stdout, err := session.StdoutPipe()
-	if err != nil {
-		session.Close()
-		return nil, nil, fmt.Errorf("failed to get stdout pipe: %w", err)
-	}
-
-	stderr, err := session.StderrPipe()
-	if err != nil {
-		session.Close()
-		return nil, nil, fmt.Errorf("failed to get stderr pipe: %w", err)
-	}
-
-	// Start the plugin
-	err = session.Start(cmd)
-
-	if err != nil {
-		session.Close()
-		return nil, nil, fmt.Errorf("failed to start plugin: %w", err)
-	}
-
-	// Read port from stdout
-	scanner := bufio.NewScanner(stdout)
-	var portOutput string
-	for scanner.Scan() {
-		portOutput = scanner.Text()
-		break
-	}
-
-	if portOutput == "" {
-		errBuf := &bytes.Buffer{}
-		errBuf.ReadFrom(stderr)
-		session.Close()
-		return nil, nil, fmt.Errorf("no port output from plugin: %s", errBuf.String())
-	}
-
-	remotePort, err := strconv.ParseUint(portOutput, 10, 16)
-	if err != nil {
-		session.Close()
-		return nil, nil, fmt.Errorf("invalid port output: %w", err)
-	}
-
-	listener, localPort, err := network.GetListenerAndPortInRange(plugin.LocalPluginMinPort, plugin.LocalPluginMaxPort)
-	if err != nil {
-		session.Close()
-		return nil, nil, fmt.Errorf("failed to get local listener: %w", err)
-	}
-
-	go s.forwardConnections(listener, uint16(remotePort))
-
-	cleanup := func() {
-		listener.Close()
-		session.Signal(ssh.SIGTERM)
-		session.Close()
-		session.Wait()
-		s.sftpClient.Remove(remotePluginPath)
-	}
-
-	address := fmt.Sprintf("127.0.0.1:%d", localPort)
-	connection, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		cleanup()
-		return nil, nil, fmt.Errorf("failed to create gRPC client connection: %w", err)
-	}
-
-	return connection, cleanup, nil
+	return s.platform.StartPlugin(ctx, basePath, namespace, pluginName, escalation)
 }
 
 func (s *sshTransport) forwardConnections(localListener net.Listener, remotePort uint16) {
@@ -327,7 +216,7 @@ func (s *sshTransport) forwardConnections(localListener net.Listener, remotePort
 		go func(local net.Conn) {
 			defer local.Close()
 
-			remoteConn, err := s.client.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", remotePort))
+			remoteConn, err := s.client.Dial("tcp", net.JoinHostPort("127.0.0.1", fmt.Sprintf("%d", remotePort)))
 			if err != nil {
 				return
 			}
@@ -355,6 +244,7 @@ func newHostKeyAddingCallback(path string) (ssh.HostKeyCallback, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create known hosts file %s: %w", path, err)
 		}
+		file.Sync()
 		file.Close()
 	}
 
@@ -379,6 +269,7 @@ func newHostKeyAddingCallback(path string) (ssh.HostKeyCallback, error) {
 			return fmt.Errorf("failed to open known hosts file %s: %w", path, err)
 		}
 
+		defer file.Sync()
 		defer file.Close()
 
 		remoteNormalized := knownhosts.Normalize(remote.String())

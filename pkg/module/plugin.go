@@ -36,6 +36,7 @@ func (m *LocalPluginModule) InputSpec() *hclspec.Spec {
 // Run implements Module.
 func (m *LocalPluginModule) Run(ctx context.Context, config *RunConfig) *result.Result {
 	connection, cleanup, err := transport.LocalTransport.StartPlugin(
+		ctx,
 		m.basePath,
 		m.info.namespace,
 		m.info.pluginName,
@@ -107,6 +108,7 @@ func (m *RemotePluginModule) InputSpec() *hclspec.Spec {
 // Run implements Module.
 func (m *RemotePluginModule) Run(ctx context.Context, config *RunConfig) *result.Result {
 	connection, cleanup, err := config.Transport.StartPlugin(
+		ctx,
 		m.basePath,
 		m.info.namespace,
 		m.info.pluginName,

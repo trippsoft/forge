@@ -193,6 +193,7 @@ func (r *Registry) registerPluginModulesAtPluginPath(basePath, namespace, plugin
 	}
 
 	connection, cleanup, err := transport.LocalTransport.StartPlugin(
+		context.Background(),
 		basePath,
 		namespace,
 		pluginName,

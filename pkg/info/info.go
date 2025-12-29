@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"time"
 
 	"github.com/trippsoft/forge/pkg/plugin"
 	"github.com/trippsoft/forge/pkg/result"
@@ -14,13 +15,27 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+const (
+	PopulateTimeout = 30 * time.Minute
+)
+
 // Populate retrieves and populates the HostInfo using the provided transport.
 func (i *HostInfo) Populate(t transport.Transport) *result.Result {
-	connection, cleanup, err := t.StartPlugin(plugin.SharedPluginBasePath, "forge", "discover", nil)
+	ctx, cancel := context.WithTimeout(context.Background(), PopulateTimeout)
+	defer cancel()
+	connection, cleanup, err := t.StartPlugin(
+		ctx,
+		plugin.SharedPluginBasePath,
+		"forge",
+		"discover",
+		nil,
+	)
+
 	if err != nil {
 		err = fmt.Errorf("failed to start discovery client: %w", err)
 		return result.NewFailure(err, err.Error())
 	}
+
 	defer connection.Close()
 	defer cleanup()
 
