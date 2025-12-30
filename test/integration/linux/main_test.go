@@ -279,6 +279,7 @@ func TestMain(m *testing.M) {
 
 	moduleRegistry = module.NewRegistry()
 	moduleRegistry.RegisterCoreModules()
+	moduleRegistry.RegisterPluginModules()
 
 	privateKeyContent, _ = os.ReadFile("id_rsa")
 

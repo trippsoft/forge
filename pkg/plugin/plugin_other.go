@@ -15,7 +15,7 @@ import (
 func init() {
 	SharedPluginBasePath = "/usr/share/forge/plugins"
 	home, _ := homedir.Dir()
-	UserPluginBasePath = home + `/.local/share/forge/plugins`
+	UserPluginBasePath = home + "/.local/share/forge/plugins"
 	os.MkdirAll(UserPluginBasePath, 0777)
 }
 

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/trippsoft/forge/pkg/ui"
+	"github.com/trippsoft/forge/pkg/log"
 	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -65,11 +65,11 @@ func TestSensitiveStringConvert_Success(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ui.SecretFilter.Clear()
+			log.SecretFilter.Clear()
 
 			verifySuccessfulConversion(t, SensitiveString, tt.input, tt.expected)
 
-			secrets := ui.SecretFilter.Secrets()
+			secrets := log.SecretFilter.Secrets()
 			if tt.expected.IsNull() && len(secrets) != 0 {
 				t.Errorf("expected no secrets to be added, got %v", secrets)
 			}

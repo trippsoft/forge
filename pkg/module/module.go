@@ -89,6 +89,11 @@ func (r *Registry) Register(module Module) error {
 	}
 
 	var name string
+	if module.Info().namespace == "forge" && module.Info().pluginName == "core" {
+		r.modules[module.Info().name] = module
+		return nil
+	}
+
 	if module.Info().namespace != "" {
 		name = module.Info().namespace + "/"
 	}
@@ -119,12 +124,12 @@ func (r *Registry) RegisterCoreModules() error {
 // RegisterPluginModules registers modules provided by plugins to the registry.
 func (r *Registry) RegisterPluginModules() error {
 	var err error
-	e := r.registerPluginModulesAtBasePath(plugin.SharedPluginBasePath)
+	e := r.registerPluginModulesAtBasePath(plugin.UserPluginBasePath)
 	if e != nil {
 		err = errors.Join(err, e)
 	}
 
-	e = r.registerPluginModulesAtBasePath(plugin.UserPluginBasePath)
+	e = r.registerPluginModulesAtBasePath(plugin.SharedPluginBasePath)
 	if e != nil {
 		err = errors.Join(err, e)
 	}
@@ -177,7 +182,7 @@ func (r *Registry) registerPluginModulesAtNamespacePath(basePath, namespace stri
 			continue // Skip non-directory entries
 		}
 
-		e := r.registerPluginModulesAtPluginPath(namespacePath, namespace, entry.Name())
+		e := r.registerPluginModulesAtPluginPath(basePath, namespace, entry.Name())
 		if e != nil {
 			err = errors.Join(err, e)
 		}

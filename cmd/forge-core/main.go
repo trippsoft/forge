@@ -1,17 +1,27 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-// Package main is the entry point for the Forge discovery plugin GRPC server.
+// Package main is the entry point for the Forge core plugin GRPC server.
 package main
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/trippsoft/forge/pkg/info"
+	"github.com/trippsoft/forge/internal/module"
 	"github.com/trippsoft/forge/pkg/network"
 	"github.com/trippsoft/forge/pkg/plugin"
+	pluginv1 "github.com/trippsoft/forge/pkg/plugin/v1"
 	"google.golang.org/grpc"
+)
+
+var (
+	plugins []pluginv1.PluginModule = []pluginv1.PluginModule{
+		module.Dnf,
+		module.DnfInfo,
+		module.Package,
+		module.PackageInfo,
+	}
 )
 
 func main() {
@@ -32,8 +42,9 @@ func realMain() error {
 	defer listener.Close()
 
 	s := grpc.NewServer()
-	discoveryServer := info.NewDiscoveryServer()
-	info.RegisterDiscoveryPluginServer(s, discoveryServer)
+	pluginServer := pluginv1.NewPluginServer(plugins...)
+	pluginv1.RegisterPluginV1ServiceServer(s, pluginServer)
+	plugin.RegisterPluginServiceServer(s, pluginServer)
 
 	go func() {
 		err = s.Serve(listener)
@@ -43,7 +54,7 @@ func realMain() error {
 		}
 	}()
 
-	discoveryServer.WaitForShutdown()
+	pluginServer.WaitForShutdown()
 	s.GracefulStop()
 
 	return nil

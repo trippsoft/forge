@@ -1,7 +1,7 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package ui
+package log
 
 import (
 	"bytes"

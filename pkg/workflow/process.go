@@ -53,8 +53,7 @@ func (p *Process) Steps() []Step {
 
 // Run executes the process using the provided WorkflowContext.
 func (p *Process) Run(wc *WorkflowContext) (map[string]map[string]cty.Value, error) {
-	header := "PROCESS - " + p.name
-	wc.ui.PrintHeader(ui.HeaderLevel1, header)
+	wc.ui.PrintHeader(ui.HeaderLevel1, "PROCESS - ", p.name)
 
 	err := p.discoverInfoForTargets(wc)
 
@@ -74,7 +73,7 @@ func (p *Process) discoverInfoForTargets(wc *WorkflowContext) error {
 		return nil
 	}
 
-	wc.ui.PrintHeader(ui.HeaderLevel2, "Discovering Host Info")
+	wc.ui.PrintHeader(ui.HeaderLevel2, "Discovering Host Info", "")
 
 	errChannel := make(chan error)
 	var err error

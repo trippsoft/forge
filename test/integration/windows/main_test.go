@@ -67,11 +67,6 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	err := setupVagrantEnvironment()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to set up Vagrant environment: %v\n", err)
-		os.Exit(1)
-	}
 
 	cmd := exec.Command("bash", "-c", "./build_plugins.sh")
 	if err := cmd.Run(); err != nil {
@@ -87,6 +82,12 @@ func TestMain(m *testing.M) {
 
 	plugin.SharedPluginBasePath = directory + "/plugins"
 	plugin.UserPluginBasePath = directory + "/plugins"
+
+	err = setupVagrantEnvironment()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to set up Vagrant environment: %v\n", err)
+		os.Exit(1)
+	}
 
 	code := m.Run()
 
@@ -177,6 +178,7 @@ func setupVagrantEnvironment() error {
 	if moduleRegistry == nil {
 		moduleRegistry = module.NewRegistry()
 		moduleRegistry.RegisterCoreModules()
+		moduleRegistry.RegisterPluginModules()
 	}
 
 	return nil

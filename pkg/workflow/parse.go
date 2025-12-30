@@ -453,9 +453,9 @@ func (p *Parser) parseTargetsAttribute(attr *hcl.Attribute) ([]*inventory.Host, 
 		return nil, diags
 
 	case targetsValue.Type().Equals(cty.String):
-		target, exists := p.inventory.Host(targetsValue.AsString())
+		target, exists := p.inventory.Target(targetsValue.AsString())
 		if exists {
-			return []*inventory.Host{target}, diags
+			return target, diags
 		}
 
 		diags = diags.Append(&hcl.Diagnostic{
@@ -500,9 +500,11 @@ func (p *Parser) parseTargetsAttribute(attr *hcl.Attribute) ([]*inventory.Host, 
 
 			seenTargets.Add(targetName)
 
-			target, exists := p.inventory.Host(elem.AsString())
+			target, exists := p.inventory.Target(targetName)
 			if exists {
-				targetHosts.Add(target)
+				for _, host := range target {
+					targetHosts.Add(host)
+				}
 			} else {
 				diags = diags.Append(&hcl.Diagnostic{
 					Severity: hcl.DiagError,

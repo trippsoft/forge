@@ -8,7 +8,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/trippsoft/forge/pkg/ui"
+	"github.com/trippsoft/forge/pkg/log"
 	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -206,13 +206,13 @@ func TestSetConvert_Success(t *testing.T) {
 }
 
 func TestSetConvert_SensitiveString(t *testing.T) {
-	ui.SecretFilter.Clear()
+	log.SecretFilter.Clear()
 	str := "hello"
 	set := Set(SensitiveString)
 	input := cty.SetVal([]cty.Value{cty.StringVal(str)})
 	verifySuccessfulConversion(t, set, input, input)
 
-	secrets := ui.SecretFilter.Secrets()
+	secrets := log.SecretFilter.Secrets()
 	if !slices.Contains(secrets, str) {
 		t.Errorf("expected %q to be filtered", str)
 	}

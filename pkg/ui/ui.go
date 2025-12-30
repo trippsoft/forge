@@ -4,6 +4,8 @@
 package ui
 
 import (
+	"github.com/hashicorp/hcl/v2"
+	"github.com/trippsoft/forge/pkg/inventory"
 	"github.com/trippsoft/forge/pkg/result"
 )
 
@@ -37,11 +39,27 @@ type UI interface {
 	// This is usually used for startup messages or other non-structured output.
 	Print(text string)
 
+	// PrintError prints an error message.
+	//
+	// This is usually used for non-structured error output.
+	PrintError(text string)
+
+	// PrintInventoryTargets prints the inventory targets.
+	PrintInventoryTargets(i *inventory.Inventory)
+
+	// PrintInventoryVars prints the inventory variables.
+	PrintInventoryVars(i *inventory.Inventory)
+
+	// PrintHCLDiagnostics prints HCL diagnostics messages.
+	PrintHCLDiagnostics(diagnostics hcl.Diagnostics)
+
 	// PrintHeader prints a header with a specified level.
 	//
 	// The level (1-3) indicates the importance of the header.
 	// Level 1 is the highest level (e.g. main section title), while level 3 is the lowest (e.g. subsection title).
-	PrintHeader(level HeaderLevel, text string)
+	// The prefix is not bolded in the CLI output.
+	// The text is the main header content and is bolded in the CLI output.
+	PrintHeader(level HeaderLevel, prefix, text string)
 
 	// PrintHostResult prints the step result for a host without multiple iterations.
 	//
@@ -63,8 +81,24 @@ type mockUI struct{}
 func (m *mockUI) Print(text string) {
 }
 
+// PrintError implements UI.
+func (m *mockUI) PrintError(text string) {
+}
+
+// PrintInventoryTargets implements UI.
+func (m *mockUI) PrintInventoryTargets(i *inventory.Inventory) {
+}
+
+// PrintInventoryVars implements UI.
+func (m *mockUI) PrintInventoryVars(i *inventory.Inventory) {
+}
+
+// PrintHCLDiagnostics implements UI.
+func (m *mockUI) PrintHCLDiagnostics(diags hcl.Diagnostics) {
+}
+
 // PrintHeader implements UI.
-func (m *mockUI) PrintHeader(level HeaderLevel, text string) {
+func (m *mockUI) PrintHeader(level HeaderLevel, prefix, text string) {
 }
 
 // PrintHostResult implements UI.

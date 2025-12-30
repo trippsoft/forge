@@ -60,7 +60,9 @@ func (s *PluginV1Server) GetModules(
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+
 		modules[name] = &ModuleSpec{
+			Type: module.Type(),
 			Spec: spec,
 		}
 	}
@@ -136,6 +138,12 @@ func (s *PluginV1Server) Shutdown(
 	case <-ctx.Done():
 		return nil, status.Error(codes.DeadlineExceeded, "shutdown timed out")
 	}
+}
+
+// WaitForShutdown blocks until the server has completed its shutdown process.
+func (s *PluginV1Server) WaitForShutdown() {
+	<-s.shutdownChan
+	s.waitGroup.Wait()
 }
 
 // NewPluginServer creates a new instance of PluginServer with the provided modules.

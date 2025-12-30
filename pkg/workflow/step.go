@@ -279,8 +279,7 @@ func (s *SingleStep) Module() module.Module {
 
 // Run implements Step.
 func (s *SingleStep) Run(wc *WorkflowContext) (map[string]cty.Value, error) {
-	header := "STEP - " + s.common.name
-	wc.ui.PrintHeader(ui.HeaderLevel2, header)
+	wc.ui.PrintHeader(ui.HeaderLevel2, "STEP - ", s.common.name)
 
 	wc.LoadHostVars()
 
@@ -599,6 +598,7 @@ func (s *SingleStep) runHostIteration(hwc *HostWorkflowContext, iteration *StepI
 	}
 
 	config := &module.RunConfig{
+		Transport:  hwc.host.Transport(),
 		HostInfo:   hwc.host.Info(),
 		Escalation: escalation,
 		WhatIf:     whatIf,

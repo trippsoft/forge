@@ -6,7 +6,7 @@ package hclfunction
 import (
 	"testing"
 
-	"github.com/trippsoft/forge/pkg/ui"
+	"github.com/trippsoft/forge/pkg/log"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -50,14 +50,14 @@ func TestSensitiveFunc(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Store original secrets and clear for test
-			originalSecrets := ui.SecretFilter.Secrets()
-			ui.SecretFilter.Clear()
+			originalSecrets := log.SecretFilter.Secrets()
+			log.SecretFilter.Clear()
 
 			defer func() {
 				// Restore original secrets after test
-				ui.SecretFilter.Clear()
+				log.SecretFilter.Clear()
 				for _, secret := range originalSecrets {
-					ui.SecretFilter.AddSecret(secret)
+					log.SecretFilter.AddSecret(secret)
 				}
 			}()
 
@@ -73,7 +73,7 @@ func TestSensitiveFunc(t *testing.T) {
 			// Verify the secret was added to the filter
 			inputStr := tt.input.AsString()
 			if inputStr != "" {
-				filtered := ui.SecretFilter.Filter(inputStr)
+				filtered := log.SecretFilter.Filter(inputStr)
 				if filtered != "<redacted>" {
 					t.Errorf("Secret was not properly added to filter. Expected '<redacted>', got '%s'", filtered)
 				}
@@ -87,14 +87,14 @@ func TestSensitive(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Store original secrets and clear for test
-			originalSecrets := ui.SecretFilter.Secrets()
-			ui.SecretFilter.Clear()
+			originalSecrets := log.SecretFilter.Secrets()
+			log.SecretFilter.Clear()
 
 			defer func() {
 				// Restore original secrets after test
-				ui.SecretFilter.Clear()
+				log.SecretFilter.Clear()
 				for _, secret := range originalSecrets {
-					ui.SecretFilter.AddSecret(secret)
+					log.SecretFilter.AddSecret(secret)
 				}
 			}()
 
@@ -110,7 +110,7 @@ func TestSensitive(t *testing.T) {
 			// Verify the secret was added to the filter
 			inputStr := tt.input.AsString()
 			if inputStr != "" {
-				filtered := ui.SecretFilter.Filter(inputStr)
+				filtered := log.SecretFilter.Filter(inputStr)
 				if filtered != "<redacted>" {
 					t.Errorf("Secret was not properly added to filter. Expected '<redacted>', got '%s'", filtered)
 				}
