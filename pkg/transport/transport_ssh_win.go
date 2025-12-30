@@ -315,9 +315,13 @@ func (s *sshWindowsPlatform) startEscalatedPlugin(
 	outputChannel := make(chan string)
 
 	go func() {
-		scanner := bufio.NewScanner(teeReader)
-		for scanner.Scan() {
-			line := scanner.Text()
+		bufferReader := bufio.NewReader(teeReader)
+		for {
+			line, err := bufferReader.ReadString(':')
+			if err != nil {
+				return
+			}
+
 			if strings.Contains(line, forgeGSudoPrompt) {
 				_, err = stdinWriter.Write([]byte(escalation.Pass() + "\n"))
 				if err != nil {

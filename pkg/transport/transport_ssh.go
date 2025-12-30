@@ -173,7 +173,8 @@ func (s *sshTransport) populatePlatformInfo() error {
 // Close implements Transport.
 func (s *sshTransport) Close() error {
 	if s.sftpClient != nil {
-		_ = s.sftpClient.Close() // Close the SFTP client if it exists
+		s.sftpClient.Close() // Close the SFTP client if it exists
+		s.sftpClient = nil
 	}
 
 	if s.client == nil {

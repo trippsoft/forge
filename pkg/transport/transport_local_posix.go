@@ -42,13 +42,11 @@ func (l *localTransport) startEscalatedPlugin(
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get stdout pipe for plugin at '%s': %w", path, err)
 	}
-	defer stdoutReader.Close()
 
 	stderrReader, err := cmd.StderrPipe()
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get stderr pipe for plugin at '%s': %w", path, err)
 	}
-	defer stderrReader.Close()
 
 	stdinWriter, err := cmd.StdinPipe()
 	if err != nil {
@@ -61,16 +59,20 @@ func (l *localTransport) startEscalatedPlugin(
 	outputChannel := make(chan string)
 
 	go func() {
-		scanner := bufio.NewScanner(teeReader)
+		bufferReader := bufio.NewReader(teeReader)
 		promptsAnswered := 0
 
-		for scanner.Scan() {
+		for {
 			if promptsAnswered > 3 {
 				cmd.Process.Kill()
 				return
 			}
 
-			line := scanner.Text()
+			line, err := bufferReader.ReadString(':')
+			if err != nil {
+				return
+			}
+
 			if strings.Contains(line, forgeSudoPrompt) {
 				promptsAnswered++
 				_, err = stdinWriter.Write([]byte(escalation.Pass() + "\n"))

@@ -288,17 +288,21 @@ func (s *sshPosixPlatform) startEscalatedPlugin(
 	outputChannel := make(chan string)
 
 	go func() {
-		scanner := bufio.NewScanner(teeReader)
+		bufferReader := bufio.NewReader(teeReader)
 		promptsAnswered := 0
 
-		for scanner.Scan() {
+		for {
 			if promptsAnswered > 3 {
 				session.Signal(ssh.SIGKILL)
 				session.Close()
 				return
 			}
 
-			line := scanner.Text()
+			line, err := bufferReader.ReadString(':')
+			if err != nil {
+				return
+			}
+
 			if strings.Contains(line, forgeSudoPrompt) {
 				promptsAnswered++
 				_, err = stdinWriter.Write([]byte(escalation.Pass() + "\n"))

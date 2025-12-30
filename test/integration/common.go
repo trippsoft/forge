@@ -45,6 +45,10 @@ func (e ExpectedHostOutput) Verify(t *testing.T, hostOutput map[string]cty.Value
 		t.Errorf("Expected skipped to be %t, got %t", e.Skipped, skipped.True())
 	}
 
+	if e.Failed || e.Skipped {
+		return // Skip further validation if the step failed or was skipped
+	}
+
 	output, ok := hostOutput["output"]
 	if !ok {
 		t.Error(`Expected host output to contain "output" key`)

@@ -17,6 +17,7 @@ import (
 
 var (
 	plugins []pluginv1.PluginModule = []pluginv1.PluginModule{
+		module.Command,
 		module.Dnf,
 		module.DnfInfo,
 		module.Package,
