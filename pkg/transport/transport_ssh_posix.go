@@ -293,7 +293,7 @@ func (s *sshPosixPlatform) startEscalatedPlugin(
 
 		for {
 			if promptsAnswered > 3 {
-				session.Signal(ssh.SIGKILL)
+				session.Signal(ssh.SIGTERM)
 				session.Close()
 				return
 			}
@@ -307,7 +307,7 @@ func (s *sshPosixPlatform) startEscalatedPlugin(
 				promptsAnswered++
 				_, err = stdinWriter.Write([]byte(escalation.Pass() + "\n"))
 				if err != nil {
-					session.Signal(ssh.SIGKILL)
+					session.Signal(ssh.SIGTERM)
 					session.Close()
 					return
 				}

@@ -129,6 +129,7 @@ func (s *sshWindowsPlatform) UploadFile(localPath, remotePath string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create SFTP client: %w", err)
 		}
+
 		s.t.sftpClient = sftpClient
 	}
 
@@ -136,12 +137,14 @@ func (s *sshWindowsPlatform) UploadFile(localPath, remotePath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open local file '%s': %w", localPath, err)
 	}
+
 	defer localFile.Close()
 
 	remoteFile, err := s.t.sftpClient.Create(remotePath)
 	if err != nil {
 		return fmt.Errorf("failed to create remote file '%s': %w", remotePath, err)
 	}
+
 	defer remoteFile.Sync()
 	defer remoteFile.Close()
 
