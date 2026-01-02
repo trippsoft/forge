@@ -31,7 +31,11 @@ var (
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			encoding, err := ianaindex.IANA.Encoding(args[1].AsString())
 			if err != nil {
-				return cty.UnknownVal(cty.String), function.NewArgErrorf(1, "invalid encoding %q", args[1].AsString())
+				return cty.UnknownVal(cty.String), function.NewArgErrorf(
+					1,
+					"textdecodebase64 failed: invalid encoding %q",
+					args[1].AsString(),
+				)
 			}
 
 			encodingName, err := ianaindex.IANA.Name(encoding)
@@ -47,21 +51,23 @@ var (
 				case base64.CorruptInputError:
 					return cty.UnknownVal(cty.String), function.NewArgErrorf(
 						0,
-						"the input has invalid base64 character at offset: %d",
+						"textdecodebase64 failed: invalid base64 character at offset: %d",
 						int(err),
 					)
 				default:
-					return cty.UnknownVal(cty.String), function.NewArgErrorf(0, "failed to decode input: %w", err)
+					return cty.UnknownVal(cty.String), function.NewArgErrorf(
+						0,
+						"textdecodebase64 failed: failed to decode input: %w", err,
+					)
 				}
 			}
 
 			decoder := encoding.NewDecoder()
-
 			decoded, err := decoder.Bytes([]byte(base64Decoded))
 			if err != nil || bytes.ContainsRune(decoded, '�') {
 				return cty.UnknownVal(cty.String), function.NewArgErrorf(
 					0,
-					"failed to decode input as %q",
+					"textdecodebase64 failed: failed to decode input as %q",
 					encodingName,
 				)
 			}

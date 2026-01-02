@@ -107,7 +107,7 @@ func TestIndex_ValueNotFound(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedErr := "value not found in the list or tuple"
+	expectedErr := "index failed: value not found in the list or tuple"
 	if err.Error() != expectedErr {
 		t.Fatalf("expected error '%s', got '%s'", expectedErr, err.Error())
 	}
@@ -122,7 +122,7 @@ func TestIndex_EmptyList(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedErr := "index function requires a non-empty list for the first argument"
+	expectedErr := "index failed: requires a non-empty list"
 	if err.Error() != expectedErr {
 		t.Fatalf("expected error '%s', got '%s'", expectedErr, err.Error())
 	}
@@ -151,7 +151,7 @@ func TestIndexFunc_ValueNotFound(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedErr := "value not found in the list or tuple"
+	expectedErr := "index failed: value not found in the list or tuple"
 	if err.Error() != expectedErr {
 		t.Fatalf("expected error '%s', got '%s'", expectedErr, err.Error())
 	}
@@ -166,7 +166,7 @@ func TestIndexFunc_EmptyList(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedErr := "index function requires a non-empty list for the first argument"
+	expectedErr := "index failed: requires a non-empty list"
 	if err.Error() != expectedErr {
 		t.Fatalf("expected error '%s', got '%s'", expectedErr, err.Error())
 	}

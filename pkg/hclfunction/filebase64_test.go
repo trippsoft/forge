@@ -104,7 +104,7 @@ func TestFileBase64_NonExistentFile(t *testing.T) {
 		t.Fatal("expected an error for non-existent file, got nil")
 	}
 
-	expectedErr := "failed to read file \"non_existent_file.txt\""
+	expectedErr := "filebase64 failed: failed to read file "
 	if !strings.HasPrefix(err.Error(), expectedErr) {
 		t.Fatalf("expected error '%s', got '%s'", expectedErr, err.Error())
 	}
@@ -121,7 +121,8 @@ func TestFileBase64Func(t *testing.T) {
 
 			expected := encodeExpectedAsBase64(tt.content)
 
-			actual, err := FileBase64Func.Call([]cty.Value{cty.StringVal(path)})
+			workingDir, _ := os.Getwd()
+			actual, err := MakeFileBase64Func(workingDir).Call([]cty.Value{cty.StringVal(path)})
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
@@ -133,12 +134,13 @@ func TestFileBase64Func(t *testing.T) {
 
 func TestFileBase64Func_NonExistentFile(t *testing.T) {
 	// Test with a non-existent file
-	_, err := FileBase64Func.Call([]cty.Value{cty.StringVal("non_existent_file.txt")})
+	workingDir, _ := os.Getwd()
+	_, err := MakeFileBase64Func(workingDir).Call([]cty.Value{cty.StringVal("non_existent_file.txt")})
 	if err == nil {
 		t.Fatal("expected an error for non-existent file, got nil")
 	}
 
-	expectedErr := "failed to read file \"non_existent_file.txt\""
+	expectedErr := "filebase64 failed: failed to read file "
 	if !strings.HasPrefix(err.Error(), expectedErr) {
 		t.Fatalf("expected error '%s', got '%s'", expectedErr, err.Error())
 	}

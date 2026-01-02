@@ -30,7 +30,6 @@ var (
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			value := args[0].AsString()
 			prefix := args[1].AsString()
-
 			return cty.BoolVal(strings.HasPrefix(value, prefix)), nil
 		},
 	})

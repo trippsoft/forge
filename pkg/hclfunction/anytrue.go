@@ -36,7 +36,6 @@ var (
 				}
 
 				result = result.Or(value)
-
 				if result.True() {
 					return cty.True, nil
 				}

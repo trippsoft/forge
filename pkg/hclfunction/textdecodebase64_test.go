@@ -109,7 +109,7 @@ func TestTextDecodeBase64_InvalidBase64(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := "the input has invalid base64 character at offset: 8"
+	expectedError := "textdecodebase64 failed: invalid base64 character at offset: 8"
 	if err.Error() != expectedError {
 		t.Fatalf("expected error '%s', got '%s'", expectedError, err.Error())
 	}
@@ -124,7 +124,7 @@ func TestTextDecodeBase64_InvalidEncoding(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := fmt.Sprintf("invalid encoding %q", encoding.AsString())
+	expectedError := fmt.Sprintf("textdecodebase64 failed: invalid encoding %q", encoding.AsString())
 	if err.Error() != expectedError {
 		t.Fatalf("expected error %q, got %q", expectedError, err.Error())
 	}
@@ -139,7 +139,7 @@ func TestTextDecodeBase64_NoPadding(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := "the input has invalid base64 character at offset: 4"
+	expectedError := "textdecodebase64 failed: invalid base64 character at offset: 4"
 	if err.Error() != expectedError {
 		t.Fatalf("expected error '%s', got '%s'", expectedError, err.Error())
 	}
@@ -154,7 +154,7 @@ func TestTextDecodeBase64_TextCannotBeEncoded(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := fmt.Sprintf("failed to decode input as %q", encoding.AsString())
+	expectedError := fmt.Sprintf("textdecodebase64 failed: failed to decode input as %q", encoding.AsString())
 	if err.Error() != expectedError {
 		t.Fatalf("expected error '%s', got '%s'", expectedError, err.Error())
 	}
@@ -180,7 +180,7 @@ func TestTextDecodeBase64Func_InvalidBase64(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := "the input has invalid base64 character at offset: 8"
+	expectedError := "textdecodebase64 failed: invalid base64 character at offset: 8"
 	if err.Error() != expectedError {
 		t.Fatalf("expected error '%s', got '%s'", expectedError, err.Error())
 	}
@@ -195,7 +195,7 @@ func TestTextDecodeBase64Func_InvalidEncoding(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := fmt.Sprintf("invalid encoding %q", encoding.AsString())
+	expectedError := fmt.Sprintf("textdecodebase64 failed: invalid encoding %q", encoding.AsString())
 	if err.Error() != expectedError {
 		t.Fatalf("expected error %q, got %q", expectedError, err.Error())
 	}
@@ -210,7 +210,7 @@ func TestTextDecodeBase64Func_NoPadding(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := "the input has invalid base64 character at offset: 4"
+	expectedError := "textdecodebase64 failed: invalid base64 character at offset: 4"
 	if err.Error() != expectedError {
 		t.Fatalf("expected error '%s', got '%s'", expectedError, err.Error())
 	}
@@ -225,7 +225,7 @@ func TestTextDecodeBase64Func_TextCannotBeEncoded(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := fmt.Sprintf("failed to decode input as %q", encoding.AsString())
+	expectedError := fmt.Sprintf("textdecodebase64 failed: failed to decode input as %q", encoding.AsString())
 	if err.Error() != expectedError {
 		t.Fatalf("expected error '%s', got '%s'", expectedError, err.Error())
 	}

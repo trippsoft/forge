@@ -116,7 +116,7 @@ func TestTextEncodeBase64_InvalidEncoding(t *testing.T) {
 		t.Fatalf("expected error for invalid encoding, got none")
 	}
 
-	expectedError := fmt.Sprintf("invalid encoding %q", encoding.AsString())
+	expectedError := fmt.Sprintf("textencodebase64 failed: invalid encoding %q", encoding.AsString())
 	if err.Error() != expectedError {
 		t.Fatalf("expected error %q, got %q", expectedError, err.Error())
 	}
@@ -151,7 +151,7 @@ func TestTextEncodeBase64Func_InvalidEncoding(t *testing.T) {
 		t.Fatalf("expected error for invalid encoding, got none")
 	}
 
-	expectedError := fmt.Sprintf("invalid encoding %q", encoding.AsString())
+	expectedError := fmt.Sprintf("textencodebase64 failed: invalid encoding %q", encoding.AsString())
 	if err.Error() != expectedError {
 		t.Fatalf("expected error %q, got %q", expectedError, err.Error())
 	}

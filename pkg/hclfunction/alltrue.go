@@ -33,7 +33,6 @@ var (
 				}
 
 				result = result.And(value)
-
 				if result.False() {
 					return cty.False, nil
 				}

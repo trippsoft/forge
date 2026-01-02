@@ -31,9 +31,11 @@ var (
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			list := args[0]
 			value := args[1]
-
 			if !list.Type().IsListType() && !list.Type().IsTupleType() {
-				return cty.NilVal, errors.New("index function requires a list or tuple type for the first argument")
+				return cty.UnknownVal(cty.Number), function.NewArgErrorf(
+					0,
+					"index failed: requires a list or tuple type",
+				)
 			}
 
 			if !list.IsKnown() {
@@ -41,15 +43,17 @@ var (
 			}
 
 			if list.LengthInt() == 0 {
-				return cty.NilVal, errors.New("index function requires a non-empty list for the first argument")
+				return cty.UnknownVal(cty.Number), function.NewArgErrorf(
+					0,
+					"index failed: requires a non-empty list",
+				)
 			}
 
 			for iterator := list.ElementIterator(); iterator.Next(); {
 				index, element := iterator.Element()
-
 				isEqual, err := stdlib.Equal(element, value)
 				if err != nil {
-					return cty.NilVal, err
+					return cty.UnknownVal(cty.Number), err
 				}
 
 				if !isEqual.IsKnown() {
@@ -61,7 +65,7 @@ var (
 				}
 			}
 
-			return cty.NilVal, errors.New("value not found in the list or tuple")
+			return cty.UnknownVal(cty.Number), errors.New("index failed: value not found in the list or tuple")
 		},
 	})
 )

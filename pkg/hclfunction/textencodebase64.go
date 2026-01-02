@@ -30,7 +30,11 @@ var (
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			encoding, err := ianaindex.IANA.Encoding(args[1].AsString())
 			if err != nil {
-				return cty.UnknownVal(cty.String), function.NewArgErrorf(1, "invalid encoding %q", args[1].AsString())
+				return cty.UnknownVal(cty.String), function.NewArgErrorf(
+					1,
+					"textencodebase64 failed: invalid encoding %q",
+					args[1].AsString(),
+				)
 			}
 
 			encodingName, err := ianaindex.IANA.Name(encoding)
@@ -44,7 +48,7 @@ var (
 			if err != nil {
 				return cty.UnknownVal(cty.String), function.NewArgErrorf(
 					0,
-					"failed to encode input as %q",
+					"textencodebase64 failed: failed to encode input as %q",
 					encodingName,
 				)
 			}

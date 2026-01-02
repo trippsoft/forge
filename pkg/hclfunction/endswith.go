@@ -29,7 +29,6 @@ var (
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			value := args[0].AsString()
 			suffix := args[1].AsString()
-
 			return cty.BoolVal(strings.HasSuffix(value, suffix)), nil
 		},
 	})

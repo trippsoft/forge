@@ -28,7 +28,6 @@ var (
 			}
 
 			util.SecretFilter.AddSecret(value)
-
 			return args[0], nil
 		},
 	})

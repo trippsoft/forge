@@ -105,7 +105,7 @@ func TestSum_EmptyList(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := "sum function requires a non-empty iterable"
+	expectedError := "sum failed: requires a non-empty iterable"
 	if err.Error() != expectedError {
 		t.Fatalf("expected error '%s', got '%s'", expectedError, err.Error())
 	}
@@ -120,7 +120,7 @@ func TestSum_ListWithNull(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := "sum function requires a list, set, or tuple of numbers, got null"
+	expectedError := "sum failed: requires a list, set, or tuple of numbers, got null"
 	if err.Error() != expectedError {
 		t.Fatalf("expected error '%s', got '%s'", expectedError, err.Error())
 	}
@@ -135,7 +135,7 @@ func TestSum_TupleWithNonNumber(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := "sum function requires a list, set, or tuple of numbers"
+	expectedError := "sum failed: requires a list, set, or tuple of numbers"
 	if err.Error() != expectedError {
 		t.Fatalf("expected error '%s', got '%s'", expectedError, err.Error())
 	}
@@ -150,7 +150,7 @@ func TestSum_NonIterable(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := "sum function requires an iterable type"
+	expectedError := "sum failed: requires an iterable type"
 	if err.Error() != expectedError {
 		t.Fatalf("expected error '%s', got '%s'", expectedError, err.Error())
 	}
@@ -180,7 +180,7 @@ func TestSumFunc_EmptyList(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := "sum function requires a non-empty iterable"
+	expectedError := "sum failed: requires a non-empty iterable"
 	if err.Error() != expectedError {
 		t.Fatalf("expected error '%s', got '%s'", expectedError, err.Error())
 	}
@@ -195,7 +195,7 @@ func TestSumFunc_ListWithNull(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := "sum function requires a list, set, or tuple of numbers, got null"
+	expectedError := "sum failed: requires a list, set, or tuple of numbers, got null"
 	if err.Error() != expectedError {
 		t.Fatalf("expected error '%s', got '%s'", expectedError, err.Error())
 	}
@@ -210,7 +210,7 @@ func TestSumFunc_TupleWithNonNumber(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := "sum function requires a list, set, or tuple of numbers"
+	expectedError := "sum failed: requires a list, set, or tuple of numbers"
 	if err.Error() != expectedError {
 		t.Fatalf("expected error '%s', got '%s'", expectedError, err.Error())
 	}
@@ -225,7 +225,7 @@ func TestSumFunc_NonIterable(t *testing.T) {
 		t.Fatalf("expected error, got none")
 	}
 
-	expectedError := "sum function requires an iterable type"
+	expectedError := "sum failed: requires an iterable type"
 	if err.Error() != expectedError {
 		t.Fatalf("expected error '%s', got '%s'", expectedError, err.Error())
 	}
