@@ -98,7 +98,7 @@ Create the directory structure.
 ```bash
 sudo mkdir -p /usr/share/forge/plugins/forge/core
 sudo mkdir -p /usr/share/forge/plugins/forge/discover
-chmod -R 755 /usr/share/forge
+sudo chmod -R 755 /usr/share/forge
 ```
 
 Clone the repository and build the CLI.
@@ -161,6 +161,75 @@ sudo mv forge-discover_linux_arm64 /usr/share/forge/plugins/forge/discover/
 sudo mv forge-discover_windows_amd64.exe /usr/share/forge/plugins/forge/discover/
 sudo mv forge-discover_windows_arm64.exe /usr/share/forge/plugins/forge/discover/
 sudo chmod 755 /usr/share/forge/plugins/forge/discover/forge-discover_*
+```
+#### Windows
+
+Create the directory structure.
+
+```
+mkdir "C:\Program Files\Forge"
+mkdir "C:\Program Files\Forge\plugins"
+mkdir "C:\Program Files\Forge\plugins\forge"
+mkdir "C:\Program Files\Forge\plugins\forge\core"
+mkdir "C:\Program Files\Forge\plugins\forge\discover"
+```
+
+Clone the repository and build the CLI.
+
+```
+git.exe clone https://github.com/trippsoft/forge.git
+cd forge
+go.exe build -o forge.exe ./cmd/forge
+```
+
+Install the binary.  You will need to add "C:\Program Files\Forge" to your PATH environment variable manually.
+
+```
+move forge.exe "C:\Program Files\Forge\"
+```
+
+Build the core plugin server(s).  Skip the platforms you don't intend to manage or run the tool from.
+
+```
+CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go.exe build -o forge-core_darwin_amd64 .\cmd\forge-core
+CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go.exe build -o forge-core_darwin_arm64 .\cmd\forge-core
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go.exe build -o forge-core_linux_amd64 .\cmd\forge-core
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go.exe build -o forge-core_linux_arm64 .\cmd\forge-core
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go.exe build -o forge-core_windows_amd64.exe .\cmd\forge-core
+CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go.exe build -o forge-core_windows_arm64.exe .\cmd\forge-core
+```
+
+Install the core plugin server(s).
+
+```
+move forge-core_darwin_amd64 "C:\Program Files\Forge\plugins\forge\core\"
+move forge-core_darwin_arm64 "C:\Program Files\Forge\plugins\forge\core\"
+move forge-core_linux_amd64 "C:\Program Files\Forge\plugins\forge\core\"
+move forge-core_linux_arm64 "C:\Program Files\Forge\plugins\forge\core\"
+move forge-core_windows_amd64.exe "C:\Program Files\Forge\plugins\forge\core\"
+move forge-core_windows_arm64.exe "C:\Program Files\Forge\plugins\forge\core\"
+```
+
+Build the discovery plugin server(s).  Skip the platforms you don't intend to manage or run the tool from.
+
+```
+CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go.exe build -o forge-discover_darwin_amd64 .\cmd\forge-discover
+CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go.exe build -o forge-discover_darwin_arm64 .\cmd\forge-discover
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go.exe build -o forge-discover_linux_amd64 .\cmd\forge-discover
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go.exe build -o forge-discover_linux_arm64 .\cmd\forge-discover
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go.exe build -o forge-discover_windows_amd64.exe .\cmd\forge-discover
+CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go.exe build -o forge-discover_windows_arm64.exe .\cmd\forge-discover
+```
+
+Install the discovery plugin server(s).
+
+```
+move forge-discover_darwin_amd64 "C:\Program Files\Forge\plugins\forge\discover\"
+move forge-discover_darwin_arm64 "C:\Program Files\Forge\plugins\forge\discover\"
+move forge-discover_linux_amd64 "C:\Program Files\Forge\plugins\forge\discover\"
+move forge-discover_linux_arm64 "C:\Program Files\Forge\plugins\forge\discover\"
+move forge-discover_windows_amd64.exe "C:\Program Files\Forge\plugins\forge\discover\"
+move forge-discover_windows_arm64.exe "C:\Program Files\Forge\plugins\forge\discover\"
 ```
 
 ## Development
