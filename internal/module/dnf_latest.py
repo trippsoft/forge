@@ -13,6 +13,7 @@ try:
     import dnf
     import dnf.base
     import dnf.exceptions
+    import dnf.subject
     DNF_AVAILABLE = True
 except ImportError:
     DNF_AVAILABLE = False
@@ -96,12 +97,6 @@ def packages_to_be_processed(base, packages):
 
         if solution["nevra"] is None:
             to_be_installed.append(package)
-            continue
-
-        if solution["nevra"].has_just_name():
-            if not update_all:
-                to_be_updated.append(package)
-
             continue
 
         nevra = solution["nevra"]
@@ -198,10 +193,8 @@ def main():
             if not base.resolve(allow_erasing=False):
                 success(base, {"installed": [], "removed": []})
         except dnf.exceptions.DepsolveError as e:
-            import traceback
             fail(base, f"Dependency resolution failed: {str(e)}", traceback.format_exc())
         except dnf.exceptions.Error as e:
-            import traceback
             fail(base, f"Error creating transaction: {str(e)}", traceback.format_exc())
 
         transaction = base.transaction
@@ -215,7 +208,6 @@ def main():
         try:
             base.download_packages(base.transaction.install_set)
         except dnf.exceptions.DownloadError as e:
-            import traceback
             fail(base, f"Download error: {str(e)}", traceback.format_exc())
 
         # TODO - Configure disable GPG check
@@ -230,7 +222,6 @@ def main():
                     base._get_key_for_package(pkg)
                     continue
                 except dnf.exceptions.Error as e:
-                    import traceback
                     fail(base, f"GPG key error for package {pkg.name}: {str(e)}", traceback.format_exc())
 
             fail(base, f"GPG check failed for package {pkg.name}: {gpg_error}")
@@ -238,7 +229,6 @@ def main():
         try:
             tid = base.do_transaction()
         except dnf.exceptions.Error as e:
-            import traceback
             fail(base, f"Transaction failed: {str(e)}", traceback.format_exc())
 
         if tid is None:
@@ -248,13 +238,11 @@ def main():
             try:
                 base.autoremove()
             except dnf.exceptions.Error as e:
-                import traceback
                 fail(base, f"Autoremove failed: {str(e)}", traceback.format_exc())
 
         success(base, {"installed": installed, "removed": removed})
 
     except Exception as e:
-        import traceback
         fail(base, f"Unknown error: {str(e)}", traceback.format_exc())
 
 if not dnf.util.am_i_root():

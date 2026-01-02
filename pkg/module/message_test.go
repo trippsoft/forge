@@ -57,7 +57,7 @@ func TestMessageModuleRun(t *testing.T) {
 		t.Fatal("Expected module to not indicate changes were made")
 	}
 
-	if result.Output == nil {
+	if !result.Output.IsWhollyKnown() || result.Output.IsNull() {
 		t.Fatal("Expected non-nil output from Run(), got nil")
 	}
 
@@ -70,7 +70,8 @@ func TestMessageModuleRun(t *testing.T) {
 		t.Fatalf("Expected message %q, got %q", expectedMessage, result.Messages[0])
 	}
 
-	if len(result.Output) != 0 {
-		t.Fatalf("Expected output to have 0 keys, got: %d", len(result.Output))
+	outputMap := result.Output.AsValueMap()
+	if len(outputMap) != 0 {
+		t.Fatalf("Expected empty output map, got: %v", outputMap)
 	}
 }

@@ -180,7 +180,6 @@ def main():
         try:
             base.download_packages(base.transaction.install_set)
         except dnf.exceptions.DownloadError as e:
-            import traceback
             fail(base, f"Download error: {str(e)}", traceback.format_exc())
 
         # TODO - Configure disable GPG check
@@ -195,7 +194,6 @@ def main():
                     base._get_key_for_package(pkg)
                     continue
                 except dnf.exceptions.Error as e:
-                    import traceback
                     fail(base, f"GPG key error for package {pkg.name}: {str(e)}", traceback.format_exc())
 
             fail(base, f"GPG check failed for package {pkg.name}: {gpg_error}")
@@ -203,7 +201,6 @@ def main():
         try:
             tid = base.do_transaction()
         except dnf.exceptions.Error as e:
-            import traceback
             fail(base, f"Transaction failed: {str(e)}", traceback.format_exc())
 
         if tid is None:

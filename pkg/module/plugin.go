@@ -184,13 +184,9 @@ func createResultFromRunModuleResponse(response *pluginv1.ModuleResult) (*result
 	switch response.Result.(type) {
 	case *pluginv1.ModuleResult_Success:
 		success := response.GetSuccess()
-		output := make(map[string]cty.Value, len(success.Output))
-		for k, v := range success.Output {
-			value, err := json.Unmarshal(v, cty.DynamicPseudoType)
-			if err != nil {
-				return nil, err
-			}
-			output[k] = value
+		output, err := json.Unmarshal(success.Output, cty.DynamicPseudoType)
+		if err != nil {
+			return nil, err
 		}
 		r := result.NewSuccess(success.Changed, output)
 		r.Messages = response.Messages

@@ -22,13 +22,9 @@ func (mr *ModuleResult) ToResult() (*result.Result, error) {
 		r.Warnings = mr.Warnings
 		return r, nil
 	case *ModuleResult_Success:
-		output := make(map[string]cty.Value, len(mr.GetSuccess().Output))
-		for key, value := range mr.GetSuccess().Output {
-			ctyValue, err := json.Unmarshal(value, cty.DynamicPseudoType)
-			if err != nil {
-				return nil, err
-			}
-			output[key] = ctyValue
+		output, err := json.Unmarshal(mr.GetSuccess().Output, cty.DynamicPseudoType)
+		if err != nil {
+			return nil, err
 		}
 		r := result.NewSuccess(mr.GetSuccess().Changed, output)
 		r.Messages = mr.Messages
@@ -40,14 +36,10 @@ func (mr *ModuleResult) ToResult() (*result.Result, error) {
 }
 
 // NewModuleSuccess creates a new ModuleResult representing a successful execution.
-func NewModuleSuccess(changed bool, output map[string]cty.Value) (*ModuleResult, error) {
-	outputPB := make(map[string][]byte, len(output))
-	for key, value := range output {
-		jsonBytes, err := json.Marshal(value, cty.DynamicPseudoType)
-		if err != nil {
-			return nil, err
-		}
-		outputPB[key] = jsonBytes
+func NewModuleSuccess(changed bool, output cty.Value) (*ModuleResult, error) {
+	outputPB, err := json.Marshal(output, cty.DynamicPseudoType)
+	if err != nil {
+		return nil, err
 	}
 
 	return &ModuleResult{

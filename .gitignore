@@ -36,3 +36,6 @@ go.work.sum
 
 # Vagrant configuration
 .vagrant/
+
+# Debug files
+**/__debug_bin*

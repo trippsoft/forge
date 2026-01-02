@@ -51,8 +51,7 @@ func (s *MessageModule) Run(ctx context.Context, config *RunConfig) *result.Resu
 		message = util.FormatCtyValueToIndentedString(config.Input["message"], 0, 4)
 	}
 
-	output := map[string]cty.Value{}
-	result := result.NewSuccess(false, output)
+	result := result.NewSuccess(false, cty.EmptyObjectVal)
 	result.Messages = []string{message}
 
 	return result

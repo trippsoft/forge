@@ -49,7 +49,7 @@ func (i *HostInfo) Populate(t transport.Transport) *result.Result {
 
 	i.CopyFrom(response.HostInfo)
 
-	return result.NewSuccess(false, nil)
+	return result.NewSuccess(false, cty.EmptyObjectVal)
 }
 
 // ToMapOfCtyValues converts the HostInfo into a map of cty.Values.

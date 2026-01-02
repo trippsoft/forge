@@ -234,6 +234,8 @@ func (p *Parser) parseEscalateBlock(block *hcl.Block) (*StepEscalateConfig, hcl.
 			config.escalate = attr
 		case "impersonate_user":
 			config.impersonateUser = attr
+		case "password":
+			config.password = attr
 		}
 	}
 

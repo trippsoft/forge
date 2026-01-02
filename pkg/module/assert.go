@@ -68,9 +68,11 @@ func (m *AssertModule) Run(ctx context.Context, config *RunConfig) *result.Resul
 		message = defaultSuccessMessage
 	}
 
-	output := map[string]cty.Value{
+	outputMap := map[string]cty.Value{
 		"message": cty.StringVal(message),
 	}
+
+	output := cty.ObjectVal(outputMap)
 
 	result := result.NewSuccess(false, output)
 	result.Messages = []string{message}

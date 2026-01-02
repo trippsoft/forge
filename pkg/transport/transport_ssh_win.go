@@ -5,6 +5,7 @@ package transport
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -533,14 +534,21 @@ func (s *sshWindowsPlatform) populateWindowsArch() error {
 	}
 	defer session.Close()
 
+	var outBuf, errBuf bytes.Buffer
+
+	session.Stdout = &outBuf
+	session.Stderr = &errBuf
+
 	archCmd := "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command " +
 		`"Write-Host $env:PROCESSOR_ARCHITECTURE"`
-	archOutput, err := session.CombinedOutput(archCmd)
+	err = session.Run(archCmd)
 	if err != nil {
-		return fmt.Errorf("failed to execute architecture detection command: %w", err)
+		stderr := strings.TrimSpace(errBuf.String())
+		return fmt.Errorf("failed to execute architecture detection command: %w - %s", err, stderr)
 	}
 
-	arch := strings.TrimSpace(strings.ToLower(string(archOutput)))
+	stdout := strings.TrimSpace(outBuf.String())
+	arch := strings.TrimSpace(strings.ToLower(stdout))
 
 	switch arch {
 	case "amd64", "arm64":

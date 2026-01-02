@@ -154,6 +154,7 @@ func (s *StepLoopConfig) Condition() *hcl.Attribute {
 type StepEscalateConfig struct {
 	escalate        *hcl.Attribute
 	impersonateUser *hcl.Attribute
+	password        *hcl.Attribute
 }
 
 // Escalate returns the HCL attribute representing whether escalation is enabled.
@@ -182,6 +183,10 @@ func (s *StepEscalateConfig) Combine(escalate *StepEscalateConfig) {
 
 	if s.impersonateUser == nil {
 		s.impersonateUser = escalate.impersonateUser
+	}
+
+	if s.password == nil {
+		s.password = escalate.password
 	}
 }
 
@@ -419,8 +424,10 @@ func (s *SingleStep) formatResultOutput(result *result.Result) cty.Value {
 		outputMap["error_detail"] = cty.StringVal(result.ErrDetail)
 	}
 
-	if result.Output != nil {
-		outputMap["output"] = cty.ObjectVal(result.Output)
+	if result.Output.IsWhollyKnown() && !result.Output.IsNull() {
+		outputMap["output"] = result.Output
+	} else {
+		outputMap["output"] = cty.EmptyObjectVal
 	}
 
 	return cty.ObjectVal(outputMap)
@@ -671,8 +678,18 @@ func (s *SingleStep) getEscalation(hwc *HostWorkflowContext) (*transport.Escalat
 		return nil, nil // No escalation needed
 	}
 
+	password := hwc.host.EscalateConfig().Pass()
+	if s.escalate.password != nil {
+		p, diags := util.ConvertHCLAttributeToString(s.escalate.password, hwc.evalContext)
+		if diags.HasErrors() {
+			return nil, diags
+		}
+
+		password = p
+	}
+
 	if s.escalate.impersonateUser == nil {
-		return transport.NewEscalation(hwc.host.EscalateConfig().Pass()), nil
+		return transport.NewEscalation(password), nil
 	}
 
 	impersonateUser, diags := util.ConvertHCLAttributeToString(s.escalate.impersonateUser, hwc.evalContext)
@@ -681,10 +698,10 @@ func (s *SingleStep) getEscalation(hwc *HostWorkflowContext) (*transport.Escalat
 	}
 
 	if impersonateUser == "" {
-		return transport.NewEscalation(hwc.host.EscalateConfig().Pass()), nil
+		return transport.NewEscalation(password), nil
 	}
 
-	return transport.NewImpersonation(impersonateUser, hwc.host.EscalateConfig().Pass()), nil
+	return transport.NewImpersonation(impersonateUser, password), nil
 }
 
 // SingleStepBuilder is used to build a SingleStep instance during parsing.

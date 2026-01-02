@@ -26,44 +26,8 @@ var dnfInfoScript string
 
 var prunedDnfInfoScript string
 
-type dnfInfoResult struct {
-	Packages map[string]dnfPackageInfo `json:"packages,omitempty"`
-}
-
-func (d *dnfInfoResult) toModuleResult() *pluginv1.ModuleResult {
-	packages := make(map[string]cty.Value, len(d.Packages))
-	for name, pkg := range d.Packages {
-		impliedType, err := gocty.ImpliedType(&pkg)
-		if err != nil {
-			return pluginv1.NewModuleFailure(
-				err,
-				"failed to get implied type of dnf package info",
-			)
-		}
-
-		value, err := gocty.ToCtyValue(pkg, impliedType)
-		if err != nil {
-			return pluginv1.NewModuleFailure(
-				err,
-				"failed to convert dnf package info to cty.Value",
-			)
-		}
-
-		packages[name] = value
-	}
-
-	result, err := pluginv1.NewModuleSuccess(false, map[string]cty.Value{
-		"packages": cty.ObjectVal(packages),
-	})
-
-	if err != nil {
-		return pluginv1.NewModuleFailure(
-			err,
-			"failed to create module result from dnf info",
-		)
-	}
-
-	return result
+type dnfInfoOutput struct {
+	Packages map[string]dnfPackageInfo `json:"packages,omitempty" cty:"packages"`
 }
 
 // RunModule implements pluginv1.PluginModule.
@@ -122,8 +86,8 @@ func (d *DnfInfoModule) RunModule(
 		)
 	}
 
-	var result dnfInfoResult
-	err = json.Unmarshal(outBuf.Bytes(), &result)
+	var output dnfInfoOutput
+	err = json.Unmarshal(outBuf.Bytes(), &output)
 	if err != nil {
 		return pluginv1.NewModuleFailure(
 			err,
@@ -131,5 +95,29 @@ func (d *DnfInfoModule) RunModule(
 		)
 	}
 
-	return result.toModuleResult()
+	impliedType, err := gocty.ImpliedType(output)
+	if err != nil {
+		return pluginv1.NewModuleFailure(
+			err,
+			"failed to get implied type for dnf_info result",
+		)
+	}
+
+	outputValue, err := gocty.ToCtyValue(output, impliedType)
+	if err != nil {
+		return pluginv1.NewModuleFailure(
+			err,
+			"failed to convert dnf_info result to cty.Value",
+		)
+	}
+
+	moduleResult, err := pluginv1.NewModuleSuccess(false, outputValue)
+	if err != nil {
+		return pluginv1.NewModuleFailure(
+			err,
+			"failed to create module result for dnf_info",
+		)
+	}
+
+	return moduleResult
 }

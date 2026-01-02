@@ -27,7 +27,7 @@ message GetModulesResponse {
 
 message ModuleSuccess {
     bool changed = 1;
-    map<string, bytes> output = 2;
+    bytes output = 2;
 }
 
 message ModuleFailure {

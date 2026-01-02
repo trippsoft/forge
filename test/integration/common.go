@@ -21,28 +21,71 @@ type ExpectedHostOutput struct {
 	Output  map[string]cty.Value
 }
 
-func (e ExpectedHostOutput) Verify(t *testing.T, hostOutput map[string]cty.Value) {
+func (e ExpectedHostOutput) Verify(
+	t *testing.T,
+	hostOutput map[string]cty.Value,
+	processIndex int,
+	stepName string,
+	hostName string,
+) {
+
 	t.Helper()
 
 	changed, ok := hostOutput["changed"]
 	if !ok {
-		t.Error(`Expected host output to contain "changed" key`)
+		t.Errorf(
+			`Expected host %q in step %q in process %d output to contain "changed" key`,
+			hostName,
+			stepName,
+			processIndex,
+		)
 	} else if changed.True() != e.Changed {
-		t.Errorf("Expected changed to be %t, got %t", e.Changed, changed.True())
+		t.Errorf(
+			"Expected host %q in step %q in process %d changed value to be %t, got %t",
+			hostName,
+			stepName,
+			processIndex,
+			e.Changed,
+			changed.True(),
+		)
 	}
 
 	failed, ok := hostOutput["failed"]
 	if !ok {
-		t.Error(`Expected host output to contain "failed" key`)
+		t.Errorf(
+			`Expected host %q in step %q in process %d output to contain "failed" key`,
+			hostName,
+			stepName,
+			processIndex,
+		)
 	} else if failed.True() != e.Failed {
-		t.Errorf("Expected failed to be %t, got %t", e.Failed, failed.True())
+		t.Errorf(
+			"Expected host %q in step %q in process %d failed value to be %t, got %t",
+			hostName,
+			stepName,
+			processIndex,
+			e.Failed,
+			failed.True(),
+		)
 	}
 
 	skipped, ok := hostOutput["skipped"]
 	if !ok {
-		t.Error(`Expected host output to contain "skipped" key`)
+		t.Errorf(
+			`Expected host %q in step %q in process %d output to contain "skipped" key`,
+			hostName,
+			stepName,
+			processIndex,
+		)
 	} else if skipped.True() != e.Skipped {
-		t.Errorf("Expected skipped to be %t, got %t", e.Skipped, skipped.True())
+		t.Errorf(
+			"Expected host %q in step %q in process %d skipped value to be %t, got %t",
+			hostName,
+			stepName,
+			processIndex,
+			e.Skipped,
+			skipped.True(),
+		)
 	}
 
 	if e.Failed || e.Skipped {
@@ -51,25 +94,49 @@ func (e ExpectedHostOutput) Verify(t *testing.T, hostOutput map[string]cty.Value
 
 	output, ok := hostOutput["output"]
 	if !ok {
-		t.Error(`Expected host output to contain "output" key`)
+		t.Errorf(
+			`Expected host %q in step %q in process %d output to contain "output" key`,
+			hostName,
+			stepName,
+			processIndex,
+		)
 		return
 	}
 
 	if !output.Type().IsObjectType() && !output.Type().IsMapType() {
-		t.Errorf("Expected output to be an object or map, got %s", output.Type().FriendlyName())
+		t.Errorf(
+			"Expected host %q in step %q in process %d output value to be an object or map, got %s",
+			hostName,
+			stepName,
+			processIndex,
+			output.Type().FriendlyName(),
+		)
 		return
 	}
 
 	outputMap := output.AsValueMap()
 
 	if len(outputMap) != len(e.Output) {
-		t.Errorf("Expected output to contain %d keys, got %d", len(e.Output), len(outputMap))
+		t.Errorf(
+			"Expected host %q in step %q in process %d output to contain %d keys, got %d",
+			hostName,
+			stepName,
+			processIndex,
+			len(e.Output),
+			len(outputMap),
+		)
 	}
 
 	for key, expected := range e.Output {
 		actual, ok := outputMap[key]
 		if !ok {
-			t.Errorf("Expected output to contain key %q", key)
+			t.Errorf(
+				"Expected host %q in step %q in process %d output to contain key %q",
+				hostName,
+				stepName,
+				processIndex,
+				key,
+			)
 			continue
 		}
 
@@ -78,7 +145,15 @@ func (e ExpectedHostOutput) Verify(t *testing.T, hostOutput map[string]cty.Value
 		}
 
 		if actual.Equals(expected).False() {
-			t.Errorf("Expected output for %q to be %q, got %q", key, expected.GoString(), actual.GoString())
+			t.Errorf(
+				"Expected host %q in step %q in process %d output %q value to be %q, got %q",
+				hostName,
+				stepName,
+				processIndex,
+				key,
+				expected.GoString(),
+				actual.GoString(),
+			)
 		}
 	}
 }
@@ -87,28 +162,40 @@ type ExpectedStepOutput struct {
 	Hosts map[string]ExpectedHostOutput
 }
 
-func (e ExpectedStepOutput) Verify(t *testing.T, stepOutput map[string]cty.Value) {
+func (e ExpectedStepOutput) Verify(t *testing.T, stepOutput map[string]cty.Value, processIndex int, stepName string) {
 	t.Helper()
 
 	if len(stepOutput) != len(e.Hosts) {
-		t.Errorf("Expected step output to contain %d hosts, got %d", len(e.Hosts), len(stepOutput))
+		t.Errorf(
+			"Expected step %q in process %d output to contain %d hosts, got %d",
+			stepName,
+			processIndex,
+			len(e.Hosts),
+			len(stepOutput),
+		)
 	}
 
 	for hostName, expected := range e.Hosts {
 		actual, ok := stepOutput[hostName]
 		if !ok {
-			t.Errorf("Expected step output to contain host %q", hostName)
+			t.Errorf("Expected step %q in process %d output to contain host %q", stepName, processIndex, hostName)
 			continue
 		}
 
 		if !actual.Type().IsObjectType() && !actual.Type().IsMapType() {
-			t.Errorf("Expected host output to be an object or map, got: %v", actual.Type().FriendlyName())
+			t.Errorf(
+				"Expected host %q in step %q in process %d output to be an object or map, got: %v",
+				hostName,
+				stepName,
+				processIndex,
+				actual.Type().FriendlyName(),
+			)
 			continue
 		}
 
 		actualMap := actual.AsValueMap()
 
-		expected.Verify(t, actualMap)
+		expected.Verify(t, actualMap, processIndex, stepName, hostName)
 	}
 }
 
@@ -116,21 +203,21 @@ type ExpectedProcessOutput struct {
 	Steps map[string]ExpectedStepOutput
 }
 
-func (e ExpectedProcessOutput) Verify(t *testing.T, processOutput map[string]map[string]cty.Value) {
+func (e ExpectedProcessOutput) Verify(t *testing.T, processOutput map[string]map[string]cty.Value, index int) {
 	t.Helper()
 
 	if len(processOutput) != len(e.Steps) {
-		t.Errorf("Expected process output to contain %d steps, got %d", len(e.Steps), len(processOutput))
+		t.Errorf("Expected process %d output to contain %d steps, got %d", index, len(e.Steps), len(processOutput))
 	}
 
 	for stepName, expected := range e.Steps {
 		actual, ok := processOutput[stepName]
 		if !ok {
-			t.Errorf("Expected process output to contain step %q", stepName)
+			t.Errorf("Expected process %d output to contain step %q", index, stepName)
 			continue
 		}
 
-		expected.Verify(t, actual)
+		expected.Verify(t, actual, index, stepName)
 	}
 }
 
@@ -147,7 +234,7 @@ func (e ExpectedWorkflowOutput) Verify(t *testing.T, workflowOutput []map[string
 
 	for i, expected := range e.Processes {
 		actual := workflowOutput[i]
-		expected.Verify(t, actual)
+		expected.Verify(t, actual, i)
 	}
 }
 

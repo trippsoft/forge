@@ -34,69 +34,9 @@ var prunedDnfAbsentScript string
 var prunedDnfLatestScript string
 var prunedDnfPresentScript string
 
-type dnfResult struct {
-	Installed []dnfPackageInfo `json:"installed,omitempty"`
-	Removed   []dnfPackageInfo `json:"removed,omitempty"`
-}
-
-func (d *dnfResult) toModuleResult() *pluginv1.ModuleResult {
-	installed := make([]cty.Value, 0, len(d.Installed))
-	for _, pkg := range d.Installed {
-		impliedType, err := gocty.ImpliedType(&pkg)
-		if err != nil {
-			return pluginv1.NewModuleFailure(
-				err,
-				"failed to get implied type of dnf package info",
-			)
-		}
-
-		value, err := gocty.ToCtyValue(pkg, impliedType)
-		if err != nil {
-			return pluginv1.NewModuleFailure(
-				err,
-				"failed to convert dnf package info to cty.Value",
-			)
-		}
-
-		installed = append(installed, value)
-	}
-
-	removed := make([]cty.Value, 0, len(d.Removed))
-	for _, pkg := range d.Removed {
-		impliedType, err := gocty.ImpliedType(&pkg)
-		if err != nil {
-			return pluginv1.NewModuleFailure(
-				err,
-				"failed to get implied type of dnf package info",
-			)
-		}
-
-		value, err := gocty.ToCtyValue(pkg, impliedType)
-		if err != nil {
-			return pluginv1.NewModuleFailure(
-				err,
-				"failed to convert dnf package info to cty.Value",
-			)
-		}
-
-		removed = append(removed, value)
-	}
-
-	changed := len(installed) > 0 || len(removed) > 0
-
-	result, err := pluginv1.NewModuleSuccess(changed, map[string]cty.Value{
-		"installed": cty.ListVal(installed),
-		"removed":   cty.ListVal(removed),
-	})
-
-	if err != nil {
-		return pluginv1.NewModuleFailure(
-			err,
-			"failed to create module result from dnf info",
-		)
-	}
-
-	return result
+type dnfOutput struct {
+	Installed []dnfPackageInfo `json:"installed,omitempty" cty:"installed"`
+	Removed   []dnfPackageInfo `json:"removed,omitempty" cty:"removed"`
 }
 
 // RunModule implements pluginv1.PluginModule.
@@ -116,15 +56,17 @@ func (d *DnfModule) RunModule(
 		)
 	}
 
+	sb := &strings.Builder{}
+	sb.WriteString(util.FormatInputForPython(input, whatIf))
+
 	state := input["state"].AsString()
-	var script string
 	switch state {
 	case "present":
-		script = prunedDnfPresentScript
+		sb.WriteString(prunedDnfPresentScript)
 	case "latest":
-		script = prunedDnfLatestScript
+		sb.WriteString(prunedDnfLatestScript)
 	case "absent":
-		script = prunedDnfAbsentScript
+		sb.WriteString(prunedDnfAbsentScript)
 	default:
 		return pluginv1.NewModuleFailure(
 			fmt.Errorf("unknown state for dnf module: %s", state),
@@ -132,10 +74,7 @@ func (d *DnfModule) RunModule(
 		)
 	}
 
-	header := util.FormatInputForPython(input, whatIf)
-	script = header + script
-
-	encodedCommand, err := util.EncodePythonAsBase64(script)
+	encodedCommand, err := util.EncodePythonAsBase64(sb.String())
 	if err != nil {
 		return pluginv1.NewModuleFailure(
 			err,
@@ -174,8 +113,8 @@ func (d *DnfModule) RunModule(
 		)
 	}
 
-	var result dnfInfoResult
-	err = json.Unmarshal(outBuf.Bytes(), &result)
+	var output dnfOutput
+	err = json.Unmarshal(outBuf.Bytes(), &output)
 	if err != nil {
 		return pluginv1.NewModuleFailure(
 			err,
@@ -183,5 +122,31 @@ func (d *DnfModule) RunModule(
 		)
 	}
 
-	return result.toModuleResult()
+	changed := len(output.Installed) > 0 || len(output.Removed) > 0
+
+	impliedType, err := gocty.ImpliedType(output)
+	if err != nil {
+		return pluginv1.NewModuleFailure(
+			err,
+			"failed to get implied type for dnf_info result",
+		)
+	}
+
+	outputValue, err := gocty.ToCtyValue(output, impliedType)
+	if err != nil {
+		return pluginv1.NewModuleFailure(
+			err,
+			"failed to convert dnf_info result to cty.Value",
+		)
+	}
+
+	moduleResult, err := pluginv1.NewModuleSuccess(changed, outputValue)
+	if err != nil {
+		return pluginv1.NewModuleFailure(
+			err,
+			"failed to create module result for dnf_info",
+		)
+	}
+
+	return moduleResult
 }

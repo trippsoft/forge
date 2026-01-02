@@ -112,6 +112,10 @@ var (
 				Name:     "impersonate_user",
 				Required: false,
 			},
+			{
+				Name:     "password",
+				Required: false,
+			},
 		},
 	}
 	loopBlockSchema = &hcl.BodySchema{

@@ -52,10 +52,10 @@ func (c *CommandModule) RunModule(
 	if whatIf {
 		r, err := pluginv1.NewModuleSuccess(
 			true,
-			map[string]cty.Value{
+			cty.ObjectVal(map[string]cty.Value{
 				"stdout": cty.NullVal(cty.String),
 				"stderr": cty.NullVal(cty.String),
-			},
+			}),
 		)
 
 		if err != nil {
@@ -98,10 +98,10 @@ func (c *CommandModule) RunModule(
 
 	r, err := pluginv1.NewModuleSuccess(
 		true,
-		map[string]cty.Value{
+		cty.ObjectVal(map[string]cty.Value{
 			"stdout": cty.StringVal(stdout),
 			"stderr": cty.StringVal(stderr),
-		},
+		}),
 	)
 
 	if err != nil {
