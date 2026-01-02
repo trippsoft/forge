@@ -6,6 +6,7 @@ package transport
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -13,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/sftp"
 	"github.com/trippsoft/forge/pkg/plugin"
 	"github.com/trippsoft/forge/pkg/util"
 	"golang.org/x/crypto/ssh"
@@ -50,6 +50,36 @@ func (s *sshPosixPlatform) PluginExtension() string {
 
 // GetDefaultTempPath implements sshPlatform.
 func (s *sshPosixPlatform) GetDefaultTempPath() (string, error) {
+	err := s.t.connectSFTP()
+	if err != nil {
+		return "", err
+	}
+
+	// Many security policies restrict execution in /tmp or /var/tmp.  Is this a sensible default?
+
+	fileInfo, err := s.t.sftpClient.Stat("/tmp") // Attempt /tmp first
+	if err == nil && fileInfo.IsDir() {
+		err = s.MkdirAll("/tmp/forge-tmp")
+		if err == nil {
+			err = s.t.sftpClient.Chmod("/tmp", 01777)
+			if err == nil {
+				return "/tmp/forge-tmp", nil
+			}
+		}
+	}
+
+	fileInfo, err = s.t.sftpClient.Stat("/var/tmp") // Attempt /var/tmp second
+	if err == nil && fileInfo.IsDir() {
+		err = s.MkdirAll("/var/tmp/forge-tmp")
+		if err == nil {
+			err = s.t.sftpClient.Chmod("/var/tmp", 01777)
+			if err == nil {
+				return "/var/tmp/forge-tmp", nil
+			}
+		}
+	}
+
+	// Fallback to user home directory (this is less ideal if impersonation is used)
 	session, err := s.t.client.NewSession()
 	if err != nil {
 		return "", fmt.Errorf("failed to create SSH session: %w", err)
@@ -63,7 +93,16 @@ func (s *sshPosixPlatform) GetDefaultTempPath() (string, error) {
 	}
 
 	homeDir := strings.TrimSpace(string(homeOutput))
-	return fmt.Sprintf("%s/.local/share/forge-tmp", homeDir), nil
+	fileInfo, err = s.t.sftpClient.Stat(homeDir)
+	if err == nil && fileInfo.IsDir() {
+		tmpPath := fmt.Sprintf("%s/.local/share/forge-tmp", homeDir)
+		err = s.MkdirAll(tmpPath)
+		if err == nil {
+			return tmpPath, nil
+		}
+	}
+
+	return "", errors.New("failed to determine suitable remote temp path")
 }
 
 // PopulateInfo implements sshPlatform.
@@ -83,15 +122,12 @@ func (s *sshPosixPlatform) PopulateInfo() error {
 
 // MkdirAll implements sshPlatform.
 func (s *sshPosixPlatform) MkdirAll(path string) error {
-	if s.t.sftpClient == nil {
-		sftpClient, err := sftp.NewClient(s.t.client)
-		if err != nil {
-			return fmt.Errorf("failed to create SFTP client: %w", err)
-		}
-		s.t.sftpClient = sftpClient
+	err := s.t.connectSFTP()
+	if err != nil {
+		return err
 	}
 
-	err := s.t.sftpClient.MkdirAll(path)
+	err = s.t.sftpClient.MkdirAll(path)
 	if err != nil {
 		return fmt.Errorf("failed to create remote directory %s: %w", path, err)
 	}
@@ -101,12 +137,9 @@ func (s *sshPosixPlatform) MkdirAll(path string) error {
 
 // UploadFile implements sshPlatform.
 func (s *sshPosixPlatform) UploadFile(localPath, remotePath string) error {
-	if s.t.sftpClient == nil {
-		sftpClient, err := sftp.NewClient(s.t.client)
-		if err != nil {
-			return fmt.Errorf("failed to create SFTP client: %w", err)
-		}
-		s.t.sftpClient = sftpClient
+	err := s.t.connectSFTP()
+	if err != nil {
+		return err
 	}
 
 	localFile, err := os.Open(localPath)

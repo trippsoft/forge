@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -51,21 +52,51 @@ func (s *sshWindowsPlatform) PluginExtension() string {
 
 // GetDefaultTempPath implements sshPlatform.
 func (s *sshWindowsPlatform) GetDefaultTempPath() (string, error) {
+	err := s.t.connectSFTP()
+	if err != nil {
+		return "", err
+	}
+
+	fileInfo, err := s.t.sftpClient.Stat(`C:\Windows\Temp`) // Try Windows temp folder first
+	if err == nil && fileInfo.IsDir() {
+		err = s.MkdirAll(`C:\Windows\Temp\Forge`)
+		if err == nil {
+			return `C:\Windows\Temp\Forge`, nil
+		}
+	}
+
+	fileInfo, err = s.t.sftpClient.Stat(`C:\ProgramData`) // Try ProgramData next
+	if err == nil && fileInfo.IsDir() {
+		err = s.MkdirAll(`C:\ProgramData\Forge\tmp`)
+		if err == nil {
+			return `C:\ProgramData\Forge\tmp`, nil
+		}
+	}
+
 	session, err := s.t.client.NewSession()
 	if err != nil {
 		return "", fmt.Errorf("failed to create SSH session: %w", err)
 	}
+	defer session.Close()
 
 	homeCmd := "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command " +
 		`"Write-Host $env:USERPROFILE"`
 	homeOutput, err := session.CombinedOutput(homeCmd)
-	session.Close()
 	if err != nil {
 		return "", fmt.Errorf("failed to execute home directory detection command: %w", err)
 	}
 
 	homeDir := strings.TrimSpace(string(homeOutput))
-	return fmt.Sprintf(`%s\AppData\Local\Temp\Forge`, homeDir), nil
+	fileInfo, err = s.t.sftpClient.Stat(homeDir)
+	if err == nil && fileInfo.IsDir() {
+		tmpPath := fmt.Sprintf(`%s\AppData\Local\Temp\Forge`, homeDir)
+		err = s.MkdirAll(tmpPath)
+		if err == nil {
+			return tmpPath, nil
+		}
+	}
+
+	return "", errors.New("failed to determine suitable remote temp path")
 }
 
 // PopulateInfo implements sshPlatform.

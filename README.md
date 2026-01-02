@@ -170,10 +170,11 @@ Create the directory structure.
 
 ```
 mkdir "C:\Program Files\Forge"
-mkdir "C:\Program Files\Forge\plugins"
-mkdir "C:\Program Files\Forge\plugins\forge"
-mkdir "C:\Program Files\Forge\plugins\forge\core"
-mkdir "C:\Program Files\Forge\plugins\forge\discover"
+mkdir "C:\ProgramData\Forge"
+mkdir "C:\ProgramData\Forge\plugins"
+mkdir "C:\ProgramData\Forge\plugins\forge"
+mkdir "C:\ProgramData\Forge\plugins\forge\core"
+mkdir "C:\ProgramData\Forge\plugins\forge\discover"
 ```
 
 Clone the repository and build the CLI.
@@ -204,12 +205,12 @@ CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go.exe build -o forge-core_windows_arm64
 Install the core plugin server(s).
 
 ```
-move forge-core_darwin_amd64 "C:\Program Files\Forge\plugins\forge\core\"
-move forge-core_darwin_arm64 "C:\Program Files\Forge\plugins\forge\core\"
-move forge-core_linux_amd64 "C:\Program Files\Forge\plugins\forge\core\"
-move forge-core_linux_arm64 "C:\Program Files\Forge\plugins\forge\core\"
-move forge-core_windows_amd64.exe "C:\Program Files\Forge\plugins\forge\core\"
-move forge-core_windows_arm64.exe "C:\Program Files\Forge\plugins\forge\core\"
+move forge-core_darwin_amd64 "C:\ProgramData\Forge\plugins\forge\core\"
+move forge-core_darwin_arm64 "C:\ProgramData\Forge\plugins\forge\core\"
+move forge-core_linux_amd64 "C:\ProgramData\Forge\plugins\forge\core\"
+move forge-core_linux_arm64 "C:\ProgramData\Forge\plugins\forge\core\"
+move forge-core_windows_amd64.exe "C:\ProgramData\Forge\plugins\forge\core\"
+move forge-core_windows_arm64.exe "C:\ProgramData\Forge\plugins\forge\core\"
 ```
 
 Build the discovery plugin server(s).  Skip the platforms you don't intend to manage or run the tool from.
@@ -226,12 +227,12 @@ CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go.exe build -o forge-discover_windows_a
 Install the discovery plugin server(s).
 
 ```
-move forge-discover_darwin_amd64 "C:\Program Files\Forge\plugins\forge\discover\"
-move forge-discover_darwin_arm64 "C:\Program Files\Forge\plugins\forge\discover\"
-move forge-discover_linux_amd64 "C:\Program Files\Forge\plugins\forge\discover\"
-move forge-discover_linux_arm64 "C:\Program Files\Forge\plugins\forge\discover\"
-move forge-discover_windows_amd64.exe "C:\Program Files\Forge\plugins\forge\discover\"
-move forge-discover_windows_arm64.exe "C:\Program Files\Forge\plugins\forge\discover\"
+move forge-discover_darwin_amd64 "C:\ProgramData\Forge\plugins\forge\discover\"
+move forge-discover_darwin_arm64 "C:\ProgramData\Forge\plugins\forge\discover\"
+move forge-discover_linux_amd64 "C:\ProgramData\Forge\plugins\forge\discover\"
+move forge-discover_linux_arm64 "C:\ProgramData\Forge\plugins\forge\discover\"
+move forge-discover_windows_amd64.exe "C:\ProgramData\Forge\plugins\forge\discover\"
+move forge-discover_windows_arm64.exe "C:\ProgramData\Forge\plugins\forge\discover\"
 ```
 
 ## Development

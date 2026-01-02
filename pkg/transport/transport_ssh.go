@@ -139,6 +139,27 @@ func (s *sshTransport) Connect() error {
 	return nil
 }
 
+func (s *sshTransport) connectSFTP() error {
+	if s.sftpClient != nil {
+		return nil // Already connected
+	}
+
+	if s.client == nil {
+		err := s.Connect()
+		if err != nil {
+			return err
+		}
+	}
+
+	sftpClient, err := sftp.NewClient(s.client)
+	if err != nil {
+		return fmt.Errorf("failed to create SFTP client: %w", err)
+	}
+
+	s.sftpClient = sftpClient
+	return nil
+}
+
 func (s *sshTransport) populatePlatformInfo() error {
 	session, err := s.client.NewSession()
 	if err != nil {

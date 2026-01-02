@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	SharedPluginBasePath = `C:\Program Files\Forge\plugins`
+	SharedPluginBasePath = `C:\ProgramData\Forge\plugins`
 	home, _ := homedir.Dir()
 	UserPluginBasePath = home + `\AppData\Local\Forge\plugins`
 	os.MkdirAll(UserPluginBasePath, 0777)
