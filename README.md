@@ -18,6 +18,69 @@ Forge is a configuration management tool designed for managing and automating ta
 
 ## Getting Started
 
+### Basic Usage
+
+#### Define an Inventory
+
+Create an `inventory.hcl` file:
+
+```hcl
+vars {
+    environment = "production"
+    domain = "example.com"
+}
+
+transport "ssh" {
+    user = "admin"
+    port = 22
+}
+
+group "webservers" {
+    vars {
+        role = "web"
+    }
+}
+
+host "web1" {
+    groups = ["webservers"]
+    
+    vars {
+        ip = "10.0.1.10"
+    }
+    
+    transport "ssh" {
+        host = "${var.ip}"
+    }
+}
+```
+
+#### Define a Workflow
+
+Create a `workflow.hcl` file:
+
+```hcl
+process {
+    name = "Restart myapp services"
+    targets = "webservers"
+    
+    step "restart_service" {
+        name = "Restart Service"
+        module = "command"
+        
+        input {
+            name = "systemctl"
+            args = ["restart", "myapp"]
+        }
+    }
+}
+```
+
+#### Execute the Workflow
+
+```bash
+forge run -i inventory.hcl -w workflow.hcl
+```
+
 ### Installing Forge
 
 Pre-built binaries will be made available when the project reaches a more stable state. For now, you can build Forge from source.
@@ -98,69 +161,6 @@ sudo mv forge-discover_linux_arm64 /usr/share/forge/plugins/forge/discover/
 sudo mv forge-discover_windows_amd64.exe /usr/share/forge/plugins/forge/discover/
 sudo mv forge-discover_windows_arm64.exe /usr/share/forge/plugins/forge/discover/
 sudo chmod 755 /usr/share/forge/plugins/forge/discover/forge-discover_*
-```
-
-### Basic Usage
-
-#### Define an Inventory
-
-Create an `inventory.hcl` file:
-
-```hcl
-vars {
-    environment = "production"
-    domain = "example.com"
-}
-
-transport "ssh" {
-    user = "admin"
-    port = 22
-}
-
-group "webservers" {
-    vars {
-        role = "web"
-    }
-}
-
-host "web1" {
-    groups = ["webservers"]
-    
-    vars {
-        ip = "10.0.1.10"
-    }
-    
-    transport "ssh" {
-        host = "${var.ip}"
-    }
-}
-```
-
-#### Define a Workflow
-
-Create a `workflow.hcl` file:
-
-```hcl
-process {
-    name = "Restart myapp services"
-    targets = "webservers"
-    
-    step "restart_service" {
-        name = "Restart Service"
-        module = "command"
-        
-        input {
-            name = "systemctl"
-            args = ["restart", "myapp"]
-        }
-    }
-}
-```
-
-#### Execute the Workflow
-
-```bash
-forge run -i inventory.hcl -w workflow.hcl
 ```
 
 ## Development
