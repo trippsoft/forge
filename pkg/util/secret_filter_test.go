@@ -1,20 +1,18 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package log
+package util
 
 import (
 	"bytes"
 	"io"
 	"sync"
 	"testing"
-
-	"github.com/trippsoft/forge/pkg/util"
 )
 
 func TestSecretFilter_Secrets(t *testing.T) {
 	filter := &secretFilter{
-		secrets: util.NewSet[string](),
+		secrets: NewSet[string](),
 		writer:  io.Discard,
 	}
 
@@ -43,7 +41,7 @@ func TestSecretFilter_Secrets(t *testing.T) {
 
 func TestSecretFilter_AddSecret(t *testing.T) {
 	filter := &secretFilter{
-		secrets: util.NewSet[string](),
+		secrets: NewSet[string](),
 		writer:  io.Discard,
 	}
 
@@ -62,7 +60,7 @@ func TestSecretFilter_AddSecret(t *testing.T) {
 
 func TestSecretFilter_SetOutput(t *testing.T) {
 	filter := &secretFilter{
-		secrets: util.NewSet[string](),
+		secrets: NewSet[string](),
 		writer:  io.Discard,
 	}
 
@@ -76,7 +74,7 @@ func TestSecretFilter_SetOutput(t *testing.T) {
 func TestSecretFilter_Write(t *testing.T) {
 	buf := &bytes.Buffer{}
 	filter := &secretFilter{
-		secrets: util.NewSet[string](),
+		secrets: NewSet[string](),
 		writer:  buf,
 	}
 
@@ -101,7 +99,7 @@ func TestSecretFilter_Write(t *testing.T) {
 
 func TestSecretFilter_Filter(t *testing.T) {
 	filter := &secretFilter{
-		secrets: util.NewSet[string](),
+		secrets: NewSet[string](),
 		writer:  io.Discard,
 	}
 
@@ -118,7 +116,7 @@ func TestSecretFilter_Filter(t *testing.T) {
 
 func TestSecretFilter_ConcurrentAccess(t *testing.T) {
 	filter := &secretFilter{
-		secrets: util.NewSet[string](),
+		secrets: NewSet[string](),
 		writer:  io.Discard,
 	}
 
@@ -147,7 +145,7 @@ func TestSecretFilter_ConcurrentAccess(t *testing.T) {
 
 func TestSecretFilter_EmptySecrets(t *testing.T) {
 	filter := &secretFilter{
-		secrets: util.NewSet[string](),
+		secrets: NewSet[string](),
 		writer:  io.Discard,
 	}
 
@@ -161,7 +159,7 @@ func TestSecretFilter_EmptySecrets(t *testing.T) {
 func TestSecretFilter_WriteError(t *testing.T) {
 	errorWriter := &errorWriter{}
 	filter := &secretFilter{
-		secrets: util.NewSet[string](),
+		secrets: NewSet[string](),
 		writer:  errorWriter,
 	}
 
@@ -173,7 +171,7 @@ func TestSecretFilter_WriteError(t *testing.T) {
 
 func TestSecretFilter_Clear(t *testing.T) {
 	filter := &secretFilter{
-		secrets: util.NewSet[string](),
+		secrets: NewSet[string](),
 		writer:  io.Discard,
 	}
 

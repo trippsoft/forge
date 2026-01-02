@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/trippsoft/forge/pkg/log"
+	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
 )
@@ -289,7 +289,7 @@ func (s *sensitiveStringType) AddToFilter(value cty.Value) {
 
 	v := value.AsString()
 	if v != "" {
-		log.SecretFilter.AddSecret(v)
+		util.SecretFilter.AddSecret(v)
 	}
 }
 

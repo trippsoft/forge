@@ -4,7 +4,7 @@
 package hclfunction
 
 import (
-	"github.com/trippsoft/forge/pkg/log"
+	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
 )
@@ -27,7 +27,7 @@ var (
 				return args[0], nil // Skip registering empty strings
 			}
 
-			log.SecretFilter.AddSecret(value)
+			util.SecretFilter.AddSecret(value)
 
 			return args[0], nil
 		},

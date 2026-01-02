@@ -1,20 +1,18 @@
 // Copyright (c) Forge
 // SPDX-License-Identifier: MPL-2.0
 
-package log
+package util
 
 import (
 	"bytes"
 	"io"
 	"strings"
 	"sync"
-
-	"github.com/trippsoft/forge/pkg/util"
 )
 
 var (
 	SecretFilter = &secretFilter{
-		secrets: util.NewSet[string](),
+		secrets: NewSet[string](),
 		writer:  io.Discard,
 	}
 )
@@ -22,7 +20,7 @@ var (
 // secretFilter wraps an io.Writer to filter out sensitive information from logs and output.
 type secretFilter struct {
 	mutex   sync.RWMutex
-	secrets *util.Set[string]
+	secrets *Set[string]
 	writer  io.Writer
 }
 

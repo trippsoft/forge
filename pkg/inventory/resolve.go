@@ -11,7 +11,6 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/trippsoft/forge/pkg/hclfunction"
-	"github.com/trippsoft/forge/pkg/log"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/trippsoft/forge/pkg/util"
 	"github.com/zclconf/go-cty/cty"
@@ -702,7 +701,7 @@ func createSSHTransport(
 			cachedPrivateKeyFiles[privateKeyPath] = privateKey // Cache the private key
 		}
 		if privateKeyPass != "" {
-			log.SecretFilter.AddSecret(privateKeyPass)
+			util.SecretFilter.AddSecret(privateKeyPass)
 			builder = builder.WithPublicKeyAuthWithPass(privateKey, privateKeyPass)
 		} else {
 			builder = builder.WithPublicKeyAuth(privateKey)
@@ -710,7 +709,7 @@ func createSSHTransport(
 	}
 
 	if password != "" {
-		log.SecretFilter.AddSecret(password)
+		util.SecretFilter.AddSecret(password)
 		builder = builder.WithPasswordAuth(password)
 	}
 
@@ -906,7 +905,7 @@ func buildFinalInventory(
 		}
 
 		if exists && escalateConfig.Pass() != "" {
-			log.SecretFilter.AddSecret(escalateConfig.Pass())
+			util.SecretFilter.AddSecret(escalateConfig.Pass())
 		}
 
 		builder := NewHostBuilder().

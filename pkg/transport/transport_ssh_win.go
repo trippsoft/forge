@@ -16,8 +16,8 @@ import (
 	"syscall"
 
 	"github.com/pkg/sftp"
-	"github.com/trippsoft/forge/pkg/network"
 	"github.com/trippsoft/forge/pkg/plugin"
+	"github.com/trippsoft/forge/pkg/util"
 	"golang.org/x/crypto/ssh"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -249,7 +249,7 @@ func (s *sshWindowsPlatform) StartPlugin(
 		return nil, nil, fmt.Errorf("invalid port output from plugin: %w", err)
 	}
 
-	listener, localPort, err := network.GetListenerAndPortInRange(plugin.LocalPluginMinPort, plugin.LocalPluginMaxPort)
+	listener, localPort, err := util.GetListenerAndPortInRange(plugin.LocalPluginMinPort, plugin.LocalPluginMaxPort)
 	if err != nil {
 		session.Close()
 		return nil, nil, fmt.Errorf("failed to get local listener: %w", err)
@@ -387,7 +387,7 @@ func (s *sshWindowsPlatform) startEscalatedPlugin(
 			return nil, nil, fmt.Errorf("invalid port output from plugin: %w", err)
 		}
 
-		listener, localPort, err := network.GetListenerAndPortInRange(plugin.LocalPluginMinPort, plugin.LocalPluginMaxPort)
+		listener, localPort, err := util.GetListenerAndPortInRange(plugin.LocalPluginMinPort, plugin.LocalPluginMaxPort)
 		if err != nil {
 			session.Close()
 			return nil, nil, fmt.Errorf("failed to get local listener: %w", err)
@@ -477,7 +477,7 @@ func (s *sshWindowsPlatform) startPluginAsSystem(remotePluginPath string) (*grpc
 		return nil, nil, fmt.Errorf("invalid port output from plugin: %w", err)
 	}
 
-	listener, localPort, err := network.GetListenerAndPortInRange(plugin.LocalPluginMinPort, plugin.LocalPluginMaxPort)
+	listener, localPort, err := util.GetListenerAndPortInRange(plugin.LocalPluginMinPort, plugin.LocalPluginMaxPort)
 	if err != nil {
 		session.Close()
 		return nil, nil, fmt.Errorf("failed to get local listener: %w", err)

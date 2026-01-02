@@ -14,7 +14,6 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/trippsoft/forge/pkg/inventory"
-	"github.com/trippsoft/forge/pkg/log"
 	"github.com/trippsoft/forge/pkg/result"
 	"github.com/trippsoft/forge/pkg/ui"
 	"github.com/trippsoft/forge/pkg/util"
@@ -293,7 +292,7 @@ func (c *CLI) printText(writer io.Writer, text string) {
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	text = log.SecretFilter.Filter(text)
+	text = util.SecretFilter.Filter(text)
 
 	_, _ = fmt.Fprint(writer, text)
 }
@@ -416,8 +415,8 @@ func (c *CLI) printResult(label string, r *result.Result) {
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	stdout := log.SecretFilter.Filter(outStringBuilder.String())
-	stderr := log.SecretFilter.Filter(errorStringBuilder.String())
+	stdout := util.SecretFilter.Filter(outStringBuilder.String())
+	stderr := util.SecretFilter.Filter(errorStringBuilder.String())
 
 	_, _ = fmt.Fprint(c.stdout, stdout)
 	_, _ = fmt.Fprint(c.stderr, stderr)

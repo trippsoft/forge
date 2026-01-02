@@ -9,8 +9,8 @@ import (
 	"os"
 
 	"github.com/trippsoft/forge/pkg/info"
-	"github.com/trippsoft/forge/pkg/network"
 	"github.com/trippsoft/forge/pkg/plugin"
+	"github.com/trippsoft/forge/pkg/util"
 	"google.golang.org/grpc"
 )
 
@@ -23,7 +23,7 @@ func main() {
 }
 
 func realMain() error {
-	listener, port, err := network.GetListenerAndPortInRange(plugin.GetMinimumPort(), plugin.GetMaximumPort())
+	listener, port, err := util.GetListenerAndPortInRange(plugin.GetMinimumPort(), plugin.GetMaximumPort())
 	if err != nil {
 		return err
 	}
