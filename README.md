@@ -81,6 +81,8 @@ process {
 forge run -i inventory.hcl -w workflow.hcl
 ```
 
+![Forge CLI Example](assets/forge-cli-example.png)
+
 ### Installing Forge
 
 Pre-built binaries will be made available when the project reaches a more stable state. For now, you can build Forge from source.
