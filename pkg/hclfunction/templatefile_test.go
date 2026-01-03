@@ -79,6 +79,8 @@ func getTemplateFileTestCases() []struct {
 }
 
 func createTempTemplateFile(t *testing.T, dir string, content string) string {
+	t.Helper()
+
 	file, err := os.CreateTemp(dir, "template_*")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
@@ -130,6 +132,8 @@ func (m *mockExpr) StartRange() hcl.Range {
 }
 
 func createExpressionClosure(t *testing.T, path string, evalCtx *hcl.EvalContext) cty.Value {
+	t.Helper()
+
 	return customdecode.ExpressionClosureVal(
 		&customdecode.ExpressionClosure{
 			Expression: &mockExpr{
