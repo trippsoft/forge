@@ -21,8 +21,13 @@ func main() {
 }
 
 func realMain() error {
+	_, err := fmt.Fprintln(os.Stderr, plugin.PluginReadyMessage)
+	if err != nil {
+		return err
+	}
+
 	var request info.DiscoverRequest
-	err := plugin.Read(os.Stdin, &request)
+	err = plugin.Read(os.Stdin, &request)
 	if err == io.EOF {
 		return nil
 	}

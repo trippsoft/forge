@@ -1,0 +1,128 @@
+// Copyright (c) Forge
+// SPDX-License-Identifier: MPL-2.0
+
+package transport
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"os/exec"
+	"runtime"
+
+	"github.com/trippsoft/forge/pkg/plugin"
+)
+
+var (
+	LocalTransport Transport = &localTransport{}
+)
+
+type localCommandSession struct {
+	command *exec.Cmd
+	stdin   io.WriteCloser
+	stdout  io.ReadCloser
+	stderr  io.ReadCloser
+}
+
+// Close implements [plugin.Session].
+func (l *localCommandSession) Close() error {
+	l.stdin.Close()
+	l.stdout.Close()
+	l.stderr.Close()
+
+	err := l.command.Process.Kill()
+	if err != nil {
+		return err
+	}
+
+	return l.command.Wait()
+}
+
+// Stdout implements [plugin.Session].
+func (l *localCommandSession) Stdout() io.Reader {
+	return l.stdout
+}
+
+// Stderr implements [plugin.Session].
+func (l *localCommandSession) Stderr() io.Reader {
+	return l.stderr
+}
+
+// Stdin implements [plugin.Session].
+func (l *localCommandSession) Stdin() io.WriteCloser {
+	return l.stdin
+}
+
+type localTransport struct{}
+
+// Type implements [Transport].
+func (l *localTransport) Type() TransportType {
+	return TransportTypeLocal
+}
+
+// OS implements [Transport].
+func (l *localTransport) OS() (string, error) {
+	return runtime.GOOS, nil
+}
+
+// Arch implements [Transport].
+func (l *localTransport) Arch() (string, error) {
+	return runtime.GOARCH, nil
+}
+
+// Connect implements [Transport].
+func (l *localTransport) Connect() error {
+	return nil
+}
+
+// Close implements [Transport].
+func (l *localTransport) Close() error {
+	return nil
+}
+
+// StartPluginSession implements [Transport].
+func (l *localTransport) StartPluginSession(
+	ctx context.Context,
+	basePath string,
+	namespace string,
+	pluginName string,
+	escalation *Escalation,
+) (plugin.Session, error) {
+	pluginPath, err := plugin.FindPluginPath(basePath, namespace, pluginName, runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		return nil, err
+	}
+
+	if escalation != nil {
+		return l.startEscalatedPluginSession(ctx, pluginPath, escalation)
+	}
+
+	cmd := exec.CommandContext(ctx, pluginPath)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stdout pipe for plugin at '%s': %w", pluginPath, err)
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stderr pipe for plugin at '%s': %w", pluginPath, err)
+	}
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stdin pipe for plugin at '%s': %w", pluginPath, err)
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return nil, fmt.Errorf("failed to start plugin at '%s': %w", pluginPath, err)
+	}
+
+	return &localCommandSession{
+		command: cmd,
+		stdin:   stdin,
+		stdout:  stdout,
+		stderr:  stderr,
+	}, nil
+}
