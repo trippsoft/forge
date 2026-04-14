@@ -88,35 +88,35 @@ func (l *localTransport) StartPluginSession(
 	pluginName string,
 	escalation *Escalation,
 ) (plugin.Session, error) {
-	pluginPath, err := plugin.FindPluginPath(basePath, namespace, pluginName, runtime.GOOS, runtime.GOARCH)
+	path, err := plugin.FindPluginPath(basePath, namespace, pluginName, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		return nil, err
 	}
 
 	if escalation != nil {
-		return l.startEscalatedPluginSession(ctx, pluginPath, escalation)
+		return l.startEscalatedPluginSession(ctx, path, escalation)
 	}
 
-	cmd := exec.CommandContext(ctx, pluginPath)
+	cmd := exec.CommandContext(ctx, path)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get stdout pipe for plugin at '%s': %w", pluginPath, err)
+		return nil, fmt.Errorf("failed to get stdout pipe for plugin at '%s': %w", path, err)
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get stderr pipe for plugin at '%s': %w", pluginPath, err)
+		return nil, fmt.Errorf("failed to get stderr pipe for plugin at '%s': %w", path, err)
 	}
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get stdin pipe for plugin at '%s': %w", pluginPath, err)
+		return nil, fmt.Errorf("failed to get stdin pipe for plugin at '%s': %w", path, err)
 	}
 
 	err = cmd.Start()
 	if err != nil {
-		return nil, fmt.Errorf("failed to start plugin at '%s': %w", pluginPath, err)
+		return nil, fmt.Errorf("failed to start plugin at '%s': %w", path, err)
 	}
 
 	return &localCommandSession{
