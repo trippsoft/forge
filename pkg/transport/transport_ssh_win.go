@@ -252,6 +252,42 @@ func (s *sshWindowsPlatform) StartPluginSession(
 		encodedCmdlet,
 	)
 
+	stderrPipeReader, stderrPipeWriter := io.Pipe()
+
+	readyChan := make(chan struct{})
+	errChan := make(chan error, 1)
+
+	go func() {
+		defer stderrPipeWriter.Close()
+
+		var accumulatedStderr strings.Builder
+		buf := make([]byte, 4096)
+
+		for {
+			n, readErr := stderr.Read(buf)
+			if n > 0 {
+				accumulatedStderr.Write(buf[:n])
+				text := accumulatedStderr.String()
+
+				if strings.Contains(text, plugin.PluginReadyMessage) {
+					close(readyChan)
+					io.Copy(stderrPipeWriter, stderr)
+					return
+				}
+			}
+
+			if readErr != nil {
+				if readErr != io.EOF {
+					errChan <- fmt.Errorf("error reading stderr for plugin at '%s': %w", remotePluginPath, readErr)
+					stdin.Close()
+					session.Close()
+					session.Wait()
+				}
+				return
+			}
+		}
+	}()
+
 	err = session.Start(cmd)
 	if err != nil {
 		stdin.Close()
@@ -259,12 +295,25 @@ func (s *sshWindowsPlatform) StartPluginSession(
 		return nil, fmt.Errorf("failed to start remote plugin '%s': %w", remotePluginPath, err)
 	}
 
-	return &sshPluginSession{
-		session: session,
-		stdout:  stdout,
-		stderr:  stderr,
-		stdin:   stdin,
-	}, nil
+	select {
+	case <-ctx.Done():
+		stdin.Close()
+		session.Close()
+		session.Wait()
+		return nil, fmt.Errorf("context cancelled while starting plugin at '%s': %w", remotePluginPath, ctx.Err())
+	case err := <-errChan:
+		stdin.Close()
+		session.Close()
+		session.Wait()
+		return nil, err
+	case <-readyChan:
+		return &sshPluginSession{
+			session: session,
+			stdout:  stdout,
+			stderr:  stderrPipeReader,
+			stdin:   stdin,
+		}, nil
+	}
 }
 
 func (s *sshWindowsPlatform) startEscalatedPluginSession(
@@ -274,7 +323,7 @@ func (s *sshWindowsPlatform) startEscalatedPluginSession(
 ) (plugin.Session, error) {
 	user := escalation.User()
 	if user == "" || user == "SYSTEM" || user == `NT AUTHORITY\SYSTEM` {
-		return s.startPluginSessionAsSystem(path)
+		return s.startPluginSessionAsSystem(ctx, path)
 	}
 
 	session, err := s.t.client.NewSession()
@@ -400,8 +449,10 @@ func (s *sshWindowsPlatform) startEscalatedPluginSession(
 	}
 }
 
-func (s *sshWindowsPlatform) startPluginSessionAsSystem(remotePluginPath string) (plugin.Session, error) {
-
+func (s *sshWindowsPlatform) startPluginSessionAsSystem(
+	ctx context.Context,
+	remotePluginPath string,
+) (plugin.Session, error) {
 	session, err := s.t.client.NewSession()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create SSH session: %w", err)
@@ -438,6 +489,42 @@ func (s *sshWindowsPlatform) startPluginSessionAsSystem(remotePluginPath string)
 		encodedCmdlet,
 	)
 
+	stderrPipeReader, stderrPipeWriter := io.Pipe()
+
+	readyChan := make(chan struct{})
+	errChan := make(chan error, 1)
+
+	go func() {
+		defer stderrPipeWriter.Close()
+
+		var accumulatedStderr strings.Builder
+		buf := make([]byte, 4096)
+
+		for {
+			n, readErr := stderr.Read(buf)
+			if n > 0 {
+				accumulatedStderr.Write(buf[:n])
+				text := accumulatedStderr.String()
+
+				if strings.Contains(text, plugin.PluginReadyMessage) {
+					close(readyChan)
+					io.Copy(stderrPipeWriter, stderr)
+					return
+				}
+			}
+
+			if readErr != nil {
+				if readErr != io.EOF {
+					errChan <- fmt.Errorf("error reading stderr for plugin at '%s': %w", remotePluginPath, readErr)
+					stdin.Close()
+					session.Close()
+					session.Wait()
+				}
+				return
+			}
+		}
+	}()
+
 	err = session.Start(cmd)
 	if err != nil {
 		stdin.Close()
@@ -445,36 +532,25 @@ func (s *sshWindowsPlatform) startPluginSessionAsSystem(remotePluginPath string)
 		return nil, fmt.Errorf("failed to start remote plugin '%s': %w", remotePluginPath, err)
 	}
 
-	return &sshPluginSession{
-		session: session,
-		stdout:  stdout,
-		stderr:  stderr,
-		stdin:   stdin,
-	}, nil
-}
-
-// FormatCommand implements sshPlatform.
-func (s *sshWindowsPlatform) FormatCommand(cmd string, env ...string) string {
-	sb := &strings.Builder{}
-	sb.WriteString(`powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "`)
-
-	if len(env) == 0 {
-		sb.WriteString("& '")
-		sb.WriteString(cmd)
-		sb.WriteString(`'"`)
-		return sb.String()
+	select {
+	case <-ctx.Done():
+		stdin.Close()
+		session.Close()
+		session.Wait()
+		return nil, fmt.Errorf("context cancelled while starting plugin at '%s': %w", remotePluginPath, ctx.Err())
+	case err := <-errChan:
+		stdin.Close()
+		session.Close()
+		session.Wait()
+		return nil, err
+	case <-readyChan:
+		return &sshPluginSession{
+			session: session,
+			stdout:  stdout,
+			stderr:  stderrPipeReader,
+			stdin:   stdin,
+		}, nil
 	}
-
-	for _, e := range env {
-		sb.WriteString("$env.")
-		sb.WriteString(e)
-		sb.WriteString("; ")
-	}
-
-	sb.WriteString("& '")
-	sb.WriteString(cmd)
-	sb.WriteString(`'"`)
-	return sb.String()
 }
 
 func (s *sshWindowsPlatform) populateWindowsArch() error {

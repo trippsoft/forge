@@ -224,6 +224,42 @@ func (s *sshPosixPlatform) StartPluginSession(
 		return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
 	}
 
+	stderrPipeReader, stderrPipeWriter := io.Pipe()
+
+	readyChan := make(chan struct{})
+	errChan := make(chan error, 1)
+
+	go func() {
+		defer stderrPipeWriter.Close()
+
+		var accumulatedStderr strings.Builder
+		buf := make([]byte, 4096)
+
+		for {
+			n, readErr := stderr.Read(buf)
+			if n > 0 {
+				accumulatedStderr.Write(buf[:n])
+				text := accumulatedStderr.String()
+
+				if strings.Contains(text, plugin.PluginReadyMessage) {
+					close(readyChan)
+					io.Copy(stderrPipeWriter, stderr)
+					return
+				}
+			}
+
+			if readErr != nil {
+				if readErr != io.EOF {
+					errChan <- fmt.Errorf("error reading stderr for plugin at '%s': %w", remotePluginPath, readErr)
+					stdin.Close()
+					session.Close()
+					session.Wait()
+				}
+				return
+			}
+		}
+	}()
+
 	err = session.Start(remotePluginPath)
 	if err != nil {
 		stdin.Close()
@@ -231,12 +267,25 @@ func (s *sshPosixPlatform) StartPluginSession(
 		return nil, fmt.Errorf("failed to start remote plugin '%s': %w", remotePluginPath, err)
 	}
 
-	return &sshPluginSession{
-		session: session,
-		stdout:  stdout,
-		stderr:  stderr,
-		stdin:   stdin,
-	}, nil
+	select {
+	case <-ctx.Done():
+		stdin.Close()
+		session.Close()
+		session.Wait()
+		return nil, fmt.Errorf("context cancelled while starting plugin at '%s': %w", remotePluginPath, ctx.Err())
+	case err := <-errChan:
+		stdin.Close()
+		session.Close()
+		session.Wait()
+		return nil, err
+	case <-readyChan:
+		return &sshPluginSession{
+			session: session,
+			stdout:  stdout,
+			stderr:  stderrPipeReader,
+			stdin:   stdin,
+		}, nil
+	}
 }
 
 func (s *sshPosixPlatform) startEscalatedPluginSession(
