@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package result;
+
+option go_package = "github.com/trippsoft/forge/pkg/result";
+
+message FailedPB {
+    bool ignored = 1;
+    string error = 2;
+    string detail = 3;
+}
+
+message SuccessPB {
+    bool changed = 1;
+    bytes output = 2;    
+}
+
+message SkippedPB {}
+
+message ResultPB {
+    oneof result {
+        FailedPB failed = 1;
+        SuccessPB success = 2;
+        SkippedPB skipped = 3;
+    }
+
+    repeated string warnings = 4;
+    repeated string messages = 5;
+}
