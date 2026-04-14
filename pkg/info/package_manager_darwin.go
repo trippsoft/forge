@@ -5,7 +5,9 @@
 
 package info
 
-import "os"
+import (
+	"os"
+)
 
 func (p *PackageManagerInfo) discover(_ *OSInfo) error {
 	fileInfo, err := os.Stat("/opt/homebrew/bin/brew")

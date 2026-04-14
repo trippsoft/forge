@@ -50,7 +50,7 @@ func (l *localPluginSession) Stderr() io.Reader {
 }
 
 // Stdin implements [plugin.Session].
-func (l *localPluginSession) Stdin() io.WriteCloser {
+func (l *localPluginSession) Stdin() io.Writer {
 	return l.stdin
 }
 

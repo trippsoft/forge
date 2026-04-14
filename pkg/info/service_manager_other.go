@@ -5,7 +5,9 @@
 
 package info
 
-import "os"
+import (
+	"os"
+)
 
 func (s *ServiceManagerInfo) discover() error {
 	s.Name = ""

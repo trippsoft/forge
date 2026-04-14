@@ -194,6 +194,10 @@ func (o *OSInfo) discover() error {
 		o.Release = "11 25H2"
 		o.ReleaseId = "11-25h2"
 		friendlyNamePrefix = "Microsoft Windows 11 25H2"
+	case strings.HasPrefix(o.Version, "10.0.28000"):
+		o.Release = "11 26H1"
+		o.ReleaseId = "11-26h1"
+		friendlyNamePrefix = "Microsoft Windows 11 26H1"
 	default:
 		o.Release = ""
 		o.ReleaseId = ""

@@ -205,13 +205,14 @@ func (s *sshTransport) connectSFTP() error {
 type sshPluginSession struct {
 	session *ssh.Session
 	stdout  io.Reader
-	stderr  io.Reader
+	stderr  io.ReadCloser
 	stdin   io.WriteCloser
 }
 
 // Close implements [plugin.Session].
 func (s *sshPluginSession) Close() error {
 	s.stdin.Close()
+	s.stderr.Close()
 	err := s.session.Close()
 	if err != nil {
 		return fmt.Errorf("failed to close SSH session: %w", err)
@@ -231,6 +232,6 @@ func (s *sshPluginSession) Stderr() io.Reader {
 }
 
 // Stdin implements [plugin.Session].
-func (s *sshPluginSession) Stdin() io.WriteCloser {
+func (s *sshPluginSession) Stdin() io.Writer {
 	return s.stdin
 }

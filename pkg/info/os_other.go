@@ -105,6 +105,7 @@ func (o *OSInfo) discover() error {
 	if o.Id != "" {
 		families = append(families, o.Id)
 	}
+
 	o.Families = families
 
 	return nil
