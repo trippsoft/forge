@@ -13,18 +13,18 @@ import (
 	"strings"
 )
 
-func (p *PackageManagerInfo) discover(osInfo *OSInfo) error {
+func (p *PackageManagerInfo) discover(osInfo *OSInfo) []string {
 	if slices.Contains(osInfo.Families, "archlinux") {
 		err := p.populateArchLinuxPackageManagerInfo()
 		if err != nil {
-			return err
+			return []string{"failed to populate Arch Linux package manager info: " + err.Error()}
 		}
 	}
 
 	if slices.Contains(osInfo.Families, "debian") || slices.Contains(osInfo.Families, "altlinux") {
 		err := p.populateDebianPackageManagerInfo()
 		if err != nil {
-			return err
+			return []string{"failed to populate Debian package manager info: " + err.Error()}
 		}
 
 		return nil
@@ -33,7 +33,7 @@ func (p *PackageManagerInfo) discover(osInfo *OSInfo) error {
 	if slices.Contains(osInfo.Families, "el") {
 		err := p.populateEnterpriseLinuxPackageManagerInfo()
 		if err != nil {
-			return err
+			return []string{"failed to populate Enterprise Linux package manager info: " + err.Error()}
 		}
 
 		return nil
@@ -42,7 +42,7 @@ func (p *PackageManagerInfo) discover(osInfo *OSInfo) error {
 	if slices.Contains(osInfo.Families, "gentoo") {
 		err := p.populateGentooPackageManagerInfo()
 		if err != nil {
-			return err
+			return []string{"failed to populate Gentoo package manager info: " + err.Error()}
 		}
 
 		return nil
@@ -51,13 +51,18 @@ func (p *PackageManagerInfo) discover(osInfo *OSInfo) error {
 	if slices.Contains(osInfo.Families, "suse") {
 		err := p.populateSUSEPackageManagerInfo()
 		if err != nil {
-			return err
+			return []string{"failed to populate SUSE package manager info: " + err.Error()}
 		}
 
 		return nil
 	}
 
-	return p.populateOtherLinuxPackageManagerInfo()
+	err := p.populateOtherLinuxPackageManagerInfo()
+	if err != nil {
+		return []string{"failed to populate other Linux package manager info: " + err.Error()}
+	}
+
+	return nil
 }
 
 func (p *PackageManagerInfo) populateArchLinuxPackageManagerInfo() error {

@@ -9,12 +9,12 @@ import (
 	"os"
 )
 
-func (s *ServiceManagerInfo) discover() error {
+func (s *ServiceManagerInfo) discover() []string {
 	s.Name = ""
 
 	fileInfo, err := os.Lstat("/sbin/init")
 	if err != nil {
-		return err
+		return []string{"failed to lstat /sbin/init: " + err.Error()}
 	}
 
 	if (fileInfo.Mode() & os.ModeSymlink) == 0 {
@@ -23,5 +23,5 @@ func (s *ServiceManagerInfo) discover() error {
 		return nil
 	}
 
-	return nil
+	return []string{"unable to determine service manager"}
 }

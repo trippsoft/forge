@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func (s *ServiceManagerInfo) discover() error {
+func (s *ServiceManagerInfo) discover() []string {
 	s.Name = ""
 
 	_, err := exec.LookPath("systemctl")
@@ -100,5 +100,5 @@ func (s *ServiceManagerInfo) discover() error {
 		return nil
 	}
 
-	return nil
+	return []string{"unable to determine Linux service manager"}
 }

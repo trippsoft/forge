@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-func (a *AppArmorInfo) discover() error {
+func (a *AppArmorInfo) discover() []string {
 	a.Supported = true
 
 	fileInfo, err := os.Stat("/sys/kernel/security/apparmor")
@@ -20,7 +20,7 @@ func (a *AppArmorInfo) discover() error {
 	}
 
 	if err != nil {
-		return err
+		return []string{"failed to stat /sys/kernel/security/apparmor: " + err.Error()}
 	}
 
 	if !fileInfo.IsDir() {
@@ -29,5 +29,6 @@ func (a *AppArmorInfo) discover() error {
 	}
 
 	a.Enabled = true
+
 	return nil
 }

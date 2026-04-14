@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func (s *SELinuxInfo) discover() error {
+func (s *SELinuxInfo) discover() []string {
 	s.Supported = true
 
 	fileInfo, err := os.Stat("/etc/selinux/config")
@@ -21,7 +21,7 @@ func (s *SELinuxInfo) discover() error {
 	}
 
 	if err != nil {
-		return err
+		return []string{"failed to stat /etc/selinux/config: " + err.Error()}
 	}
 
 	if !fileInfo.Mode().IsRegular() {
@@ -32,7 +32,7 @@ func (s *SELinuxInfo) discover() error {
 	s.Installed = true
 	file, err := os.Open("/etc/selinux/config")
 	if err != nil {
-		return err
+		return []string{"failed to open /etc/selinux/config: " + err.Error()}
 	}
 	defer file.Close()
 

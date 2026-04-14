@@ -7,13 +7,12 @@ package info
 
 import (
 	"bytes"
-	"errors"
 	"os/exec"
 	"runtime"
 	"strings"
 )
 
-func (o *OSInfo) discover() error {
+func (o *OSInfo) discover() []string {
 	o.Kernel = "darwin"
 	o.Id = "macos"
 	o.Edition = ""
@@ -29,14 +28,14 @@ func (o *OSInfo) discover() error {
 
 	err := cmd.Run()
 	if err != nil {
-		return err
+		return []string{"failed to get macOS version: " + err.Error()}
 	}
 
 	o.Version = string(bytes.TrimSpace(stdout.Bytes()))
 	o.FriendlyName = "macOS " + o.Version
 	versionParts := strings.Split(o.Version, ".")
 	if len(versionParts) < 2 {
-		return errors.New("invalid version format")
+		return []string{"invalid version format"}
 	}
 
 	o.MajorVersion = versionParts[0]
@@ -76,7 +75,7 @@ func (o *OSInfo) discover() error {
 			o.Release = "Catalina"
 			o.ReleaseId = "catalina"
 		default:
-			return errors.New("unknown macOS release for version 10." + minorVersion)
+			return []string{"unknown macOS release for version 10." + minorVersion}
 		}
 	case "11":
 		o.Release = "Big Sur"
@@ -97,7 +96,7 @@ func (o *OSInfo) discover() error {
 		o.Release = "Tahoe"
 		o.ReleaseId = "tahoe"
 	default:
-		return errors.New("unknown macOS major version: " + o.MajorVersion)
+		return []string{"unknown macOS major version: " + o.MajorVersion}
 	}
 
 	return nil

@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-func (f *FIPSInfo) discover() error {
+func (f *FIPSInfo) discover() []string {
 	f.Known = true
 
 	fileInfo, err := os.Stat("/proc/sys/crypto/fips_enabled")
@@ -20,17 +20,17 @@ func (f *FIPSInfo) discover() error {
 	}
 
 	if err != nil {
-		return err
+		return []string{"failed to stat /proc/sys/crypto/fips_enabled: " + err.Error()}
 	}
 
 	if !fileInfo.Mode().IsRegular() {
 		f.Enabled = false
-		return nil
+		return []string{"/proc/sys/crypto/fips_enabled is not a regular file"}
 	}
 
 	data, err := os.ReadFile("/proc/sys/crypto/fips_enabled")
 	if err != nil {
-		return err
+		return []string{"failed to read /proc/sys/crypto/fips_enabled: " + err.Error()}
 	}
 
 	content := string(bytes.TrimSpace(data))

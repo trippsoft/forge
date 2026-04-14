@@ -6,17 +6,16 @@
 package info
 
 import (
-	"errors"
 	"runtime"
 	"strings"
 
 	"github.com/trippsoft/forge/pkg/powershell"
 )
 
-func (o *OSInfo) discover() error {
+func (o *OSInfo) discover() []string {
 	shell, err := powershell.NewLocal()
 	if err != nil {
-		return err
+		return []string{"failed to create PowerShell shell: " + err.Error()}
 	}
 	defer shell.Exit()
 
@@ -25,20 +24,20 @@ func (o *OSInfo) discover() error {
 
 	stdout, _, err := shell.Execute("[System.Environment]::OSVersion.Version.ToString()")
 	if err != nil {
-		return err
+		return []string{"failed to get OS version: " + err.Error()}
 	}
 
 	o.Version = strings.TrimSpace(stdout)
 	versionParts := strings.Split(o.Version, ".")
 	if len(versionParts) < 3 {
-		return errors.New("unexpected Windows version format")
+		return []string{"unexpected Windows version format"}
 	}
 
 	o.MajorVersion = versionParts[0]
 
 	stdout, _, err = shell.Execute("(Get-CimInstance -ClassName Win32_OperatingSystem).Caption")
 	if err != nil {
-		return err
+		return []string{"failed to get OS caption: " + err.Error()}
 	}
 
 	caption := strings.TrimSpace(stdout)
@@ -204,7 +203,7 @@ func (o *OSInfo) discover() error {
 		o.FriendlyName = caption
 		o.Edition = ""
 		o.EditionId = ""
-		return nil
+		return []string{"unrecognized Windows version: " + o.Version}
 	}
 
 	captionParts := strings.Split(caption, " ")

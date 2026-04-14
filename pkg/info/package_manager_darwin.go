@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-func (p *PackageManagerInfo) discover(_ *OSInfo) error {
+func (p *PackageManagerInfo) discover(_ *OSInfo) []string {
 	fileInfo, err := os.Stat("/opt/homebrew/bin/brew")
 	if err == nil && fileInfo.Mode().IsRegular() {
 		p.Name = "homebrew"
@@ -33,5 +33,5 @@ func (p *PackageManagerInfo) discover(_ *OSInfo) error {
 
 	p.Name = ""
 	p.Path = ""
-	return nil
+	return []string{"unable to determine macOS package manager"}
 }

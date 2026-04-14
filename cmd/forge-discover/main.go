@@ -36,9 +36,8 @@ func realMain() error {
 		return err
 	}
 
-	hostInfo := info.NewHostInfo()
-	hostInfo.Discover()
-	err = plugin.Write(os.Stdout, hostInfo)
+	response := info.DiscoverHostInfo()
+	err = plugin.Write(os.Stdout, response)
 	if err != nil {
 		return err
 	}

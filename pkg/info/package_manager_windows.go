@@ -5,7 +5,7 @@
 
 package info
 
-func (p *PackageManagerInfo) discover(_ *OSInfo) error {
+func (p *PackageManagerInfo) discover(_ *OSInfo) []string {
 	// Windows package managers are not handled in this implementation.
 	// Winget and Chocolatey implementations are to be separate.
 	p.Name = ""

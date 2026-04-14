@@ -12,7 +12,7 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-func (f *FIPSInfo) discover() error {
+func (f *FIPSInfo) discover() []string {
 	f.Known = true
 
 	key, err := registry.OpenKey(
@@ -28,13 +28,13 @@ func (f *FIPSInfo) discover() error {
 	}
 
 	if err != nil {
-		return err
+		return []string{"failed to open FIPS registry key: " + err.Error()}
 	}
 	defer key.Close()
 
 	val, _, err := key.GetIntegerValue("")
 	if err != nil {
-		return err
+		return []string{"failed to read FIPS registry value: " + err.Error()}
 	}
 
 	f.Enabled = val != 0

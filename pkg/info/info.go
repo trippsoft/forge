@@ -14,38 +14,32 @@ const (
 	PopulateTimeout = 30 * time.Minute
 )
 
-func (h *HostInfo) Discover() error {
-	err := h.Os.discover()
-	if err != nil {
-		return err
+func (h *HostInfo) Discover() []string {
+	warnings := make([]string, 0)
+
+	w := h.Os.discover()
+	warnings = append(warnings, w...)
+
+	w = h.Fips.discover()
+	warnings = append(warnings, w...)
+
+	w = h.AppArmor.discover()
+	warnings = append(warnings, w...)
+
+	w = h.Selinux.discover()
+	warnings = append(warnings, w...)
+
+	w = h.PackageManager.discover(h.Os)
+	warnings = append(warnings, w...)
+
+	w = h.ServiceManager.discover()
+	warnings = append(warnings, w...)
+
+	if len(warnings) == 0 {
+		return nil
 	}
 
-	err = h.Fips.discover()
-	if err != nil {
-		return err
-	}
-
-	err = h.AppArmor.discover()
-	if err != nil {
-		return err
-	}
-
-	err = h.Selinux.discover()
-	if err != nil {
-		return err
-	}
-
-	err = h.PackageManager.discover(h.Os)
-	if err != nil {
-		return err
-	}
-
-	err = h.ServiceManager.discover()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return warnings
 }
 
 // ToMapOfCtyValues converts the HostInfo into a map of cty.Values.
@@ -79,5 +73,15 @@ func NewHostInfo() *HostInfo {
 		Selinux:        &SELinuxInfo{},
 		PackageManager: &PackageManagerInfo{},
 		ServiceManager: &ServiceManagerInfo{},
+	}
+}
+
+func DiscoverHostInfo() *DiscoverResponse {
+	hostInfo := NewHostInfo()
+	warnings := hostInfo.Discover()
+
+	return &DiscoverResponse{
+		HostInfo: hostInfo,
+		Warnings: warnings,
 	}
 }

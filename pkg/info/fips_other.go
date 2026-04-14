@@ -5,7 +5,7 @@
 
 package info
 
-func (f *FIPSInfo) discover() error {
+func (f *FIPSInfo) discover() []string {
 	f.Known = false
 	f.Enabled = false
 	return nil

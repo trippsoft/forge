@@ -8,7 +8,6 @@ package info
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"os"
 	"os/exec"
 	"runtime"
@@ -69,7 +68,7 @@ var (
 	}
 )
 
-func (o *OSInfo) discover() error {
+func (o *OSInfo) discover() []string {
 	o.Kernel = runtime.GOOS
 	o.Arch = runtime.GOARCH
 
@@ -77,7 +76,9 @@ func (o *OSInfo) discover() error {
 	lsbReleaseErr := o.populateFromLsbRelease()
 
 	if osReleaseErr != nil && lsbReleaseErr != nil {
-		return errors.Join(osReleaseErr, lsbReleaseErr)
+		return []string{
+			"failed to get OS information from both os-release file and lsb_release command: " + osReleaseErr.Error() + "; " + lsbReleaseErr.Error(),
+		}
 	}
 
 	if o.Release != "" {

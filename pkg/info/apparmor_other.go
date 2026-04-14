@@ -5,7 +5,7 @@
 
 package info
 
-func (a *AppArmorInfo) discover() error {
+func (a *AppArmorInfo) discover() []string {
 	a.Supported = false
 	a.Enabled = false
 	return nil
