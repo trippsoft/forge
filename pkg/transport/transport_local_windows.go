@@ -44,11 +44,6 @@ func (l *localTransport) startEscalatedPluginSession(
 		return nil, fmt.Errorf("failed to get stdin pipe for plugin at '%s': %w", path, err)
 	}
 
-	err = cmd.Start()
-	if err != nil {
-		return nil, fmt.Errorf("failed to start plugin at '%s': %w", path, err)
-	}
-
 	stderrPipeReader, stderrPipeWriter := io.Pipe()
 
 	readyChan := make(chan struct{})
@@ -103,11 +98,15 @@ func (l *localTransport) startEscalatedPluginSession(
 					cmd.Process.Kill()
 					cmd.Wait()
 				}
-
 				return
 			}
 		}
 	}()
+
+	err = cmd.Start()
+	if err != nil {
+		return nil, fmt.Errorf("failed to start plugin at '%s': %w", path, err)
+	}
 
 	select {
 	case <-ctx.Done():
@@ -121,7 +120,7 @@ func (l *localTransport) startEscalatedPluginSession(
 		cmd.Wait()
 		return nil, err
 	case <-readyChan:
-		return &localCommandSession{
+		return &localPluginSession{
 			command: cmd,
 			stdin:   stdin,
 			stdout:  stdout,
@@ -156,7 +155,7 @@ func (l *localTransport) startPluginSessionAsSystem(ctx context.Context, path st
 		return nil, fmt.Errorf("failed to start plugin at '%s': %w - %s", path, err, strings.TrimSpace(string(stderrBytes)))
 	}
 
-	return &localCommandSession{
+	return &localPluginSession{
 		command: cmd,
 		stdin:   stdin,
 		stdout:  stdout,

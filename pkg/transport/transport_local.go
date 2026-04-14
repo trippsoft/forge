@@ -17,18 +17,18 @@ var (
 	LocalTransport Transport = &localTransport{}
 )
 
-type localCommandSession struct {
+type localPluginSession struct {
 	command *exec.Cmd
-	stdin   io.WriteCloser
 	stdout  io.ReadCloser
 	stderr  io.ReadCloser
+	stdin   io.WriteCloser
 }
 
 // Close implements [plugin.Session].
-func (l *localCommandSession) Close() error {
-	l.stdin.Close()
+func (l *localPluginSession) Close() error {
 	l.stdout.Close()
 	l.stderr.Close()
+	l.stdin.Close()
 
 	err := l.command.Process.Kill()
 	if err != nil {
@@ -39,17 +39,17 @@ func (l *localCommandSession) Close() error {
 }
 
 // Stdout implements [plugin.Session].
-func (l *localCommandSession) Stdout() io.Reader {
+func (l *localPluginSession) Stdout() io.Reader {
 	return l.stdout
 }
 
 // Stderr implements [plugin.Session].
-func (l *localCommandSession) Stderr() io.Reader {
+func (l *localPluginSession) Stderr() io.Reader {
 	return l.stderr
 }
 
 // Stdin implements [plugin.Session].
-func (l *localCommandSession) Stdin() io.WriteCloser {
+func (l *localPluginSession) Stdin() io.WriteCloser {
 	return l.stdin
 }
 
@@ -119,7 +119,7 @@ func (l *localTransport) StartPluginSession(
 		return nil, fmt.Errorf("failed to start plugin at '%s': %w", path, err)
 	}
 
-	return &localCommandSession{
+	return &localPluginSession{
 		command: cmd,
 		stdin:   stdin,
 		stdout:  stdout,
