@@ -45,28 +45,28 @@ func TestMessageModuleRun(t *testing.T) {
 	}
 
 	r := message.Run(context.Background(), config)
-	if r.IsFailed() {
-		t.Fatalf("Expected no error from Run(), got: %q", r.ErrorMessage())
+	if r.Error != nil {
+		t.Fatalf("Expected no error from Run(), got: %q", r.Error.Error())
 	}
 
-	if r.IsChanged() {
+	if r.Changed {
 		t.Fatal("Expected module to not indicate changes were made")
 	}
 
-	if !r.Output().IsWhollyKnown() || r.Output().IsNull() {
+	if !r.Output.IsWhollyKnown() || r.Output.IsNull() {
 		t.Fatal("Expected non-nil output from Run(), got nil")
 	}
 
 	expectedMessage := "Hello, World!"
-	if len(r.Messages()) != 1 {
-		t.Fatalf("Expected 1 message in result.Messages, got: %d", len(r.Messages()))
+	if len(r.Messages) != 1 {
+		t.Fatalf("Expected 1 message in result.Messages, got: %d", len(r.Messages))
 	}
 
-	if r.Messages()[0] != expectedMessage {
-		t.Fatalf("Expected message %q, got %q", expectedMessage, r.Messages()[0])
+	if r.Messages[0] != expectedMessage {
+		t.Fatalf("Expected message %q, got %q", expectedMessage, r.Messages[0])
 	}
 
-	outputMap := r.Output().AsValueMap()
+	outputMap := r.Output.AsValueMap()
 	if len(outputMap) != 0 {
 		t.Fatalf("Expected empty output map, got: %v", outputMap)
 	}

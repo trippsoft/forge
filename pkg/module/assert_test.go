@@ -71,8 +71,8 @@ func TestAssertModuleRun(t *testing.T) {
 				t.Fatalf("Expected non-nil result from Run(), got nil")
 			}
 
-			if r.IsFailed() != tt.expectedFailed {
-				t.Errorf("Expected result from Run() to be %t, got %t", tt.expectedFailed, r.IsFailed())
+			if r.Failed != tt.expectedFailed {
+				t.Errorf("Expected result from Run() to be %t, got %t", tt.expectedFailed, r.Failed)
 			}
 		})
 	}

@@ -5,12 +5,17 @@ package module
 
 import (
 	"context"
+	"time"
 
 	"github.com/trippsoft/forge/pkg/hclspec"
 	"github.com/trippsoft/forge/pkg/info"
 	"github.com/trippsoft/forge/pkg/result"
 	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
+)
+
+const (
+	DefaultTimeout = 10 * time.Minute
 )
 
 var (
@@ -80,5 +85,5 @@ type Module interface {
 	InputSpec() *hclspec.Spec
 
 	// Run runs the module with the given context and configuration.
-	Run(ctx context.Context, config *RunConfig) result.Result
+	Run(ctx context.Context, config *RunConfig) *result.Result
 }

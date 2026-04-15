@@ -20,18 +20,17 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type FailedPB struct {
+type ModuleFailure struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Ignored bool   `protobuf:"varint,1,opt,name=ignored,proto3" json:"ignored,omitempty"`
-	Error   string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
-	Detail  string `protobuf:"bytes,3,opt,name=detail,proto3" json:"detail,omitempty"`
+	Error  string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+	Detail string `protobuf:"bytes,2,opt,name=detail,proto3" json:"detail,omitempty"`
 }
 
-func (x *FailedPB) Reset() {
-	*x = FailedPB{}
+func (x *ModuleFailure) Reset() {
+	*x = ModuleFailure{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_pkg_result_result_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -39,13 +38,13 @@ func (x *FailedPB) Reset() {
 	}
 }
 
-func (x *FailedPB) String() string {
+func (x *ModuleFailure) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*FailedPB) ProtoMessage() {}
+func (*ModuleFailure) ProtoMessage() {}
 
-func (x *FailedPB) ProtoReflect() protoreflect.Message {
+func (x *ModuleFailure) ProtoReflect() protoreflect.Message {
 	mi := &file_pkg_result_result_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -57,33 +56,26 @@ func (x *FailedPB) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use FailedPB.ProtoReflect.Descriptor instead.
-func (*FailedPB) Descriptor() ([]byte, []int) {
+// Deprecated: Use ModuleFailure.ProtoReflect.Descriptor instead.
+func (*ModuleFailure) Descriptor() ([]byte, []int) {
 	return file_pkg_result_result_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *FailedPB) GetIgnored() bool {
-	if x != nil {
-		return x.Ignored
-	}
-	return false
-}
-
-func (x *FailedPB) GetError() string {
+func (x *ModuleFailure) GetError() string {
 	if x != nil {
 		return x.Error
 	}
 	return ""
 }
 
-func (x *FailedPB) GetDetail() string {
+func (x *ModuleFailure) GetDetail() string {
 	if x != nil {
 		return x.Detail
 	}
 	return ""
 }
 
-type SuccessPB struct {
+type ModuleSuccess struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -92,8 +84,8 @@ type SuccessPB struct {
 	Output  []byte `protobuf:"bytes,2,opt,name=output,proto3" json:"output,omitempty"`
 }
 
-func (x *SuccessPB) Reset() {
-	*x = SuccessPB{}
+func (x *ModuleSuccess) Reset() {
+	*x = ModuleSuccess{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_pkg_result_result_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -101,13 +93,13 @@ func (x *SuccessPB) Reset() {
 	}
 }
 
-func (x *SuccessPB) String() string {
+func (x *ModuleSuccess) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SuccessPB) ProtoMessage() {}
+func (*ModuleSuccess) ProtoMessage() {}
 
-func (x *SuccessPB) ProtoReflect() protoreflect.Message {
+func (x *ModuleSuccess) ProtoReflect() protoreflect.Message {
 	mi := &file_pkg_result_result_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -119,33 +111,41 @@ func (x *SuccessPB) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SuccessPB.ProtoReflect.Descriptor instead.
-func (*SuccessPB) Descriptor() ([]byte, []int) {
+// Deprecated: Use ModuleSuccess.ProtoReflect.Descriptor instead.
+func (*ModuleSuccess) Descriptor() ([]byte, []int) {
 	return file_pkg_result_result_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *SuccessPB) GetChanged() bool {
+func (x *ModuleSuccess) GetChanged() bool {
 	if x != nil {
 		return x.Changed
 	}
 	return false
 }
 
-func (x *SuccessPB) GetOutput() []byte {
+func (x *ModuleSuccess) GetOutput() []byte {
 	if x != nil {
 		return x.Output
 	}
 	return nil
 }
 
-type SkippedPB struct {
+type ModuleResult struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	// Types that are assignable to Result:
+	//
+	//	*ModuleResult_Failed
+	//	*ModuleResult_Success
+	Result   isModuleResult_Result `protobuf_oneof:"result"`
+	Warnings []string              `protobuf:"bytes,3,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	Messages []string              `protobuf:"bytes,4,rep,name=messages,proto3" json:"messages,omitempty"`
 }
 
-func (x *SkippedPB) Reset() {
-	*x = SkippedPB{}
+func (x *ModuleResult) Reset() {
+	*x = ModuleResult{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_pkg_result_result_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -153,13 +153,13 @@ func (x *SkippedPB) Reset() {
 	}
 }
 
-func (x *SkippedPB) String() string {
+func (x *ModuleResult) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SkippedPB) ProtoMessage() {}
+func (*ModuleResult) ProtoMessage() {}
 
-func (x *SkippedPB) ProtoReflect() protoreflect.Message {
+func (x *ModuleResult) ProtoReflect() protoreflect.Message {
 	mi := &file_pkg_result_result_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -171,150 +171,86 @@ func (x *SkippedPB) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SkippedPB.ProtoReflect.Descriptor instead.
-func (*SkippedPB) Descriptor() ([]byte, []int) {
+// Deprecated: Use ModuleResult.ProtoReflect.Descriptor instead.
+func (*ModuleResult) Descriptor() ([]byte, []int) {
 	return file_pkg_result_result_proto_rawDescGZIP(), []int{2}
 }
 
-type ResultPB struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	// Types that are assignable to Result:
-	//
-	//	*ResultPB_Failed
-	//	*ResultPB_Success
-	//	*ResultPB_Skipped
-	Result   isResultPB_Result `protobuf_oneof:"result"`
-	Warnings []string          `protobuf:"bytes,4,rep,name=warnings,proto3" json:"warnings,omitempty"`
-	Messages []string          `protobuf:"bytes,5,rep,name=messages,proto3" json:"messages,omitempty"`
-}
-
-func (x *ResultPB) Reset() {
-	*x = ResultPB{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_result_result_proto_msgTypes[3]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ResultPB) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ResultPB) ProtoMessage() {}
-
-func (x *ResultPB) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_result_result_proto_msgTypes[3]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ResultPB.ProtoReflect.Descriptor instead.
-func (*ResultPB) Descriptor() ([]byte, []int) {
-	return file_pkg_result_result_proto_rawDescGZIP(), []int{3}
-}
-
-func (m *ResultPB) GetResult() isResultPB_Result {
+func (m *ModuleResult) GetResult() isModuleResult_Result {
 	if m != nil {
 		return m.Result
 	}
 	return nil
 }
 
-func (x *ResultPB) GetFailed() *FailedPB {
-	if x, ok := x.GetResult().(*ResultPB_Failed); ok {
+func (x *ModuleResult) GetFailed() *ModuleFailure {
+	if x, ok := x.GetResult().(*ModuleResult_Failed); ok {
 		return x.Failed
 	}
 	return nil
 }
 
-func (x *ResultPB) GetSuccess() *SuccessPB {
-	if x, ok := x.GetResult().(*ResultPB_Success); ok {
+func (x *ModuleResult) GetSuccess() *ModuleSuccess {
+	if x, ok := x.GetResult().(*ModuleResult_Success); ok {
 		return x.Success
 	}
 	return nil
 }
 
-func (x *ResultPB) GetSkipped() *SkippedPB {
-	if x, ok := x.GetResult().(*ResultPB_Skipped); ok {
-		return x.Skipped
-	}
-	return nil
-}
-
-func (x *ResultPB) GetWarnings() []string {
+func (x *ModuleResult) GetWarnings() []string {
 	if x != nil {
 		return x.Warnings
 	}
 	return nil
 }
 
-func (x *ResultPB) GetMessages() []string {
+func (x *ModuleResult) GetMessages() []string {
 	if x != nil {
 		return x.Messages
 	}
 	return nil
 }
 
-type isResultPB_Result interface {
-	isResultPB_Result()
+type isModuleResult_Result interface {
+	isModuleResult_Result()
 }
 
-type ResultPB_Failed struct {
-	Failed *FailedPB `protobuf:"bytes,1,opt,name=failed,proto3,oneof"`
+type ModuleResult_Failed struct {
+	Failed *ModuleFailure `protobuf:"bytes,1,opt,name=failed,proto3,oneof"`
 }
 
-type ResultPB_Success struct {
-	Success *SuccessPB `protobuf:"bytes,2,opt,name=success,proto3,oneof"`
+type ModuleResult_Success struct {
+	Success *ModuleSuccess `protobuf:"bytes,2,opt,name=success,proto3,oneof"`
 }
 
-type ResultPB_Skipped struct {
-	Skipped *SkippedPB `protobuf:"bytes,3,opt,name=skipped,proto3,oneof"`
-}
+func (*ModuleResult_Failed) isModuleResult_Result() {}
 
-func (*ResultPB_Failed) isResultPB_Result() {}
-
-func (*ResultPB_Success) isResultPB_Result() {}
-
-func (*ResultPB_Skipped) isResultPB_Result() {}
+func (*ModuleResult_Success) isModuleResult_Result() {}
 
 var File_pkg_result_result_proto protoreflect.FileDescriptor
 
 var file_pkg_result_result_proto_rawDesc = []byte{
 	0x0a, 0x17, 0x70, 0x6b, 0x67, 0x2f, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x2f, 0x72, 0x65, 0x73,
 	0x75, 0x6c, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c,
-	0x74, 0x22, 0x52, 0x0a, 0x08, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64, 0x50, 0x42, 0x12, 0x18, 0x0a,
-	0x07, 0x69, 0x67, 0x6e, 0x6f, 0x72, 0x65, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x07,
-	0x69, 0x67, 0x6e, 0x6f, 0x72, 0x65, 0x64, 0x12, 0x14, 0x0a, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x12, 0x16, 0x0a,
-	0x06, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x64,
-	0x65, 0x74, 0x61, 0x69, 0x6c, 0x22, 0x3d, 0x0a, 0x09, 0x53, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73,
-	0x50, 0x42, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x68, 0x61, 0x6e, 0x67, 0x65, 0x64, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x08, 0x52, 0x07, 0x63, 0x68, 0x61, 0x6e, 0x67, 0x65, 0x64, 0x12, 0x16, 0x0a, 0x06,
-	0x6f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x06, 0x6f, 0x75,
-	0x74, 0x70, 0x75, 0x74, 0x22, 0x0b, 0x0a, 0x09, 0x53, 0x6b, 0x69, 0x70, 0x70, 0x65, 0x64, 0x50,
-	0x42, 0x22, 0xd6, 0x01, 0x0a, 0x08, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x50, 0x42, 0x12, 0x2a,
-	0x0a, 0x06, 0x66, 0x61, 0x69, 0x6c, 0x65, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x10,
-	0x2e, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x2e, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64, 0x50, 0x42,
-	0x48, 0x00, 0x52, 0x06, 0x66, 0x61, 0x69, 0x6c, 0x65, 0x64, 0x12, 0x2d, 0x0a, 0x07, 0x73, 0x75,
-	0x63, 0x63, 0x65, 0x73, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x72, 0x65,
-	0x73, 0x75, 0x6c, 0x74, 0x2e, 0x53, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x50, 0x42, 0x48, 0x00,
-	0x52, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x12, 0x2d, 0x0a, 0x07, 0x73, 0x6b, 0x69,
-	0x70, 0x70, 0x65, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x72, 0x65, 0x73,
-	0x75, 0x6c, 0x74, 0x2e, 0x53, 0x6b, 0x69, 0x70, 0x70, 0x65, 0x64, 0x50, 0x42, 0x48, 0x00, 0x52,
-	0x07, 0x73, 0x6b, 0x69, 0x70, 0x70, 0x65, 0x64, 0x12, 0x1a, 0x0a, 0x08, 0x77, 0x61, 0x72, 0x6e,
-	0x69, 0x6e, 0x67, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x09, 0x52, 0x08, 0x77, 0x61, 0x72, 0x6e,
+	0x74, 0x22, 0x3d, 0x0a, 0x0d, 0x4d, 0x6f, 0x64, 0x75, 0x6c, 0x65, 0x46, 0x61, 0x69, 0x6c, 0x75,
+	0x72, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x12, 0x16, 0x0a, 0x06, 0x64, 0x65, 0x74, 0x61,
+	0x69, 0x6c, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c,
+	0x22, 0x41, 0x0a, 0x0d, 0x4d, 0x6f, 0x64, 0x75, 0x6c, 0x65, 0x53, 0x75, 0x63, 0x63, 0x65, 0x73,
+	0x73, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x68, 0x61, 0x6e, 0x67, 0x65, 0x64, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x08, 0x52, 0x07, 0x63, 0x68, 0x61, 0x6e, 0x67, 0x65, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x6f,
+	0x75, 0x74, 0x70, 0x75, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x06, 0x6f, 0x75, 0x74,
+	0x70, 0x75, 0x74, 0x22, 0xb4, 0x01, 0x0a, 0x0c, 0x4d, 0x6f, 0x64, 0x75, 0x6c, 0x65, 0x52, 0x65,
+	0x73, 0x75, 0x6c, 0x74, 0x12, 0x2f, 0x0a, 0x06, 0x66, 0x61, 0x69, 0x6c, 0x65, 0x64, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x2e, 0x4d, 0x6f,
+	0x64, 0x75, 0x6c, 0x65, 0x46, 0x61, 0x69, 0x6c, 0x75, 0x72, 0x65, 0x48, 0x00, 0x52, 0x06, 0x66,
+	0x61, 0x69, 0x6c, 0x65, 0x64, 0x12, 0x31, 0x0a, 0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x2e,
+	0x4d, 0x6f, 0x64, 0x75, 0x6c, 0x65, 0x53, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x48, 0x00, 0x52,
+	0x07, 0x73, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0x12, 0x1a, 0x0a, 0x08, 0x77, 0x61, 0x72, 0x6e,
+	0x69, 0x6e, 0x67, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x09, 0x52, 0x08, 0x77, 0x61, 0x72, 0x6e,
 	0x69, 0x6e, 0x67, 0x73, 0x12, 0x1a, 0x0a, 0x08, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73,
-	0x18, 0x05, 0x20, 0x03, 0x28, 0x09, 0x52, 0x08, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73,
+	0x18, 0x04, 0x20, 0x03, 0x28, 0x09, 0x52, 0x08, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73,
 	0x42, 0x08, 0x0a, 0x06, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x42, 0x27, 0x5a, 0x25, 0x67, 0x69,
 	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x72, 0x69, 0x70, 0x70, 0x73, 0x6f,
 	0x66, 0x74, 0x2f, 0x66, 0x6f, 0x72, 0x67, 0x65, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x72, 0x65, 0x73,
@@ -333,22 +269,20 @@ func file_pkg_result_result_proto_rawDescGZIP() []byte {
 	return file_pkg_result_result_proto_rawDescData
 }
 
-var file_pkg_result_result_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_pkg_result_result_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_pkg_result_result_proto_goTypes = []interface{}{
-	(*FailedPB)(nil),  // 0: result.FailedPB
-	(*SuccessPB)(nil), // 1: result.SuccessPB
-	(*SkippedPB)(nil), // 2: result.SkippedPB
-	(*ResultPB)(nil),  // 3: result.ResultPB
+	(*ModuleFailure)(nil), // 0: result.ModuleFailure
+	(*ModuleSuccess)(nil), // 1: result.ModuleSuccess
+	(*ModuleResult)(nil),  // 2: result.ModuleResult
 }
 var file_pkg_result_result_proto_depIdxs = []int32{
-	0, // 0: result.ResultPB.failed:type_name -> result.FailedPB
-	1, // 1: result.ResultPB.success:type_name -> result.SuccessPB
-	2, // 2: result.ResultPB.skipped:type_name -> result.SkippedPB
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	0, // 0: result.ModuleResult.failed:type_name -> result.ModuleFailure
+	1, // 1: result.ModuleResult.success:type_name -> result.ModuleSuccess
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_pkg_result_result_proto_init() }
@@ -358,7 +292,7 @@ func file_pkg_result_result_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_pkg_result_result_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*FailedPB); i {
+			switch v := v.(*ModuleFailure); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -370,7 +304,7 @@ func file_pkg_result_result_proto_init() {
 			}
 		}
 		file_pkg_result_result_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SuccessPB); i {
+			switch v := v.(*ModuleSuccess); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -382,19 +316,7 @@ func file_pkg_result_result_proto_init() {
 			}
 		}
 		file_pkg_result_result_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SkippedPB); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_pkg_result_result_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ResultPB); i {
+			switch v := v.(*ModuleResult); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -406,10 +328,9 @@ func file_pkg_result_result_proto_init() {
 			}
 		}
 	}
-	file_pkg_result_result_proto_msgTypes[3].OneofWrappers = []interface{}{
-		(*ResultPB_Failed)(nil),
-		(*ResultPB_Success)(nil),
-		(*ResultPB_Skipped)(nil),
+	file_pkg_result_result_proto_msgTypes[2].OneofWrappers = []interface{}{
+		(*ModuleResult_Failed)(nil),
+		(*ModuleResult_Success)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -417,7 +338,7 @@ func file_pkg_result_result_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_pkg_result_result_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

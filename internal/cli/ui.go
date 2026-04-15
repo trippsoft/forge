@@ -5,6 +5,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -269,12 +270,12 @@ func (c *CLI) PrintHeader(level ui.HeaderLevel, prefix, text string) {
 }
 
 // PrintHostResult implements ui.UI.
-func (c *CLI) PrintHostResult(hostname string, r result.Result) {
+func (c *CLI) PrintHostResult(hostname string, r *result.Result) {
 	c.printResult(hostname, r)
 }
 
 // PrintIterationResult implements ui.UI.
-func (c *CLI) PrintIterationResult(hostname string, iterationLabel string, r result.Result) {
+func (c *CLI) PrintIterationResult(hostname string, iterationLabel string, r *result.Result) {
 	var label string
 	if iterationLabel == "" {
 		label = hostname
@@ -311,13 +312,13 @@ func (c *CLI) getConsoleWidth() int {
 	return width - 2
 }
 
-func (c *CLI) printResult(label string, r result.Result) {
+func (c *CLI) printResult(label string, r *result.Result) {
 	if r == nil {
-		r = result.NewFailedResult("no result returned from module", "")
+		r = result.NewFailure(errors.New("no result returned from module"), "")
 	}
 
 	errorStringBuilder := &strings.Builder{}
-	if r.IsFailed() {
+	if r.Error != nil {
 		errorStringBuilder.WriteString(strings.Repeat(" ", 6))
 
 		if c.color {
@@ -325,7 +326,7 @@ func (c *CLI) printResult(label string, r result.Result) {
 		}
 
 		errorStringBuilder.WriteString("ERROR:   ")
-		errorStringBuilder.WriteString(strings.ReplaceAll(r.ErrorMessage(), "\n", "\n"+strings.Repeat(" ", 8)))
+		errorStringBuilder.WriteString(strings.ReplaceAll(r.Error.Error(), "\n", "\n"+strings.Repeat(" ", 8)))
 
 		if c.color {
 			errorStringBuilder.WriteString("\033[0m") // Reset
@@ -333,14 +334,14 @@ func (c *CLI) printResult(label string, r result.Result) {
 
 		errorStringBuilder.WriteRune('\n')
 
-		if r.ErrorDetails() != "" && c.debug {
+		if r.ErrorDetail != "" && c.debug {
 			errorStringBuilder.WriteString(strings.Repeat(" ", 8))
 			if c.color {
 				errorStringBuilder.WriteString("\033[40;3m") // Black, Italic
 			}
 
 			errorStringBuilder.WriteString("DETAIL:  ")
-			errorStringBuilder.WriteString(strings.ReplaceAll(r.ErrorDetails(), "\n", "\n"+strings.Repeat(" ", 10)))
+			errorStringBuilder.WriteString(strings.ReplaceAll(r.ErrorDetail, "\n", "\n"+strings.Repeat(" ", 10)))
 
 			if c.color {
 				errorStringBuilder.WriteString("\033[0m") // Reset
@@ -370,7 +371,7 @@ func (c *CLI) printResult(label string, r result.Result) {
 
 	outStringBuilder.WriteRune('\n')
 
-	if r.IsIgnoredFailure() {
+	if r.Failed && r.IgnoredFailure {
 		outStringBuilder.WriteString(strings.Repeat(" ", 6))
 		if c.color {
 			outStringBuilder.WriteString("\033[44;3m") // Blue, Italic
@@ -384,7 +385,7 @@ func (c *CLI) printResult(label string, r result.Result) {
 		outStringBuilder.WriteRune('\n')
 	}
 
-	for _, warning := range r.Warnings() {
+	for _, warning := range r.Warnings {
 		outStringBuilder.WriteString(strings.Repeat(" ", 6))
 		if c.color {
 			outStringBuilder.WriteString("\033[33;1;3m") // Yellow, Bold, Italic
@@ -399,7 +400,7 @@ func (c *CLI) printResult(label string, r result.Result) {
 		outStringBuilder.WriteRune('\n')
 	}
 
-	for _, message := range r.Messages() {
+	for _, message := range r.Messages {
 		outStringBuilder.WriteString(strings.Repeat(" ", 6))
 		if c.color {
 			outStringBuilder.WriteString("\033[32;1;3m") // Green, Bold, Italic
@@ -424,8 +425,8 @@ func (c *CLI) printResult(label string, r result.Result) {
 	_, _ = fmt.Fprint(c.stderr, stderr)
 }
 
-func (c *CLI) getStatusTextAndFormat(r result.Result) (string, string) {
-	if r.IsSkipped() {
+func (c *CLI) getStatusTextAndFormat(r *result.Result) (string, string) {
+	if r.Skipped {
 		if c.color {
 			return "SKIPPED", "\033[36;1m" // Cyan, Italic
 		}
@@ -433,7 +434,7 @@ func (c *CLI) getStatusTextAndFormat(r result.Result) (string, string) {
 		return "SKIPPED", ""
 	}
 
-	if r.IsFailed() || r.IsIgnoredFailure() {
+	if r.Failed {
 		if c.color {
 			return "FAILED", "\033[31;1m" // Red, Bold
 		}
@@ -441,7 +442,7 @@ func (c *CLI) getStatusTextAndFormat(r result.Result) (string, string) {
 		return "FAILED", ""
 	}
 
-	if r.IsChanged() {
+	if r.Changed {
 		if c.color {
 			return "CHANGED", "\033[33;1m" // Yellow, Bold
 		}

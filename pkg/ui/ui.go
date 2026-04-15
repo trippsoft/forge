@@ -65,14 +65,14 @@ type UI interface {
 	//
 	// The hostname is the name of the managed system.
 	// The result indicates the outcome of the step execution.
-	PrintHostResult(hostname string, result result.Result)
+	PrintHostResult(hostname string, result *result.Result)
 
 	// PrintIterationResult prints the step result for a single iteration on a host.
 	//
 	// The hostname is the name of the managed system.
 	// The iterationLabel is the label for the specific iteration.
 	// The result indicates the outcome of the step execution for that iteration.
-	PrintIterationResult(hostname, iterationLabel string, result result.Result)
+	PrintIterationResult(hostname, iterationLabel string, result *result.Result)
 }
 
 type mockUI struct{}
@@ -102,9 +102,9 @@ func (m *mockUI) PrintHeader(level HeaderLevel, prefix, text string) {
 }
 
 // PrintHostResult implements UI.
-func (m *mockUI) PrintHostResult(hostname string, result result.Result) {
+func (m *mockUI) PrintHostResult(hostname string, result *result.Result) {
 }
 
 // PrintIterationResult implements UI.
-func (m *mockUI) PrintIterationResult(hostname string, iterationLabel string, result result.Result) {
+func (m *mockUI) PrintIterationResult(hostname string, iterationLabel string, result *result.Result) {
 }

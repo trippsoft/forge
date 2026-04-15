@@ -5,6 +5,7 @@ package module
 
 import (
 	"context"
+	"errors"
 
 	"github.com/trippsoft/forge/pkg/hclspec"
 	"github.com/trippsoft/forge/pkg/result"
@@ -41,23 +42,23 @@ func (m *AssertModule) InputSpec() *hclspec.Spec {
 }
 
 // Run implements Module.
-func (m *AssertModule) Run(ctx context.Context, config *RunConfig) result.Result {
+func (m *AssertModule) Run(ctx context.Context, config *RunConfig) *result.Result {
 	if config == nil {
-		return result.NewFailedResult("config is nil", "")
+		return result.NewFailure(errors.New("config is nil"), "")
 	}
 
 	if config.Input == nil {
-		return result.NewFailedResult("input is nil", "")
+		return result.NewFailure(errors.New("input is nil"), "")
 	}
 
 	condition := config.Input["condition"].True()
 	if !condition {
 		failureMessage := config.Input["failure_message"]
 		if failureMessage.IsWhollyKnown() && !failureMessage.IsNull() {
-			return result.NewFailedResult(failureMessage.AsString(), "")
+			return result.NewFailure(errors.New(failureMessage.AsString()), "")
 		}
 
-		return result.NewFailedResult(defaultFailureMessage, "")
+		return result.NewFailure(errors.New(defaultFailureMessage), "")
 	}
 
 	successMessage := config.Input["success_message"]
@@ -74,8 +75,8 @@ func (m *AssertModule) Run(ctx context.Context, config *RunConfig) result.Result
 
 	output := cty.ObjectVal(outputMap)
 
-	r := result.NewNotChangedResult(output)
-	r.AddMessages(message)
+	r := result.NewNotChanged(output)
+	r.Messages = []string{message}
 
 	return r
 }

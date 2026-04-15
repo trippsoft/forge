@@ -5,6 +5,7 @@ package module
 
 import (
 	"context"
+	"errors"
 
 	"github.com/trippsoft/forge/pkg/hclspec"
 	"github.com/trippsoft/forge/pkg/hclutil"
@@ -33,13 +34,13 @@ func (s *MessageModule) InputSpec() *hclspec.Spec {
 }
 
 // Run implements ModuleExecutor.
-func (s *MessageModule) Run(ctx context.Context, config *RunConfig) result.Result {
+func (s *MessageModule) Run(ctx context.Context, config *RunConfig) *result.Result {
 	if config == nil {
-		return result.NewFailedResult("config cannot be nil", "")
+		return result.NewFailure(errors.New("config cannot be nil"), "")
 	}
 
 	if config.Input == nil {
-		return result.NewFailedResult("input cannot be nil", "")
+		return result.NewFailure(errors.New("input cannot be nil"), "")
 	}
 
 	messageVal := config.Input["message"]
@@ -51,8 +52,8 @@ func (s *MessageModule) Run(ctx context.Context, config *RunConfig) result.Resul
 		message = hclutil.FormatCtyValueToIndentedString(config.Input["message"], 0, 4)
 	}
 
-	r := result.NewNotChangedResult(cty.EmptyObjectVal)
-	r.AddMessages(message)
+	r := result.NewNotChanged(cty.EmptyObjectVal)
+	r.Messages = []string{message}
 
 	return r
 }

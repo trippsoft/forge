@@ -4,26 +4,22 @@ package result;
 
 option go_package = "github.com/trippsoft/forge/pkg/result";
 
-message FailedPB {
-    bool ignored = 1;
-    string error = 2;
-    string detail = 3;
+message ModuleFailure {
+    string error = 1;
+    string detail = 2;
 }
 
-message SuccessPB {
+message ModuleSuccess {
     bool changed = 1;
     bytes output = 2;    
 }
 
-message SkippedPB {}
-
-message ResultPB {
+message ModuleResult {
     oneof result {
-        FailedPB failed = 1;
-        SuccessPB success = 2;
-        SkippedPB skipped = 3;
+        ModuleFailure failed = 1;
+        ModuleSuccess success = 2;
     }
 
-    repeated string warnings = 4;
-    repeated string messages = 5;
+    repeated string warnings = 3;
+    repeated string messages = 4;
 }

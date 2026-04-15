@@ -4,9 +4,14 @@
 package info
 
 import (
+	"context"
+	"fmt"
 	"maps"
 	"time"
 
+	"github.com/trippsoft/forge/pkg/plugin"
+	"github.com/trippsoft/forge/pkg/result"
+	"github.com/trippsoft/forge/pkg/transport"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -14,6 +19,46 @@ const (
 	PopulateTimeout = 30 * time.Minute
 )
 
+// Populate retrieves and populates the HostInfo using the provided transport.
+func (i *HostInfo) Populate(t transport.Transport) *result.Result {
+	session, err := t.StartPluginSession(
+		context.Background(),
+		plugin.SharedPluginBasePath,
+		"forge",
+		"discover",
+		nil,
+	)
+	if err != nil {
+		err = fmt.Errorf("failed to start plugin session: %w", err)
+		return result.NewFailure(err, "")
+	}
+	defer session.Close()
+
+	request := &DiscoverRequest{}
+	err = plugin.Write(session.Stdin(), request)
+	if err != nil {
+		err = fmt.Errorf("failed to write discover request: %w", err)
+		return result.NewFailure(err, "")
+	}
+
+	response := &DiscoverResponse{}
+	err = plugin.Read(session.Stdout(), response)
+	if err != nil {
+		err = fmt.Errorf("failed to read discover response: %w", err)
+		return result.NewFailure(err, "")
+	}
+
+	i.CopyFrom(response.HostInfo)
+
+	r := result.NewNotChanged(cty.EmptyObjectVal)
+	if len(response.Warnings) > 0 {
+		r.Messages = response.Warnings
+	}
+
+	return r
+}
+
+// Discover performs discovery of the host information and returns any warnings encountered during discovery.
 func (h *HostInfo) Discover() []string {
 	warnings := make([]string, 0)
 
