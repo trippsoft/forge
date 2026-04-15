@@ -245,19 +245,26 @@ cmd/
   forge-core/         # Core plugin server
   forge-discover/     # Discovery plugin server
 pkg/
-  inventory/          # Inventory types and parsing
-  workflow/           # Workflow types and execution
-  module/             # Module interfaces and registry
-  info/               # Host information discovery
-  transport/          # Transport implementations
-  plugin/             # Plugin management
-  result/             # Result types and handling
+  errorwrap/          # Error wrapping utilities
   hclfunction/        # HCL function implementations
   hclspec/            # HCL type specifications
+  hclutil/            # HCL parsing and utility functions
+  info/               # Host information discovery
+  inventory/          # Inventory types and parsing
+  module/             # Module interfaces and registry
+  plugin/             # Plugin management
+  powershell/         # PowerShell execution utilities
+  python/             # Python execution utilities
+  result/             # Result types and handling
+  secret/             # Secret management utilities
+  set/                # Set data structure implementation
+  transport/          # Transport implementations
   ui/                 # User interface
-  util/               # Utilities
+  workflow/           # Workflow types and execution
 internal/
+  cli/                # CLI command implementations
   module/             # Core plugin modules
+  version/            # Version information
 test/
   workflow/           # Workflow parsing and resolution tests
   inventory/          # Inventory parsing and resolution tests
