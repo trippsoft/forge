@@ -16,7 +16,7 @@ message ModuleSuccess {
 
 message ModuleResult {
     oneof result {
-        ModuleFailure failed = 1;
+        ModuleFailure failure = 1;
         ModuleSuccess success = 2;
     }
 

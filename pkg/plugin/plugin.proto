@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package plugin;
+
+option go_package = "github.com/trippsoft/forge/pkg/plugin";
+
+import "pkg/hclspec/hclspec.proto";
+
+message MetadataRequest {}
+
+enum ModuleType {
+    LOCAL = 0;
+    REMOTE = 1;
+}
+
+message ModuleSpec {
+    ModuleType type = 1;
+    hclspec.SpecPB spec = 2;
+}
+
+message MetadataResponse {
+    int32 apiVersion = 1;
+    string namespace = 2;
+    string pluginName = 3;
+    map<string, ModuleSpec> modules = 4;
+}

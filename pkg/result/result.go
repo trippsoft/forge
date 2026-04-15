@@ -91,8 +91,8 @@ func NewFailure(err error, errDetail string) *Result {
 // the protobuf.
 func (r *ModuleResult) ToResult() *Result {
 	switch res := r.Result.(type) {
-	case *ModuleResult_Failed:
-		result := NewFailure(errors.New(res.Failed.Error), res.Failed.Detail)
+	case *ModuleResult_Failure:
+		result := NewFailure(errors.New(res.Failure.Error), res.Failure.Detail)
 		result.Warnings = r.Warnings
 		result.Messages = r.Messages
 		return result

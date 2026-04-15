@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package plugin.v1;
+
+option go_package = "github.com/trippsoft/forge/pkg/plugin/v1;pluginv1";
+
+import "pkg/info/info.proto";
+import "pkg/result/result.proto";
+
+message RunModuleRequest {
+    string moduleName = 1;
+    info.HostInfo hostInfo = 2;
+    bool what_if = 3;
+    map<string, bytes> input = 4;
+}
+
+message RunModuleResponse {
+    result.ModuleResult result = 1;
+}
