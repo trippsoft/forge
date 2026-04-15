@@ -34,14 +34,23 @@ type Result interface {
 	// Warnings returns a list of warnings associated with the result, if any.
 	Warnings() []string
 
+	// AddWarnings adds the provided warnings to the result.
+	AddWarnings(warnings ...string)
+
 	// Messages returns a list of messages associated with the result, if any.
 	Messages() []string
+
+	// AddMessages adds the provided messages to the result.
+	AddMessages(messages ...string)
 
 	// ErrorMessage returns the error message associated with the result, if it is a failure result.
 	ErrorMessage() string
 
 	// ErrorDetails returns the error details associated with the result, if it is a failure result.
 	ErrorDetails() string
+
+	// IgnoreFailure ensures that if the result represents a failure, it is treated as an ignored failure instead.
+	IgnoreFailure()
 
 	// Output returns the output value associated with the result, if any.
 	//
@@ -62,8 +71,26 @@ func (r *result) Warnings() []string {
 	return r.warnings
 }
 
+func (r *result) AddWarnings(warnings ...string) {
+	if r.warnings == nil {
+		r.warnings = warnings
+		return
+	}
+
+	r.warnings = append(r.warnings, warnings...)
+}
+
 func (r *result) Messages() []string {
 	return r.messages
+}
+
+func (r *result) AddMessages(messages ...string) {
+	if r.messages == nil {
+		r.messages = messages
+		return
+	}
+
+	r.messages = append(r.messages, messages...)
 }
 
 // FailedResult represents a failure result, which may be either an ignored failure or a non-ignored failure.
@@ -104,6 +131,11 @@ func (f *FailedResult) ErrorDetails() string {
 	return f.errorDetails
 }
 
+// IgnoreFailure implements [Result].
+func (f *FailedResult) IgnoreFailure() {
+	f.ignored = true
+}
+
 // Output implements [Result].
 func (f *FailedResult) Output() cty.Value {
 	return cty.NullVal(cty.DynamicPseudoType)
@@ -125,41 +157,10 @@ func (f *FailedResult) ToProtobuf() *ResultPB {
 }
 
 // NewFailedResult creates a new FailedResult with the provided error message, error details, messages, and warnings.
-func NewFailedResult(
-	errorMessage string,
-	errorDetails string,
-	messages []string,
-	warnings []string,
-) Result {
-	r := &result{
-		warnings: warnings,
-		messages: messages,
-	}
-
+func NewFailedResult(errorMessage string, errorDetails string) Result {
 	return &FailedResult{
-		result:       r,
+		result:       &result{},
 		ignored:      false,
-		errorMessage: errorMessage,
-		errorDetails: errorDetails,
-	}
-}
-
-// NewIgnoredFailedResult creates a new FailedResult that is marked as ignored, with the provided error message, error
-// details, messages, and warnings.
-func NewIgnoredFailedResult(
-	errorMessage string,
-	errorDetails string,
-	messages []string,
-	warnings []string,
-) Result {
-	r := &result{
-		warnings: warnings,
-		messages: messages,
-	}
-
-	return &FailedResult{
-		result:       r,
-		ignored:      true,
 		errorMessage: errorMessage,
 		errorDetails: errorDetails,
 	}
@@ -188,6 +189,26 @@ func (s *SkippedResult) IsSkipped() bool {
 	return true
 }
 
+// Warnings implements [Result].
+func (s *SkippedResult) Warnings() []string {
+	return nil
+}
+
+// AddWarnings implements [Result].
+func (s *SkippedResult) AddWarnings(warnings ...string) {
+	// No-op since skipped results do not have warnings.
+}
+
+// Messages implements [Result].
+func (s *SkippedResult) Messages() []string {
+	return nil
+}
+
+// AddMessages implements [Result].
+func (s *SkippedResult) AddMessages(messages ...string) {
+	// No-op since skipped results do not have messages.
+}
+
 // ErrorMessage implements [Result].
 func (s *SkippedResult) ErrorMessage() string {
 	return ""
@@ -198,14 +219,8 @@ func (s *SkippedResult) ErrorDetails() string {
 	return ""
 }
 
-// Messages implements [Result].
-func (s *SkippedResult) Messages() []string {
-	return nil
-}
-
-// Warnings implements [Result].
-func (s *SkippedResult) Warnings() []string {
-	return nil
+// IgnoreFailure implements [Result].
+func (s *SkippedResult) IgnoreFailure() {
 }
 
 // Output implements [Result].
@@ -258,6 +273,10 @@ func (s *SuccessResult) ErrorDetails() string {
 	return ""
 }
 
+// IgnoreFailure implements [Result].
+func (s *SuccessResult) IgnoreFailure() {
+}
+
 // Output implements [Result].
 func (s *SuccessResult) Output() cty.Value {
 	return s.output
@@ -281,14 +300,9 @@ func (s *SuccessResult) ToProtobuf() *ResultPB {
 
 // NewNotChangedResult creates a new SuccessResult indicating that the operation was successful but did not result in
 // any changes, with the provided output, messages, and warnings.
-func NewNotChangedResult(output cty.Value, messages []string, warnings []string) Result {
-	r := &result{
-		warnings: warnings,
-		messages: messages,
-	}
-
+func NewNotChangedResult(output cty.Value) Result {
 	return &SuccessResult{
-		result:  r,
+		result:  &result{},
 		changed: false,
 		output:  output,
 	}
@@ -296,14 +310,9 @@ func NewNotChangedResult(output cty.Value, messages []string, warnings []string)
 
 // NewChangedResult creates a new SuccessResult indicating that the operation was successful and resulted in changes,
 // with the provided output, messages, and warnings.
-func NewChangedResult(output cty.Value, messages []string, warnings []string) Result {
-	r := &result{
-		warnings: warnings,
-		messages: messages,
-	}
-
+func NewChangedResult(output cty.Value) Result {
 	return &SuccessResult{
-		result:  r,
+		result:  &result{},
 		changed: true,
 		output:  output,
 	}
@@ -311,7 +320,10 @@ func NewChangedResult(output cty.Value, messages []string, warnings []string) Re
 
 // ToResult converts the FailedPB to a FailedResult, using the provided warnings and messages.
 func (f *FailedPB) ToResult(warnings []string, messages []string) Result {
-	return NewFailedResult(f.Error, f.Detail, messages, warnings)
+	result := NewFailedResult(f.Error, f.Detail)
+	result.AddWarnings(warnings...)
+	result.AddMessages(messages...)
+	return result
 }
 
 // ToResult converts the SkippedPB to a SkippedResult.
@@ -323,14 +335,23 @@ func (s *SkippedPB) ToResult() Result {
 func (s *SuccessPB) ToResult(warnings []string, messages []string) Result {
 	output, err := json.Unmarshal(s.Output, cty.DynamicPseudoType)
 	if err != nil {
-		return NewFailedResult(fmt.Sprintf("failed to unmarshal output: %v", err), "", messages, warnings)
+		result := NewFailedResult(fmt.Sprintf("failed to unmarshal output: %v", err), "")
+		result.AddWarnings(warnings...)
+		result.AddMessages(messages...)
+		return result
 	}
 
 	if s.Changed {
-		return NewChangedResult(output, messages, warnings)
+		result := NewChangedResult(output)
+		result.AddWarnings(warnings...)
+		result.AddMessages(messages...)
+		return result
 	}
 
-	return NewNotChangedResult(output, messages, warnings)
+	result := NewNotChangedResult(output)
+	result.AddWarnings(warnings...)
+	result.AddMessages(messages...)
+	return result
 }
 
 // ToResult converts the ResultPB to a Result, using the appropriate conversion based on the type of result contained in
@@ -344,6 +365,9 @@ func (r *ResultPB) ToResult() Result {
 	case *ResultPB_Success:
 		return res.Success.ToResult(r.Warnings, r.Messages)
 	default:
-		return NewFailedResult("invalid protobuf result: unknown result type", "", r.Messages, r.Warnings)
+		result := NewFailedResult("invalid protobuf result: unknown result type", "")
+		result.AddWarnings(r.Warnings...)
+		result.AddMessages(r.Messages...)
+		return result
 	}
 }

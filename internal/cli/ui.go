@@ -313,7 +313,7 @@ func (c *CLI) getConsoleWidth() int {
 
 func (c *CLI) printResult(label string, r result.Result) {
 	if r == nil {
-		r = result.NewFailedResult("no result returned from module", "", []string{}, []string{})
+		r = result.NewFailedResult("no result returned from module", "")
 	}
 
 	errorStringBuilder := &strings.Builder{}
