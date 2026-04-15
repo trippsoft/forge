@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"syscall"
 
@@ -149,21 +150,27 @@ func (s *sshWindowsPlatform) MkdirAll(path string) error {
 
 // UploadFile implements [sshPlatform].
 func (s *sshWindowsPlatform) UploadFile(localPath, remotePath string) error {
-	if s.t.sftpClient == nil {
-		sftpClient, err := sftp.NewClient(s.t.client)
-		if err != nil {
-			return fmt.Errorf("failed to create SFTP client: %w", err)
-		}
-
-		s.t.sftpClient = sftpClient
+	err := s.t.connectSFTP()
+	if err != nil {
+		return err
 	}
 
 	localFile, err := os.Open(localPath)
 	if err != nil {
 		return fmt.Errorf("failed to open local file '%s': %w", localPath, err)
 	}
-
 	defer localFile.Close()
+
+	_, err = s.t.sftpClient.Stat(remotePath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to stat remote file '%s' before copy: %w", remotePath, err)
+	}
+	if err == nil {
+		err = s.t.sftpClient.Remove(remotePath)
+		if err != nil {
+			return fmt.Errorf("failed to remove existing remote file '%s': %w", remotePath, err)
+		}
+	}
 
 	remoteFile, err := s.t.sftpClient.Create(remotePath)
 	if err != nil {
@@ -206,9 +213,12 @@ func (s *sshWindowsPlatform) StartPluginSession(
 		return nil, fmt.Errorf("failed to create remote temp path '%s': %w", s.t.tempPath, err)
 	}
 
-	err = s.UploadFile(localPluginPath, remotePluginPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to upload discovery plugin to remote path '%s': %w", remotePluginPath, err)
+	if !slices.Contains(s.t.copiedPlugins, remotePluginPath) {
+		err = s.UploadFile(localPluginPath, remotePluginPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to upload discovery plugin to remote path '%s': %w", remotePluginPath, err)
+		}
+		s.t.copiedPlugins = append(s.t.copiedPlugins, remotePluginPath)
 	}
 
 	if escalation != nil {

@@ -46,7 +46,6 @@ func (d *DnfModule) RunModule(
 	input map[string]cty.Value,
 	whatIf bool,
 ) *result.ModuleResult {
-
 	if hostInfo.PackageManager.Name != "dnf" {
 		return pluginv1.NewFailure(
 			fmt.Errorf(

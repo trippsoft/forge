@@ -19,7 +19,10 @@ const (
 )
 
 var (
-	builtinModules = []Module{}
+	builtinModules = []Module{
+		assert,
+		message,
+	}
 )
 
 // ModuleID provides identification for a module.

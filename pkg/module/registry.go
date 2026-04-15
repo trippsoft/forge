@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -229,7 +228,6 @@ func (r *Registry) registerPluginModulesAtPluginPath(basePath, namespace, plugin
 		return fmt.Errorf("failed to read metadata response from plugin at '%s': %w", path, err)
 	}
 
-	pluginBasePath := filepath.Join(basePath, namespace, pluginName)
 	for name, s := range response.Modules {
 		id := NewModuleID(namespace, pluginName, name)
 		spec, err := s.Spec.ToSpec()
@@ -239,9 +237,9 @@ func (r *Registry) registerPluginModulesAtPluginPath(basePath, namespace, plugin
 
 		switch s.Type {
 		case plugin.ModuleType_LOCAL:
-			r.Register(NewLocalPluginModule(pluginBasePath, id, spec))
+			r.Register(NewLocalPluginModule(basePath, id, spec))
 		case plugin.ModuleType_REMOTE:
-			r.Register(NewRemotePluginModule(pluginBasePath, id, spec))
+			r.Register(NewRemotePluginModule(basePath, id, spec))
 		default:
 			return fmt.Errorf("unknown module type %q for module %q in plugin at '%s'", s.Type, name, path)
 		}

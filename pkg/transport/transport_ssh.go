@@ -42,7 +42,8 @@ type sshTransport struct {
 
 	platform sshPlatform
 
-	tempPath string
+	tempPath      string
+	copiedPlugins []string
 
 	config     *ssh.ClientConfig
 	client     *ssh.Client

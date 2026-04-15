@@ -266,10 +266,11 @@ func (b *SSHTransportBuilder) Build() (Transport, error) {
 	}
 
 	return &sshTransport{
-		host:     b.host,
-		port:     b.port,
-		config:   clientConfig,
-		tempPath: b.tempPath,
+		host:          b.host,
+		port:          b.port,
+		config:        clientConfig,
+		tempPath:      b.tempPath,
+		copiedPlugins: []string{},
 	}, nil
 }
 

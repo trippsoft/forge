@@ -33,10 +33,6 @@ func Read(r io.Reader, m proto.Message) error {
 		return err
 	}
 
-	if length == 0 {
-		return io.ErrUnexpectedEOF
-	}
-
 	data := make([]byte, length)
 	_, err = io.ReadFull(r, data)
 	if err != nil {

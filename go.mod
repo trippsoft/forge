@@ -3,6 +3,7 @@ module github.com/trippsoft/forge
 go 1.26.2
 
 require (
+	github.com/bmatcuk/go-vagrant v1.6.0
 	github.com/hashicorp/go-cty-funcs v0.1.0
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/mitchellh/go-homedir v1.1.0

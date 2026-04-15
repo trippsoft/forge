@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/trippsoft/forge/pkg/plugin"
@@ -141,6 +142,17 @@ func (s *sshPosixPlatform) UploadFile(localPath, remotePath string) error {
 	}
 	defer localFile.Close()
 
+	_, err = s.t.sftpClient.Stat(remotePath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to stat remote file '%s' before copy: %w", remotePath, err)
+	}
+	if err == nil {
+		err = s.t.sftpClient.Remove(remotePath)
+		if err != nil {
+			return fmt.Errorf("failed to remove existing remote file '%s': %w", remotePath, err)
+		}
+	}
+
 	remoteFile, err := s.t.sftpClient.Create(remotePath)
 	if err != nil {
 		return fmt.Errorf("failed to create remote file '%s': %w", remotePath, err)
@@ -181,9 +193,12 @@ func (s *sshPosixPlatform) StartPluginSession(
 		return nil, fmt.Errorf("failed to create remote temp path '%s': %w", s.t.tempPath, err)
 	}
 
-	err = s.UploadFile(localPluginPath, remotePluginPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to upload discovery plugin to remote path '%s': %w", remotePluginPath, err)
+	if !slices.Contains(s.t.copiedPlugins, remotePluginPath) {
+		err = s.UploadFile(localPluginPath, remotePluginPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to upload discovery plugin to remote path '%s': %w", remotePluginPath, err)
+		}
+		s.t.copiedPlugins = append(s.t.copiedPlugins, remotePluginPath)
 	}
 
 	session, err := s.t.client.NewSession()
@@ -317,7 +332,14 @@ func (s *sshPosixPlatform) startEscalatedPluginSession(
 		return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
 	}
 
-	err = session.Start(path)
+	user := escalation.User()
+	if user == "" {
+		user = "root"
+	}
+
+	cmd := fmt.Sprintf("sudo -S -p '%s:' -u %s %s", forgeSudoPrompt, user, path)
+
+	err = session.Start(cmd)
 	if err != nil {
 		session.Close()
 		return nil, fmt.Errorf("failed to start plugin at '%s': %w", path, err)
