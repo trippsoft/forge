@@ -5,6 +5,8 @@
 package result
 
 import (
+	"fmt"
+
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/json"
 )
@@ -34,6 +36,12 @@ type Result interface {
 
 	// Messages returns a list of messages associated with the result, if any.
 	Messages() []string
+
+	// ErrorMessage returns the error message associated with the result, if it is a failure result.
+	ErrorMessage() string
+
+	// ErrorDetails returns the error details associated with the result, if it is a failure result.
+	ErrorDetails() string
 
 	// Output returns the output value associated with the result, if any.
 	//
@@ -84,6 +92,16 @@ func (f *FailedResult) IsChanged() bool {
 // IsSkipped implements [Result].
 func (f *FailedResult) IsSkipped() bool {
 	return false
+}
+
+// ErrorMessage implements [Result].
+func (f *FailedResult) ErrorMessage() string {
+	return f.errorMessage
+}
+
+// ErrorDetails implements [Result].
+func (f *FailedResult) ErrorDetails() string {
+	return f.errorDetails
 }
 
 // Output implements [Result].
@@ -170,6 +188,16 @@ func (s *SkippedResult) IsSkipped() bool {
 	return true
 }
 
+// ErrorMessage implements [Result].
+func (s *SkippedResult) ErrorMessage() string {
+	return ""
+}
+
+// ErrorDetails implements [Result].
+func (s *SkippedResult) ErrorDetails() string {
+	return ""
+}
+
 // Messages implements [Result].
 func (s *SkippedResult) Messages() []string {
 	return nil
@@ -218,6 +246,16 @@ func (s *SuccessResult) IsChanged() bool {
 // IsSkipped implements [Result].
 func (s *SuccessResult) IsSkipped() bool {
 	return false
+}
+
+// ErrorMessage implements [Result].
+func (s *SuccessResult) ErrorMessage() string {
+	return ""
+}
+
+// ErrorDetails implements [Result].
+func (s *SuccessResult) ErrorDetails() string {
+	return ""
 }
 
 // Output implements [Result].
@@ -285,7 +323,7 @@ func (s *SkippedPB) ToResult() Result {
 func (s *SuccessPB) ToResult(warnings []string, messages []string) Result {
 	output, err := json.Unmarshal(s.Output, cty.DynamicPseudoType)
 	if err != nil {
-		output = cty.NullVal(cty.DynamicPseudoType)
+		return NewFailedResult(fmt.Sprintf("failed to unmarshal output: %v", err), "", messages, warnings)
 	}
 
 	if s.Changed {
