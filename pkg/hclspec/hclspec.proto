@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package hclspec;
+
+option go_package = "github.com/trippsoft/forge/pkg/hclspec";
+
+message AllowedValuesConstraintPB {
+    repeated bytes values = 1;
+}
+
+message FieldConstraintPB {
+    oneof constraint {
+        AllowedValuesConstraintPB allowed_values = 1;
+    }
+}
+
+message ObjectFieldPB {
+    TypePB type = 1;
+    bool required = 2;
+    bool sensitive = 3;
+    optional bytes default_value = 4;
+    repeated string aliases = 5;
+    repeated FieldConstraintPB constraints = 6;
+}
+
+message FieldPresentConditionPB {
+    string field = 1;
+}
+
+message FieldNotPresentConditionPB {
+    string field = 1;
+}
+
+message FieldEqualsConditionPB {
+    string field = 1;
+    bytes value = 2;
+}
+
+message ObjectConditionPB {
+    oneof condition {
+        FieldPresentConditionPB field_present = 1;
+        FieldNotPresentConditionPB field_not_present = 2;
+        FieldEqualsConditionPB field_equals = 3;
+    }
+}
+
+message MutuallyExclusiveConstraintPB {
+    repeated string fields = 1;
+}
+
+message RequiredTogetherConstraintPB {
+    repeated string fields = 1;
+}
+
+message RequiredOneOfConstraintPB {
+    repeated string fields = 1;
+}
+
+message AllowedFieldValuesConstraintPB {
+    string field = 1;
+    repeated bytes values = 2;
+}
+
+message ConditionalConstraintPB {
+    ObjectConditionPB condition = 1;
+    ObjectConstraintPB constraint = 2;
+}
+
+message ObjectConstraintPB {
+    oneof constraint {
+        MutuallyExclusiveConstraintPB mutually_exclusive = 1;
+        RequiredTogetherConstraintPB required_together = 2;
+        RequiredOneOfConstraintPB required_one_of = 3;
+        AllowedFieldValuesConstraintPB allowed_field_values = 4;
+        ConditionalConstraintPB conditional = 5;
+    }
+}
+
+message ObjectTypePB {
+    map<string, ObjectFieldPB> fields = 1;
+    repeated ObjectConstraintPB constraints = 2;
+}
+
+enum PrimitiveTypePB {
+    UNSPECIFIED = 0;
+    STRING = 1;
+    NUMBER = 2;
+    BOOL = 3;
+}
+
+message ListTypePB {
+    TypePB element_type = 1;
+}
+
+message SetTypePB {
+    TypePB element_type = 1;
+}
+
+message MapTypePB {
+    TypePB element_type = 1;
+}
+
+message DurationTypePB {}
+
+message SensitiveStringTypePB {}
+
+message RawTypePB {}
+
+message TypePB {
+    oneof type {
+        ObjectTypePB object = 1;
+        PrimitiveTypePB primitive = 2;
+        ListTypePB list = 3;
+        SetTypePB set = 4;
+        MapTypePB map = 5;
+        DurationTypePB duration = 6;
+        SensitiveStringTypePB sensitive_string = 7;
+        RawTypePB raw = 8;
+    }
+}
+
+message SpecPB {
+    ObjectTypePB object = 1;
+}
