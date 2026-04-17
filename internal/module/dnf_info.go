@@ -18,17 +18,17 @@ var (
 // DnfInfoModule is a module for retrieving DNF package information.
 type DnfInfoModule struct{}
 
-// Name implements pluginv1.PluginModule.
+// Name implements [pluginv1.PluginModule].
 func (d *DnfInfoModule) Name() string {
 	return "dnf_info"
 }
 
-// Type implements pluginv1.PluginModule.
+// Type implements [pluginv1.PluginModule].
 func (d *DnfInfoModule) Type() plugin.ModuleType {
 	return plugin.ModuleType_REMOTE
 }
 
-// InputSpec implements pluginv1.PluginModule.
+// InputSpec implements [pluginv1.PluginModule].
 func (d *DnfInfoModule) InputSpec() *hclspec.Spec {
 	return packageInfoInputSpec
 }

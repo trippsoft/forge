@@ -29,28 +29,27 @@ var (
 // CommandModule is a module that provides command execution information.
 type CommandModule struct{}
 
-// Name implements pluginv1.PluginModule.
+// Name implements [pluginv1.PluginModule].
 func (c *CommandModule) Name() string {
 	return "command"
 }
 
-// Type implements pluginv1.PluginModule.
+// Type implements [pluginv1.PluginModule].
 func (c *CommandModule) Type() plugin.ModuleType {
 	return plugin.ModuleType_REMOTE
 }
 
-// InputSpec implements pluginv1.PluginModule.
+// InputSpec implements [pluginv1.PluginModule].
 func (c *CommandModule) InputSpec() *hclspec.Spec {
 	return commandInputSpec
 }
 
-// RunModule implements pluginv1.PluginModule.
+// RunModule implements [pluginv1.PluginModule].
 func (c *CommandModule) RunModule(
 	hostInfo *info.HostInfo,
 	input map[string]cty.Value,
 	whatIf bool,
 ) *result.ModuleResult {
-
 	if whatIf {
 		r, err := pluginv1.NewChanged(
 			cty.ObjectVal(map[string]cty.Value{
@@ -75,17 +74,20 @@ func (c *CommandModule) RunModule(
 	}
 
 	var outBuf, errBuf bytes.Buffer
+
 	cmd := exec.Command(name, args...)
+
 	cmd.Stdout = &outBuf
 	cmd.Stderr = &errBuf
 
 	err := cmd.Run()
 	if err != nil {
+		fullCommand := fmt.Sprintf("%s %s", name, strings.Join(args, " "))
 		return pluginv1.NewFailure(
 			err,
 			fmt.Sprintf(
 				"failed to execute command: %s; stderr: %s",
-				name,
+				fullCommand,
 				errBuf.String(),
 			),
 		)

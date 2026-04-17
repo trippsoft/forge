@@ -27,22 +27,22 @@ var (
 // discovered package manager.
 type PackageInfoModule struct{}
 
-// Name implements pluginv1.PluginModule.
+// Name implements [pluginv1.PluginModule].
 func (p *PackageInfoModule) Name() string {
 	return "package_info"
 }
 
-// Type implements pluginv1.PluginModule.
+// Type implements [pluginv1.PluginModule].
 func (p *PackageInfoModule) Type() plugin.ModuleType {
 	return plugin.ModuleType_REMOTE
 }
 
-// InputSpec implements pluginv1.PluginModule.
+// InputSpec implements [pluginv1.PluginModule].
 func (p *PackageInfoModule) InputSpec() *hclspec.Spec {
 	return packageInfoInputSpec
 }
 
-// RunModule implements pluginv1.PluginModule.
+// RunModule implements [pluginv1.PluginModule].
 func (p *PackageInfoModule) RunModule(
 	hostInfo *info.HostInfo,
 	input map[string]cty.Value,

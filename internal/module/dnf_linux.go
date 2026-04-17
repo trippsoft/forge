@@ -35,12 +35,21 @@ var prunedDnfAbsentScript string
 var prunedDnfLatestScript string
 var prunedDnfPresentScript string
 
+type dnfPackageInfo struct {
+	Name         string `json:"name" cty:"name"`
+	Epoch        string `json:"epoch" cty:"epoch"`
+	Version      string `json:"version" cty:"version"`
+	Release      string `json:"release" cty:"release"`
+	Architecture string `json:"architecture" cty:"architecture"`
+	Repo         string `json:"repo" cty:"repo"`
+}
+
 type dnfOutput struct {
 	Installed []dnfPackageInfo `json:"installed,omitempty" cty:"installed"`
 	Removed   []dnfPackageInfo `json:"removed,omitempty" cty:"removed"`
 }
 
-// RunModule implements pluginv1.PluginModule.
+// RunModule implements [pluginv1.PluginModule].
 func (d *DnfModule) RunModule(
 	hostInfo *info.HostInfo,
 	input map[string]cty.Value,

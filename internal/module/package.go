@@ -43,22 +43,22 @@ var (
 // manager.
 type PackageModule struct{}
 
-// Name implements pluginv1.PluginModule.
+// Name implements [pluginv1.PluginModule].
 func (p *PackageModule) Name() string {
 	return "package"
 }
 
-// Type implements pluginv1.PluginModule.
+// Type implements [pluginv1.PluginModule].
 func (p *PackageModule) Type() plugin.ModuleType {
 	return plugin.ModuleType_REMOTE
 }
 
-// InputSpec implements pluginv1.PluginModule.
+// InputSpec implements [pluginv1.PluginModule].
 func (p *PackageModule) InputSpec() *hclspec.Spec {
 	return packageInputSpec
 }
 
-// RunModule implements pluginv1.PluginModule.
+// RunModule implements [pluginv1.PluginModule].
 func (p *PackageModule) RunModule(
 	hostInfo *info.HostInfo,
 	input map[string]cty.Value,

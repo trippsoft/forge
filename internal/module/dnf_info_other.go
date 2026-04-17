@@ -15,7 +15,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// RunModule implements pluginv1.PluginModule.
+// RunModule implements [pluginv1.PluginModule].
 func (d *DnfInfoModule) RunModule(
 	hostInfo *info.HostInfo,
 	input map[string]cty.Value,

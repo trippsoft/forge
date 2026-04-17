@@ -31,13 +31,12 @@ type dnfInfoOutput struct {
 	Packages map[string]dnfPackageInfo `json:"packages,omitempty" cty:"packages"`
 }
 
-// RunModule implements pluginv1.PluginModule.
+// RunModule implements [pluginv1.PluginModule].
 func (d *DnfInfoModule) RunModule(
 	hostInfo *info.HostInfo,
 	input map[string]cty.Value,
 	whatIf bool,
 ) *result.ModuleResult {
-
 	if hostInfo.PackageManager.Name != "dnf" {
 		return pluginv1.NewFailure(
 			fmt.Errorf(

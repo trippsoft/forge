@@ -32,28 +32,27 @@ var (
 // LocalCopyModule is a module that copies a source file from the local filesystem to a destination file.
 type LocalCopyModule struct{}
 
-// Name implements pluginv1.PluginModule.
+// Name implements [pluginv1.PluginModule].
 func (f *LocalCopyModule) Name() string {
 	return "local_copy"
 }
 
-// Type implements pluginv1.PluginModule.
+// Type implements [pluginv1.PluginModule].
 func (f *LocalCopyModule) Type() plugin.ModuleType {
 	return plugin.ModuleType_REMOTE
 }
 
-// InputSpec implements pluginv1.PluginModule.
+// InputSpec implements [pluginv1.PluginModule].
 func (f *LocalCopyModule) InputSpec() *hclspec.Spec {
 	return localCopyInputSpec
 }
 
-// RunModule implements pluginv1.PluginModule.
+// RunModule implements [pluginv1.PluginModule].
 func (f *LocalCopyModule) RunModule(
 	hostInfo *info.HostInfo,
 	input map[string]cty.Value,
 	whatIf bool,
 ) *result.ModuleResult {
-
 	sourcePath := input["source"].AsString()
 	sourceHash, err := hashFile(sourcePath)
 	if err != nil {

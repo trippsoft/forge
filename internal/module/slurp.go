@@ -29,28 +29,27 @@ var (
 // SlurpModule is a module that gets files contents from a given path and returns it in a base64 encoded string.
 type SlurpModule struct{}
 
-// Name implements pluginv1.PluginModule.
+// Name implements [pluginv1.PluginModule].
 func (f *SlurpModule) Name() string {
 	return "slurp"
 }
 
-// Type implements pluginv1.PluginModule.
+// Type implements [pluginv1.PluginModule].
 func (f *SlurpModule) Type() plugin.ModuleType {
 	return plugin.ModuleType_REMOTE
 }
 
-// InputSpec implements pluginv1.PluginModule.
+// InputSpec implements [pluginv1.PluginModule].
 func (f *SlurpModule) InputSpec() *hclspec.Spec {
 	return slurpInputSpec
 }
 
-// RunModule implements pluginv1.PluginModule.
+// RunModule implements [pluginv1.PluginModule].
 func (f *SlurpModule) RunModule(
 	hostInfo *info.HostInfo,
 	input map[string]cty.Value,
 	whatIf bool,
 ) *result.ModuleResult {
-
 	path := input["path"].AsString()
 
 	content, err := os.ReadFile(path)
