@@ -19,8 +19,8 @@ import (
 
 var (
 	commandInputSpec = hclspec.NewSpec(hclspec.Object(
-		hclspec.RequiredField("name", hclspec.String).WithAliases("path"),
-		hclspec.OptionalField("args", hclspec.List(hclspec.String)).WithDefaultValue(cty.ListValEmpty(cty.String)),
+		hclspec.RequiredField("name", hclspec.String()).WithAliases("path"),
+		hclspec.OptionalField("args", hclspec.List(hclspec.String())).WithDefaultValue(cty.ListValEmpty(cty.String)),
 	))
 
 	Command pluginv1.PluginModule = &CommandModule{}
@@ -45,11 +45,7 @@ func (c *CommandModule) InputSpec() *hclspec.Spec {
 }
 
 // RunModule implements [pluginv1.PluginModule].
-func (c *CommandModule) RunModule(
-	hostInfo *info.HostInfo,
-	input map[string]cty.Value,
-	whatIf bool,
-) *result.ModuleResult {
+func (c *CommandModule) RunModule(hostInfo *info.HostInfo, input cty.Value, whatIf bool) *result.ModuleResult {
 	if whatIf {
 		r, err := pluginv1.NewChanged(
 			cty.ObjectVal(map[string]cty.Value{
@@ -65,9 +61,11 @@ func (c *CommandModule) RunModule(
 		return r
 	}
 
-	name := input["name"].AsString()
-	args := make([]string, 0, input["args"].LengthInt())
-	it := input["args"].ElementIterator()
+	inputMap := input.AsValueMap()
+
+	name := inputMap["name"].AsString()
+	args := make([]string, 0, inputMap["args"].LengthInt())
+	it := inputMap["args"].ElementIterator()
 	for it.Next() {
 		_, v := it.Element()
 		args = append(args, v.AsString())

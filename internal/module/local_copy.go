@@ -21,8 +21,8 @@ import (
 var (
 	localCopyInputSpec = hclspec.NewSpec(
 		hclspec.Object(
-			hclspec.RequiredField("source", hclspec.String).WithAliases("src"),
-			hclspec.RequiredField("destination", hclspec.String).WithAliases("dest", "dst"),
+			hclspec.RequiredField("source", hclspec.String()).WithAliases("src"),
+			hclspec.RequiredField("destination", hclspec.String()).WithAliases("dest", "dst"),
 		),
 	)
 
@@ -48,18 +48,16 @@ func (f *LocalCopyModule) InputSpec() *hclspec.Spec {
 }
 
 // RunModule implements [pluginv1.PluginModule].
-func (f *LocalCopyModule) RunModule(
-	hostInfo *info.HostInfo,
-	input map[string]cty.Value,
-	whatIf bool,
-) *result.ModuleResult {
-	sourcePath := input["source"].AsString()
+func (f *LocalCopyModule) RunModule(hostInfo *info.HostInfo, input cty.Value, whatIf bool) *result.ModuleResult {
+	inputMap := input.AsValueMap()
+
+	sourcePath := inputMap["source"].AsString()
 	sourceHash, err := hashFile(sourcePath)
 	if err != nil {
 		return pluginv1.NewFailure(fmt.Errorf("failed to hash source file from path %q: %w", sourcePath, err), "")
 	}
 
-	destinationPath := input["destination"].AsString()
+	destinationPath := inputMap["destination"].AsString()
 	destinationHash, err := hashFile(destinationPath)
 	if err == nil && bytes.Equal(sourceHash, destinationHash) {
 		// Files are identical, no need to copy

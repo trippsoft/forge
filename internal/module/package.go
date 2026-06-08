@@ -17,17 +17,20 @@ import (
 var (
 	packageInputSpec = hclspec.NewSpec(
 		hclspec.Object(
-			hclspec.RequiredField("names", hclspec.List(hclspec.String)),
-			hclspec.OptionalField("state", hclspec.String).
-				WithDefaultValue(cty.StringVal("present")).
-				WithConstraints(hclspec.AllowedValues(
-					cty.StringVal("present"),
-					cty.StringVal("absent"),
-					cty.StringVal("latest"),
-				)),
-			hclspec.OptionalField("update_cache", hclspec.Bool).
+			hclspec.RequiredField("names", hclspec.List(hclspec.String())),
+			hclspec.OptionalField(
+				"state",
+				hclspec.String().WithConstraints(
+					hclspec.AllowedValues(
+						cty.StringVal("present"),
+						cty.StringVal("absent"),
+						cty.StringVal("latest"),
+					),
+				),
+			).WithDefaultValue(cty.StringVal("present")),
+			hclspec.OptionalField("update_cache", hclspec.Bool()).
 				WithDefaultValue(cty.BoolVal(false)),
-			hclspec.OptionalField("autoremove", hclspec.Bool).
+			hclspec.OptionalField("autoremove", hclspec.Bool()).
 				WithDefaultValue(cty.BoolVal(false)),
 		),
 	)
@@ -59,11 +62,7 @@ func (p *PackageModule) InputSpec() *hclspec.Spec {
 }
 
 // RunModule implements [pluginv1.PluginModule].
-func (p *PackageModule) RunModule(
-	hostInfo *info.HostInfo,
-	input map[string]cty.Value,
-	whatIf bool,
-) *result.ModuleResult {
+func (p *PackageModule) RunModule(hostInfo *info.HostInfo, input cty.Value, whatIf bool) *result.ModuleResult {
 	module, ok := packageModules[hostInfo.PackageManager.Name]
 	if !ok {
 		return pluginv1.NewFailure(fmt.Errorf("unknown package manager: %s", hostInfo.PackageManager.Name), "")

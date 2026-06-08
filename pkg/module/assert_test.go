@@ -12,18 +12,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-func TestAssertModuleInputSpec(t *testing.T) {
-	spec := assert.InputSpec()
-	if spec == nil {
-		t.Fatal("Expected non-nil input spec from InputSpec(), got nil")
-	}
-
-	err := spec.ValidateSpec()
-	if err != nil {
-		t.Errorf("expected no errors from ValidateSpec(), got %q", err.Error())
-	}
-}
-
 func TestAssertModuleRun(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -63,7 +51,7 @@ func TestAssertModuleRun(t *testing.T) {
 			config := &RunConfig{
 				HostInfo:   host.Info(),
 				Escalation: nil,
-				Input:      tt.input,
+				Input:      cty.ObjectVal(tt.input),
 			}
 
 			r := assert.Run(ctx, config)

@@ -11,10 +11,21 @@ import (
 )
 
 type listType struct {
-	elementType Type // The type of elements in the list.
+	elementType Type
+	constraints TypeConstraints
 }
 
-// CtyType implements Type.
+// WithConstraints implements [Type].
+func (l *listType) WithConstraints(constraints ...TypeConstraint) Type {
+	if l == nil {
+		return nil
+	}
+
+	l.constraints = append(l.constraints, constraints...)
+	return l
+}
+
+// CtyType implements [Type].
 func (l *listType) CtyType() cty.Type {
 	if l == nil {
 		return cty.NilType
@@ -23,7 +34,7 @@ func (l *listType) CtyType() cty.Type {
 	return cty.List(l.elementType.CtyType())
 }
 
-// Convert implements Type.
+// Convert implements [Type].
 func (l *listType) Convert(value cty.Value) (cty.Value, error) {
 	if l == nil {
 		return cty.NilVal, errors.New("list type is nil")
@@ -67,7 +78,7 @@ func (l *listType) Convert(value cty.Value) (cty.Value, error) {
 	return cty.ListVal(values), nil
 }
 
-// Validate implements Type.
+// Validate implements [Type].
 func (l *listType) Validate(value cty.Value) error {
 	if l == nil {
 		return errors.New("list type is nil")
@@ -77,8 +88,9 @@ func (l *listType) Validate(value cty.Value) error {
 		return nil // A null is presumed valid.
 	}
 
+	err := l.constraints.Validate(value)
+
 	it := value.ElementIterator()
-	var err error
 	for it.Next() {
 		index, elem := it.Element()
 		e := l.elementType.Validate(elem)
@@ -91,22 +103,13 @@ func (l *listType) Validate(value cty.Value) error {
 	return err
 }
 
-// ValidateSpec implements Type.
-func (l *listType) ValidateSpec() error {
-	if l == nil {
-		return errors.New("list type is nil")
-	}
-
-	return l.elementType.ValidateSpec()
-}
-
-// ToProtobuf implements Type.
+// ToProtobuf implements [Type].
 func (l *listType) ToProtobuf() (*TypePB, error) {
 	if l == nil {
 		return nil, errors.New("list type is nil")
 	}
 
-	elemPB, err := l.elementType.ToProtobuf()
+	elementType, err := l.elementType.ToProtobuf()
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +117,7 @@ func (l *listType) ToProtobuf() (*TypePB, error) {
 	return &TypePB{
 		Type: &TypePB_List{
 			List: &ListTypePB{
-				ElementType: elemPB,
+				ElementType: elementType,
 			},
 		},
 	}, nil
@@ -122,16 +125,16 @@ func (l *listType) ToProtobuf() (*TypePB, error) {
 
 // String represents the list type as a friendly string.
 func (l *listType) String() string {
-	return l.CtyType().FriendlyName()
+	return fmt.Sprintf("list of %s", l.elementType)
 }
 
-// List creates a new listType representing a list of the given element type.
+// List represents a Type for a list of elements of the given type.
 func List(elementType Type) Type {
 	return &listType{elementType: elementType}
 }
 
-// ToListType converts a protobuf ListTypePB to a listType instance.
-func (l *ListTypePB) ToListType() (Type, error) {
+// ToType converts a protobuf ListTypePB to a listType instance.
+func (l *ListTypePB) ToType() (Type, error) {
 	if l == nil {
 		return nil, errors.New("ListTypePB is nil")
 	}
@@ -145,5 +148,19 @@ func (l *ListTypePB) ToListType() (Type, error) {
 		return nil, err
 	}
 
-	return List(elementType), nil
+	constraints := make(TypeConstraints, 0, len(l.Constraints))
+	for _, c := range l.Constraints {
+		if c == nil {
+			continue
+		}
+
+		constraint, err := c.ToTypeConstraint()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert constraint: %w", err)
+		}
+
+		constraints = append(constraints, constraint)
+	}
+
+	return List(elementType).WithConstraints(constraints...), nil
 }

@@ -14,7 +14,7 @@ import (
 
 func TestSensitiveStringCtyType(t *testing.T) {
 	expected := cty.String
-	actual := SensitiveString.CtyType()
+	actual := SensitiveString().CtyType()
 	if actual != expected {
 		t.Errorf("expected %q from CtyType(), got %q", expected.FriendlyName(), actual.FriendlyName())
 	}
@@ -67,7 +67,7 @@ func TestSensitiveStringConvert_Success(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			secret.SecretFilter.Clear()
 
-			verifySuccessfulConversion(t, SensitiveString, tt.input, tt.expected)
+			verifySuccessfulConversion(t, SensitiveString(), tt.input, tt.expected)
 
 			secrets := secret.SecretFilter.Secrets()
 			if tt.expected.IsNull() && len(secrets) != 0 {
@@ -104,7 +104,7 @@ func TestSensitiveStringConvert_UnknownValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			verifyFailedConversion(t, SensitiveString, tt.input, "cannot convert unknown value")
+			verifyFailedConversion(t, SensitiveString(), tt.input, "cannot convert unknown value")
 		})
 	}
 }
@@ -173,7 +173,7 @@ func TestSensitiveStringConvert_InvalidValues(t *testing.T) {
 				cty.String.FriendlyName(),
 			)
 
-			verifyFailedConversion(t, SensitiveString, tt.input, expectedError)
+			verifyFailedConversion(t, SensitiveString(), tt.input, expectedError)
 		})
 	}
 }
@@ -225,28 +225,7 @@ func TestSensitiveStringValidate_Pass(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			verifySuccessfulValidation(t, SensitiveString, tt.input)
+			verifySuccessfulValidation(t, SensitiveString(), tt.input)
 		})
-	}
-}
-
-func TestSensitiveStringValidateSpec_Pass(t *testing.T) {
-	err := SensitiveString.ValidateSpec()
-	if err != nil {
-		t.Errorf("expected no error from ValidateSpec(), got %q", err.Error())
-	}
-}
-
-func TestSensitiveStringValidateSpec_Nil(t *testing.T) {
-	var sensitiveString *sensitiveStringType
-
-	expectedError := "sensitive string type is nil"
-	err := sensitiveString.ValidateSpec()
-	if err == nil {
-		t.Fatalf("expected error %q from ValidateSpec(), got none", expectedError)
-	}
-
-	if err.Error() != expectedError {
-		t.Errorf("expected error %q from ValidateSpec(), got %q", expectedError, err.Error())
 	}
 }

@@ -11,10 +11,21 @@ import (
 )
 
 type mapType struct {
-	valueType Type // The type of values in the map.
+	valueType   Type
+	constraints TypeConstraints
 }
 
-// CtyType implements Type.
+// WithConstraints implements [Type].
+func (m *mapType) WithConstraints(constraints ...TypeConstraint) Type {
+	if m == nil {
+		return nil
+	}
+
+	m.constraints = append(m.constraints, constraints...)
+	return m
+}
+
+// CtyType implements [Type].
 func (m *mapType) CtyType() cty.Type {
 	if m == nil {
 		return cty.NilType
@@ -23,7 +34,7 @@ func (m *mapType) CtyType() cty.Type {
 	return cty.Map(m.valueType.CtyType())
 }
 
-// Convert implements Type.
+// Convert implements [Type].
 func (m *mapType) Convert(value cty.Value) (cty.Value, error) {
 	if m == nil {
 		return cty.NilVal, errors.New("map type is nil")
@@ -48,7 +59,7 @@ func (m *mapType) Convert(value cty.Value) (cty.Value, error) {
 	return converted, nil
 }
 
-// Validate implements Type.
+// Validate implements [Type].
 func (m *mapType) Validate(value cty.Value) error {
 	if m == nil {
 		return errors.New("map type is nil")
@@ -58,8 +69,9 @@ func (m *mapType) Validate(value cty.Value) error {
 		return nil // A null is presumed valid.
 	}
 
+	err := m.constraints.Validate(value)
+
 	it := value.ElementIterator()
-	var err error
 	for it.Next() {
 		index, elem := it.Element()
 		e := m.valueType.Validate(elem)
@@ -71,22 +83,13 @@ func (m *mapType) Validate(value cty.Value) error {
 	return err
 }
 
-// ValidateSpec implements Type.
-func (m *mapType) ValidateSpec() error {
-	if m == nil {
-		return errors.New("map type is nil")
-	}
-
-	return m.valueType.ValidateSpec()
-}
-
-// ToProtobuf implements Type.
+// ToProtobuf implements [Type].
 func (m *mapType) ToProtobuf() (*TypePB, error) {
 	if m == nil {
 		return nil, errors.New("map type is nil")
 	}
 
-	valueTypePB, err := m.valueType.ToProtobuf()
+	valueType, err := m.valueType.ToProtobuf()
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +97,7 @@ func (m *mapType) ToProtobuf() (*TypePB, error) {
 	return &TypePB{
 		Type: &TypePB_Map{
 			Map: &MapTypePB{
-				ElementType: valueTypePB,
+				ElementType: valueType,
 			},
 		},
 	}, nil
@@ -102,16 +105,16 @@ func (m *mapType) ToProtobuf() (*TypePB, error) {
 
 // String represents the map type as a friendly string.
 func (m *mapType) String() string {
-	return m.CtyType().FriendlyName()
+	return fmt.Sprintf("map of %s", m.valueType)
 }
 
-// Map creates a new mapType representing a map of string keys to the given value type.
+// Map returns a Type representing a map of the given value type.
 func Map(valueType Type) Type {
 	return &mapType{valueType: valueType}
 }
 
-// ToMapType converts a protobuf MapTypePB to a mapType instance.
-func (m *MapTypePB) ToMapType() (Type, error) {
+// ToType converts a protobuf MapTypePB to a mapType instance.
+func (m *MapTypePB) ToType() (Type, error) {
 	if m == nil {
 		return nil, errors.New("MapTypePB is nil")
 	}
@@ -125,5 +128,19 @@ func (m *MapTypePB) ToMapType() (Type, error) {
 		return nil, err
 	}
 
-	return Map(elementType), nil
+	constraints := make(TypeConstraints, 0, len(m.Constraints))
+	for _, c := range m.Constraints {
+		if c == nil {
+			continue
+		}
+
+		constraint, err := c.ToTypeConstraint()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert constraint: %w", err)
+		}
+
+		constraints = append(constraints, constraint)
+	}
+
+	return Map(elementType).WithConstraints(constraints...), nil
 }

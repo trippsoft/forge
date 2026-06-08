@@ -18,28 +18,28 @@ type Spec struct {
 //
 // This includes type conversion, default value assignment, and handling of aliases.
 // This function should be called before passing the value into the Validate function.
-func (s *Spec) Convert(values map[string]cty.Value) (map[string]cty.Value, error) {
+func (s *Spec) Convert(value cty.Value) (cty.Value, error) {
 	if s == nil {
-		return nil, fmt.Errorf("spec is nil")
+		return cty.NilVal, fmt.Errorf("spec is nil")
 	}
 
 	if s.object == nil {
-		return nil, fmt.Errorf("object type is nil")
+		return cty.NilVal, fmt.Errorf("object type is nil")
 	}
 
-	convertedValues, err := s.object.convertMap(values)
+	converted, err := s.object.Convert(value)
 	if err != nil {
-		return nil, err
+		return cty.NilVal, err
 	}
 
-	return convertedValues, nil
+	return converted, nil
 }
 
 // Validate validates input against the spec.
 //
 // This function should be called after Convert to ensure the values are in the correct format.
 // The validation checks that required fields are present and that all constraints are satisfied.
-func (s *Spec) Validate(values map[string]cty.Value) error {
+func (s *Spec) Validate(value cty.Value) error {
 	if s == nil {
 		return fmt.Errorf("spec is nil")
 	}
@@ -48,18 +48,7 @@ func (s *Spec) Validate(values map[string]cty.Value) error {
 		return fmt.Errorf("object type is nil")
 	}
 
-	return s.object.validateMap(values)
-}
-
-// ValidateSpec validates the spec is valid.
-//
-// This function checks that all of the components of the spec are valid.
-func (s *Spec) ValidateSpec() error {
-	if s.object == nil {
-		return fmt.Errorf("object type is nil")
-	}
-
-	return s.object.ValidateSpec()
+	return s.object.Validate(value)
 }
 
 // ToProtobuf converts the Spec to its protobuf representation.
@@ -77,13 +66,13 @@ func (s *Spec) ToProtobuf() (*SpecPB, error) {
 		return nil, err
 	}
 
-	objPB, ok := typ.Type.(*TypePB_Object)
+	obj, ok := typ.Type.(*TypePB_Object)
 	if !ok {
 		return nil, fmt.Errorf("expected object type protobuf, got %T", typ.Type)
 	}
 
 	return &SpecPB{
-		Object: objPB.Object,
+		Object: obj.Object,
 	}, nil
 }
 
@@ -104,7 +93,7 @@ func (s *SpecPB) ToSpec() (*Spec, error) {
 		return nil, fmt.Errorf("Object in SpecPB is nil")
 	}
 
-	obj, err := s.Object.ToObjectType()
+	obj, err := s.Object.ToType()
 	if err != nil {
 		return nil, err
 	}

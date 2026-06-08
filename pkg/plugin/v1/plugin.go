@@ -84,14 +84,9 @@ func (p *PluginV1) handleRunModuleRequest() error {
 		return fmt.Errorf("unknown module: %s", request.ModuleName)
 	}
 
-	input := make(map[string]cty.Value, len(request.Input))
-	for k, v := range request.Input {
-		val, err := json.Unmarshal(v, cty.DynamicPseudoType)
-		if err != nil {
-			return err
-		}
-
-		input[k] = val
+	input, err := json.Unmarshal(request.Input, cty.DynamicPseudoType)
+	if err != nil {
+		return err
 	}
 
 	r := mod.RunModule(request.HostInfo, input, request.WhatIf)

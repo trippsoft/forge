@@ -4,23 +4,35 @@ package hclspec;
 
 option go_package = "github.com/trippsoft/forge/pkg/hclspec";
 
+message RawTypePB {}
+
+enum SimpleTypeDataPB {
+    UNSPECIFIED = 0;
+    BOOL = 1;
+    NUMBER = 2;
+    STRING = 3;
+    SENSITIVE_STRING = 4;
+}
+
 message AllowedValuesConstraintPB {
     repeated bytes values = 1;
 }
 
-message FieldConstraintPB {
-    oneof constraint {
-        AllowedValuesConstraintPB allowed_values = 1;
-    }
+message MutuallyExclusiveConstraintPB {
+    repeated string fields = 1;
 }
 
-message ObjectFieldPB {
-    TypePB type = 1;
-    bool required = 2;
-    bool sensitive = 3;
-    optional bytes default_value = 4;
-    repeated string aliases = 5;
-    repeated FieldConstraintPB constraints = 6;
+message RequiredTogetherConstraintPB {
+    repeated string fields = 1;
+}
+
+message RequireOneOfConstraintPB {
+    repeated string fields = 1;
+}
+
+message AllowedFieldValuesConstraintPB {
+    string field = 1;
+    repeated bytes values = 2;
 }
 
 message FieldPresentConditionPB {
@@ -36,7 +48,7 @@ message FieldEqualsConditionPB {
     bytes value = 2;
 }
 
-message ObjectConditionPB {
+message TypeConditionPB {
     oneof condition {
         FieldPresentConditionPB field_present = 1;
         FieldNotPresentConditionPB field_not_present = 2;
@@ -44,78 +56,62 @@ message ObjectConditionPB {
     }
 }
 
-message MutuallyExclusiveConstraintPB {
-    repeated string fields = 1;
-}
-
-message RequiredTogetherConstraintPB {
-    repeated string fields = 1;
-}
-
-message RequiredOneOfConstraintPB {
-    repeated string fields = 1;
-}
-
-message AllowedFieldValuesConstraintPB {
-    string field = 1;
-    repeated bytes values = 2;
-}
-
 message ConditionalConstraintPB {
-    ObjectConditionPB condition = 1;
-    ObjectConstraintPB constraint = 2;
+    TypeConditionPB condition = 1;
+    TypeConstraintPB constraint = 2;
 }
 
-message ObjectConstraintPB {
+message TypeConstraintPB {
     oneof constraint {
-        MutuallyExclusiveConstraintPB mutually_exclusive = 1;
-        RequiredTogetherConstraintPB required_together = 2;
-        RequiredOneOfConstraintPB required_one_of = 3;
-        AllowedFieldValuesConstraintPB allowed_field_values = 4;
-        ConditionalConstraintPB conditional = 5;
+        AllowedValuesConstraintPB allowed_values = 1;
+        MutuallyExclusiveConstraintPB mutually_exclusive = 2;
+        RequiredTogetherConstraintPB required_together = 3;
+        RequireOneOfConstraintPB require_one_of = 4;
+        AllowedFieldValuesConstraintPB allowed_field_values = 5;
+        ConditionalConstraintPB conditional = 6;
     }
 }
 
-message ObjectTypePB {
-    map<string, ObjectFieldPB> fields = 1;
-    repeated ObjectConstraintPB constraints = 2;
-}
-
-enum PrimitiveTypePB {
-    UNSPECIFIED = 0;
-    STRING = 1;
-    NUMBER = 2;
-    BOOL = 3;
-}
-
-message ListTypePB {
-    TypePB element_type = 1;
+message SimpleTypePB {
+    SimpleTypeDataPB data = 1;
+    repeated TypeConstraintPB constraints = 2;
 }
 
 message SetTypePB {
     TypePB element_type = 1;
+    repeated TypeConstraintPB constraints = 2;
+}
+
+message ListTypePB {
+    TypePB element_type = 1;
+    repeated TypeConstraintPB constraints = 2;
 }
 
 message MapTypePB {
     TypePB element_type = 1;
+    repeated TypeConstraintPB constraints = 2;
 }
 
-message DurationTypePB {}
+message ObjectFieldPB {
+    TypePB type = 1;
+    bool required = 2;
+    optional bytes default_value = 3;
+    repeated string aliases = 4;
+}
 
-message SensitiveStringTypePB {}
-
-message RawTypePB {}
+message ObjectTypePB {
+    map<string, ObjectFieldPB> fields = 1;
+    repeated TypeConstraintPB constraints = 2;
+}
 
 message TypePB {
     oneof type {
-        ObjectTypePB object = 1;
-        PrimitiveTypePB primitive = 2;
-        ListTypePB list = 3;
-        SetTypePB set = 4;
+        RawTypePB raw = 1;
+        SimpleTypePB simple = 2;
+        SetTypePB set = 3;
+        ListTypePB list = 4;
         MapTypePB map = 5;
-        DurationTypePB duration = 6;
-        SensitiveStringTypePB sensitive_string = 7;
-        RawTypePB raw = 8;
+        ObjectTypePB object = 6;
     }
 }
 

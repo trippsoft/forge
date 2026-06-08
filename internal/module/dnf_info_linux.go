@@ -32,11 +32,7 @@ type dnfInfoOutput struct {
 }
 
 // RunModule implements [pluginv1.PluginModule].
-func (d *DnfInfoModule) RunModule(
-	hostInfo *info.HostInfo,
-	input map[string]cty.Value,
-	whatIf bool,
-) *result.ModuleResult {
+func (d *DnfInfoModule) RunModule(hostInfo *info.HostInfo, input cty.Value, whatIf bool) *result.ModuleResult {
 	if hostInfo.PackageManager.Name != "dnf" {
 		return pluginv1.NewFailure(
 			fmt.Errorf(

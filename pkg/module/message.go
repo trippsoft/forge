@@ -39,17 +39,19 @@ func (s *MessageModule) Run(ctx context.Context, config *RunConfig) *result.Resu
 		return result.NewFailure(errors.New("config cannot be nil"), "")
 	}
 
-	if config.Input == nil {
+	if config.Input == cty.NilVal {
 		return result.NewFailure(errors.New("input cannot be nil"), "")
 	}
 
-	messageVal := config.Input["message"]
+	input := config.Input.AsValueMap()
+
+	messageVal := input["message"]
 
 	var message string
 	if messageVal.Type().Equals(cty.String) {
 		message = messageVal.AsString()
 	} else {
-		message = hclutil.FormatCtyValueToIndentedString(config.Input["message"], 0, 4)
+		message = hclutil.FormatCtyValueToIndentedString(messageVal, 0, 4)
 	}
 
 	r := result.NewNotChanged(cty.EmptyObjectVal)

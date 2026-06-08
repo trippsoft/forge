@@ -48,14 +48,9 @@ func (m *LocalPluginModule) Run(ctx context.Context, config *RunConfig) *result.
 
 	defer session.Close()
 
-	input := make(map[string][]byte, len(config.Input))
-	for k, v := range config.Input {
-		value, err := json.Marshal(v, cty.DynamicPseudoType)
-		if err != nil {
-			return result.NewFailure(err, err.Error())
-		}
-
-		input[k] = value
+	input, err := json.Marshal(config.Input, cty.DynamicPseudoType)
+	if err != nil {
+		return result.NewFailure(err, err.Error())
 	}
 
 	request := &pluginv1.RunModuleRequest{
@@ -122,14 +117,9 @@ func (m *RemotePluginModule) Run(ctx context.Context, config *RunConfig) *result
 
 	defer session.Close()
 
-	input := make(map[string][]byte, len(config.Input))
-	for k, v := range config.Input {
-		value, err := json.Marshal(v, cty.DynamicPseudoType)
-		if err != nil {
-			return result.NewFailure(err, err.Error())
-		}
-
-		input[k] = value
+	input, err := json.Marshal(config.Input, cty.DynamicPseudoType)
+	if err != nil {
+		return result.NewFailure(err, err.Error())
 	}
 
 	request := &pluginv1.RunModuleRequest{

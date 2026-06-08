@@ -76,7 +76,7 @@ type RunConfig struct {
 	WhatIf bool
 
 	// Input is the input variables to pass to the module.
-	Input map[string]cty.Value
+	Input cty.Value
 }
 
 // Module abstracts local and plugin modules.

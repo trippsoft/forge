@@ -73,5 +73,5 @@ type PluginModule interface {
 	// InputSpec returns the input specification for the plugin module.
 	InputSpec() *hclspec.Spec
 	// RunModule executes the plugin module with the given input and returns the result.
-	RunModule(hostInfo *info.HostInfo, input map[string]cty.Value, whatIf bool) *result.ModuleResult
+	RunModule(hostInfo *info.HostInfo, input cty.Value, whatIf bool) *result.ModuleResult
 }

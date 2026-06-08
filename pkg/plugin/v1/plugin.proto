@@ -11,7 +11,7 @@ message RunModuleRequest {
     string moduleName = 1;
     info.HostInfo hostInfo = 2;
     bool what_if = 3;
-    map<string, bytes> input = 4;
+    bytes input = 4;
 }
 
 message RunModuleResponse {

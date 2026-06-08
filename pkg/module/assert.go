@@ -19,9 +19,13 @@ const (
 
 var (
 	assertInputSpec = hclspec.NewSpec(hclspec.Object(
-		hclspec.RequiredField("condition", hclspec.Bool),
-		hclspec.OptionalField("success_message", hclspec.String).WithDefaultValue(cty.StringVal(defaultSuccessMessage)),
-		hclspec.OptionalField("failure_message", hclspec.String).WithDefaultValue(cty.StringVal(defaultFailureMessage)),
+		hclspec.RequiredField("condition", hclspec.Bool()),
+		hclspec.OptionalField(
+			"success_message",
+			hclspec.String()).WithDefaultValue(cty.StringVal(defaultSuccessMessage)),
+		hclspec.OptionalField(
+			"failure_message",
+			hclspec.String()).WithDefaultValue(cty.StringVal(defaultFailureMessage)),
 	))
 	assertID = NewModuleID("", "", "assert")
 
@@ -47,13 +51,15 @@ func (m *AssertModule) Run(ctx context.Context, config *RunConfig) *result.Resul
 		return result.NewFailure(errors.New("config is nil"), "")
 	}
 
-	if config.Input == nil {
+	if config.Input == cty.NilVal {
 		return result.NewFailure(errors.New("input is nil"), "")
 	}
 
-	condition := config.Input["condition"].True()
+	input := config.Input.AsValueMap()
+
+	condition := input["condition"].True()
 	if !condition {
-		failureMessage := config.Input["failure_message"]
+		failureMessage := input["failure_message"]
 		if failureMessage.IsWhollyKnown() && !failureMessage.IsNull() {
 			return result.NewFailure(errors.New(failureMessage.AsString()), "")
 		}
@@ -61,7 +67,7 @@ func (m *AssertModule) Run(ctx context.Context, config *RunConfig) *result.Resul
 		return result.NewFailure(errors.New(defaultFailureMessage), "")
 	}
 
-	successMessage := config.Input["success_message"]
+	successMessage := input["success_message"]
 	var message string
 	if successMessage.IsWhollyKnown() && !successMessage.IsNull() {
 		message = successMessage.AsString()

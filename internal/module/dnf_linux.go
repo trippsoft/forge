@@ -50,11 +50,7 @@ type dnfOutput struct {
 }
 
 // RunModule implements [pluginv1.PluginModule].
-func (d *DnfModule) RunModule(
-	hostInfo *info.HostInfo,
-	input map[string]cty.Value,
-	whatIf bool,
-) *result.ModuleResult {
+func (d *DnfModule) RunModule(hostInfo *info.HostInfo, input cty.Value, whatIf bool) *result.ModuleResult {
 	if hostInfo.PackageManager.Name != "dnf" {
 		return pluginv1.NewFailure(
 			fmt.Errorf(
@@ -65,10 +61,12 @@ func (d *DnfModule) RunModule(
 		)
 	}
 
-	sb := &strings.Builder{}
-	sb.WriteString(python.FormatInputForPython(input, whatIf))
+	inputMap := input.AsValueMap()
 
-	state := input["state"].AsString()
+	sb := &strings.Builder{}
+	sb.WriteString(python.FormatInputForPython(inputMap, whatIf))
+
+	state := inputMap["state"].AsString()
 	switch state {
 	case "present":
 		sb.WriteString(prunedDnfPresentScript)

@@ -43,11 +43,7 @@ func (p *PackageInfoModule) InputSpec() *hclspec.Spec {
 }
 
 // RunModule implements [pluginv1.PluginModule].
-func (p *PackageInfoModule) RunModule(
-	hostInfo *info.HostInfo,
-	input map[string]cty.Value,
-	whatIf bool,
-) *result.ModuleResult {
+func (p *PackageInfoModule) RunModule(hostInfo *info.HostInfo, input cty.Value, whatIf bool) *result.ModuleResult {
 	module, ok := packageInfoModules[hostInfo.PackageManager.Name]
 	if !ok {
 		return pluginv1.NewFailure(fmt.Errorf("unknown package manager: %s", hostInfo.PackageManager.Name), "")

@@ -12,18 +12,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-func TestMessageModuleInputSpec(t *testing.T) {
-	spec := message.InputSpec()
-	if spec == nil {
-		t.Fatal("Expected non-nil input spec from InputSpec(), got nil")
-	}
-
-	err := spec.ValidateSpec()
-	if err != nil {
-		t.Errorf("expected no errors from ValidateSpec(), got: %q", err.Error())
-	}
-}
-
 func TestMessageModuleRun(t *testing.T) {
 	mockTransport := transport.NewMockTransport()
 	escalateConfig := inventory.NewEscalateConfig("")
@@ -41,7 +29,7 @@ func TestMessageModuleRun(t *testing.T) {
 	config := &RunConfig{
 		HostInfo:   host.Info(),
 		Escalation: nil,
-		Input:      input,
+		Input:      cty.ObjectVal(input),
 	}
 
 	r := message.Run(context.Background(), config)

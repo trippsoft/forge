@@ -580,11 +580,11 @@ func (s *SingleStep) runHostIteration(hwc *HostWorkflowContext, iteration *StepI
 		}
 	}
 
-	input := make(map[string]cty.Value, len(s.common.input))
+	inputMap := make(map[string]cty.Value, len(s.common.input))
 	if s.common != nil && s.common.input != nil {
 		for k, attr := range s.common.input {
 			var diags hcl.Diagnostics
-			input[k], diags = attr.Expr.Value(hwc.evalContext)
+			inputMap[k], diags = attr.Expr.Value(hwc.evalContext)
 			if diags.HasErrors() {
 				result := result.NewFailure(diags, diags.Error())
 				return s.handleHostIterationResult(hwc, iteration, result), diags
@@ -592,7 +592,7 @@ func (s *SingleStep) runHostIteration(hwc *HostWorkflowContext, iteration *StepI
 		}
 	}
 
-	input, err = s.module.InputSpec().Convert(input)
+	input, err := s.module.InputSpec().Convert(cty.ObjectVal(inputMap))
 	if err != nil {
 		result := result.NewFailure(err, err.Error())
 		return s.handleHostIterationResult(hwc, iteration, result), err

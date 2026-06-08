@@ -20,7 +20,7 @@ import (
 
 var (
 	slurpInputSpec = hclspec.NewSpec(hclspec.Object(
-		hclspec.RequiredField("path", hclspec.String).WithAliases("source", "src"),
+		hclspec.RequiredField("path", hclspec.String()).WithAliases("source", "src"),
 	))
 
 	Slurp pluginv1.PluginModule = &SlurpModule{}
@@ -45,12 +45,9 @@ func (f *SlurpModule) InputSpec() *hclspec.Spec {
 }
 
 // RunModule implements [pluginv1.PluginModule].
-func (f *SlurpModule) RunModule(
-	hostInfo *info.HostInfo,
-	input map[string]cty.Value,
-	whatIf bool,
-) *result.ModuleResult {
-	path := input["path"].AsString()
+func (f *SlurpModule) RunModule(hostInfo *info.HostInfo, input cty.Value, whatIf bool) *result.ModuleResult {
+	inputMap := input.AsValueMap()
+	path := inputMap["path"].AsString()
 
 	content, err := os.ReadFile(path)
 	if err != nil {

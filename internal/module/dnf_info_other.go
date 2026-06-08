@@ -16,10 +16,6 @@ import (
 )
 
 // RunModule implements [pluginv1.PluginModule].
-func (d *DnfInfoModule) RunModule(
-	hostInfo *info.HostInfo,
-	input map[string]cty.Value,
-	whatIf bool,
-) *result.ModuleResult {
+func (d *DnfInfoModule) RunModule(hostInfo *info.HostInfo, input cty.Value, whatIf bool) *result.ModuleResult {
 	return pluginv1.NewFailure(fmt.Errorf("dnf_info cannot be run on %s", runtime.GOOS), "")
 }

@@ -11,10 +11,21 @@ import (
 )
 
 type setType struct {
-	elementType Type // The type of elements in the set.
+	elementType Type
+	constraints TypeConstraints
 }
 
-// CtyType implements Type.
+// WithConstraints implements [Type].
+func (s *setType) WithConstraints(constraints ...TypeConstraint) Type {
+	if s == nil {
+		return nil
+	}
+
+	s.constraints = append(s.constraints, constraints...)
+	return s
+}
+
+// CtyType implements [Type].
 func (s *setType) CtyType() cty.Type {
 	if s == nil {
 		return cty.NilType
@@ -23,7 +34,7 @@ func (s *setType) CtyType() cty.Type {
 	return cty.Set(s.elementType.CtyType())
 }
 
-// Convert implements Type.
+// Convert implements [Type].
 func (s *setType) Convert(value cty.Value) (cty.Value, error) {
 	if s == nil {
 		return cty.NilVal, errors.New("set type is nil")
@@ -67,7 +78,7 @@ func (s *setType) Convert(value cty.Value) (cty.Value, error) {
 	return cty.SetVal(values), nil
 }
 
-// Validate implements Type.
+// Validate implements [Type].
 func (s *setType) Validate(value cty.Value) error {
 	if s == nil {
 		return errors.New("set type is nil")
@@ -77,8 +88,12 @@ func (s *setType) Validate(value cty.Value) error {
 		return nil // A null is presumed valid.
 	}
 
+	err := s.constraints.Validate(value)
+	if err != nil {
+		return err
+	}
+
 	it := value.ElementIterator()
-	var err error
 	for it.Next() {
 		_, elem := it.Element()
 		e := s.elementType.Validate(elem)
@@ -90,22 +105,13 @@ func (s *setType) Validate(value cty.Value) error {
 	return err
 }
 
-// ValidateSpec implements Type.
-func (s *setType) ValidateSpec() error {
-	if s == nil {
-		return errors.New("set type is nil")
-	}
-
-	return s.elementType.ValidateSpec()
-}
-
-// ToProtobuf implements Type.
+// ToProtobuf implements [Type].
 func (s *setType) ToProtobuf() (*TypePB, error) {
 	if s == nil {
 		return nil, errors.New("set type is nil")
 	}
 
-	elemPB, err := s.elementType.ToProtobuf()
+	elementType, err := s.elementType.ToProtobuf()
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +119,7 @@ func (s *setType) ToProtobuf() (*TypePB, error) {
 	return &TypePB{
 		Type: &TypePB_Set{
 			Set: &SetTypePB{
-				ElementType: elemPB,
+				ElementType: elementType,
 			},
 		},
 	}, nil
@@ -121,11 +127,20 @@ func (s *setType) ToProtobuf() (*TypePB, error) {
 
 // String represents the set type as a friendly string.
 func (s *setType) String() string {
-	return s.CtyType().FriendlyName()
+	if s == nil {
+		return "nil"
+	}
+
+	return fmt.Sprintf("set of %s", s.elementType)
 }
 
-// ToSetType converts a protobuf SetTypePB to a setType instance.
-func (s *SetTypePB) ToSetType() (Type, error) {
+// Set returns a Type representing a set of the given element type.
+func Set(elementType Type) Type {
+	return &setType{elementType: elementType}
+}
+
+// ToType converts a protobuf SetTypePB to a setType instance.
+func (s *SetTypePB) ToType() (Type, error) {
 	if s == nil {
 		return nil, errors.New("SetTypePB is nil")
 	}
@@ -139,10 +154,19 @@ func (s *SetTypePB) ToSetType() (Type, error) {
 		return nil, err
 	}
 
-	return Set(elemType), nil
-}
+	constraints := make(TypeConstraints, 0, len(s.Constraints))
+	for _, c := range s.Constraints {
+		if c == nil {
+			continue
+		}
 
-// Set creates a new setType representing a set of the given element type.
-func Set(elementType Type) Type {
-	return &setType{elementType: elementType}
+		constraint, err := c.ToTypeConstraint()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert constraint: %w", err)
+		}
+
+		constraints = append(constraints, constraint)
+	}
+
+	return Set(elemType).WithConstraints(constraints...), nil
 }
