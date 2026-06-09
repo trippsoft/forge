@@ -31,8 +31,6 @@ func (p *SimpleTypePB) ToType() (Type, error) {
 	switch p.Data {
 	case SimpleTypeDataPB_BOOL:
 		return Bool().WithConstraints(constraints...), nil
-	case SimpleTypeDataPB_NUMBER:
-		return Number().WithConstraints(constraints...), nil
 	case SimpleTypeDataPB_STRING:
 		return String().WithConstraints(constraints...), nil
 	case SimpleTypeDataPB_SENSITIVE_STRING:

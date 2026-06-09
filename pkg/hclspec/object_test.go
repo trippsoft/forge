@@ -26,7 +26,7 @@ func TestObjectTypeCtyType(t *testing.T) {
 			name: "simple object",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(0)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(0)),
 			),
 			expected: cty.Object(map[string]cty.Type{
 				"name": cty.String,
@@ -39,7 +39,7 @@ func TestObjectTypeCtyType(t *testing.T) {
 				RequiredField("name", String()),
 				RequiredField("address", Object(
 					RequiredField("city", String()),
-					OptionalField("zip", Number()).WithDefaultValue(cty.NumberIntVal(0)),
+					OptionalField("zip", Float32()).WithDefaultValue(cty.NumberIntVal(0)),
 				)),
 			),
 			expected: cty.Object(map[string]cty.Type{
@@ -87,7 +87,7 @@ func TestObjectTypeConvert_Success(t *testing.T) {
 			name: "valid object",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"name": cty.StringVal("John"),
@@ -102,7 +102,7 @@ func TestObjectTypeConvert_Success(t *testing.T) {
 			name: "valid map",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.MapVal(map[string]cty.Value{
 				"name": cty.StringVal("Jane"),
@@ -116,7 +116,7 @@ func TestObjectTypeConvert_Success(t *testing.T) {
 			name: "object with missing optional field uses default",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"name": cty.StringVal("Bob"),
@@ -130,7 +130,7 @@ func TestObjectTypeConvert_Success(t *testing.T) {
 			name: "object with type conversion",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"name": cty.StringVal("Alice"),
@@ -145,7 +145,7 @@ func TestObjectTypeConvert_Success(t *testing.T) {
 			name: "using primary name",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"name": cty.StringVal("John"),
@@ -159,7 +159,7 @@ func TestObjectTypeConvert_Success(t *testing.T) {
 			name: "using first alias",
 			object: Object(
 				RequiredField("name", String()).WithAliases("fullname", "title"),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"fullname": cty.StringVal("John Doe"),
@@ -173,7 +173,7 @@ func TestObjectTypeConvert_Success(t *testing.T) {
 			name: "using second alias",
 			object: Object(
 				RequiredField("name", String()).WithAliases("fullname", "title"),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"title": cty.StringVal("Mr. John"),
@@ -227,7 +227,7 @@ func TestObjectTypeConvert_Success(t *testing.T) {
 			name: "valid map with string values (age will be converted)",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.MapVal(map[string]cty.Value{
 				"name": cty.StringVal("John"),
@@ -242,7 +242,7 @@ func TestObjectTypeConvert_Success(t *testing.T) {
 			name: "map with missing optional field",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.MapVal(map[string]cty.Value{
 				"name": cty.StringVal("Jane"),
@@ -256,7 +256,7 @@ func TestObjectTypeConvert_Success(t *testing.T) {
 			name: "empty map uses defaults",
 			object: Object(
 				OptionalField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.MapValEmpty(cty.String),
 			expected: cty.ObjectVal(map[string]cty.Value{
@@ -268,7 +268,7 @@ func TestObjectTypeConvert_Success(t *testing.T) {
 			name: "null object",
 			object: Object(
 				RequiredField("name", String()).WithAliases("fullname", "title"),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.NullVal(cty.Object(map[string]cty.Type{
 				"name": cty.String,
@@ -341,7 +341,7 @@ func TestObjectTypeConvert_InvalidAttributes(t *testing.T) {
 }
 
 func TestObjectTypeConvert_FieldConversionError(t *testing.T) {
-	object := Object(RequiredField("age", Number()))
+	object := Object(RequiredField("age", Float32()))
 
 	input := cty.ObjectVal(map[string]cty.Value{
 		"age": cty.StringVal("not-a-number"),
@@ -395,7 +395,7 @@ func TestObjectTypeConvert_InvalidIndexesInMap(t *testing.T) {
 }
 
 func TestObjectTypeConvert_AliasConversionError(t *testing.T) {
-	object := Object(RequiredField("age", Number()).WithAliases("alias"))
+	object := Object(RequiredField("age", Float32()).WithAliases("alias"))
 
 	input := cty.ObjectVal(map[string]cty.Value{
 		"alias": cty.StringVal("not-a-number"),
@@ -438,7 +438,7 @@ func TestObjectTypeValidate_Pass(t *testing.T) {
 			name: "valid object",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"name": cty.StringVal("John"),
@@ -449,7 +449,7 @@ func TestObjectTypeValidate_Pass(t *testing.T) {
 			name: "valid map",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.MapVal(map[string]cty.Value{
 				"name": cty.StringVal("Jane"),
@@ -459,7 +459,7 @@ func TestObjectTypeValidate_Pass(t *testing.T) {
 			name: "object with missing optional field uses default",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"name": cty.StringVal("Bob"),
@@ -469,7 +469,7 @@ func TestObjectTypeValidate_Pass(t *testing.T) {
 			name: "object with type conversion",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"name": cty.StringVal("Alice"),
@@ -480,7 +480,7 @@ func TestObjectTypeValidate_Pass(t *testing.T) {
 			name: "using primary name",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"name": cty.StringVal("John"),
@@ -490,7 +490,7 @@ func TestObjectTypeValidate_Pass(t *testing.T) {
 			name: "using first alias",
 			object: Object(
 				RequiredField("name", String()).WithAliases("fullname", "title"),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"fullname": cty.StringVal("John Doe"),
@@ -500,7 +500,7 @@ func TestObjectTypeValidate_Pass(t *testing.T) {
 			name: "using second alias",
 			object: Object(
 				RequiredField("name", String()).WithAliases("fullname", "title"),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"title": cty.StringVal("Mr. John"),
@@ -538,7 +538,7 @@ func TestObjectTypeValidate_Pass(t *testing.T) {
 			name: "valid map with string values (age will be converted)",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.MapVal(map[string]cty.Value{
 				"name": cty.StringVal("John"),
@@ -549,7 +549,7 @@ func TestObjectTypeValidate_Pass(t *testing.T) {
 			name: "map with missing optional field",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.MapVal(map[string]cty.Value{
 				"name": cty.StringVal("Jane"),
@@ -559,7 +559,7 @@ func TestObjectTypeValidate_Pass(t *testing.T) {
 			name: "empty map uses defaults",
 			object: Object(
 				OptionalField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.MapValEmpty(cty.String),
 		},
@@ -567,7 +567,7 @@ func TestObjectTypeValidate_Pass(t *testing.T) {
 			name: "null object",
 			object: Object(
 				RequiredField("name", String()).WithAliases("fullname", "title"),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(25)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(25)),
 			),
 			input: cty.NullVal(cty.Object(map[string]cty.Type{
 				"name": cty.String,
@@ -593,7 +593,7 @@ func TestObjectTypeValidate_UnknownValue(t *testing.T) {
 			name: "unknown object",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(0)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(0)),
 			),
 			input: cty.UnknownVal(cty.Object(map[string]cty.Type{
 				"name": cty.String,
@@ -604,7 +604,7 @@ func TestObjectTypeValidate_UnknownValue(t *testing.T) {
 			name: "object with unknown element",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(0)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(0)),
 			),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"name": cty.StringVal("John"),
@@ -639,7 +639,7 @@ func TestObjectTypeValidate_NotMapOrObject(t *testing.T) {
 			name: "string",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(0)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(0)),
 			),
 			input:         cty.StringVal("not-an-object"),
 			expectedError: `cannot convert "string" to "object"`,
@@ -648,7 +648,7 @@ func TestObjectTypeValidate_NotMapOrObject(t *testing.T) {
 			name: "number",
 			object: Object(
 				RequiredField("name", String()),
-				OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(0)),
+				OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(0)),
 			),
 			input:         cty.NumberIntVal(42),
 			expectedError: `cannot convert "number" to "object"`,
@@ -672,7 +672,7 @@ func TestObjectTypeValidate_NotMapOrObject(t *testing.T) {
 func TestObjectTypeValidate_MissingRequiredField(t *testing.T) {
 	object := Object(
 		RequiredField("name", String()),
-		OptionalField("age", Number()).WithDefaultValue(cty.NumberIntVal(0)),
+		OptionalField("age", Float32()).WithDefaultValue(cty.NumberIntVal(0)),
 	)
 
 	input := cty.ObjectVal(map[string]cty.Value{

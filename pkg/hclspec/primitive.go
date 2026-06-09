@@ -61,8 +61,6 @@ func (p *primitiveType) ToProtobuf() (*TypePB, error) {
 	switch {
 	case p.t.Equals(cty.Bool):
 		data = SimpleTypeDataPB_BOOL
-	case p.t.Equals(cty.Number):
-		data = SimpleTypeDataPB_NUMBER
 	case p.t.Equals(cty.String):
 		data = SimpleTypeDataPB_STRING
 	default:
@@ -84,6 +82,7 @@ func (p *primitiveType) ToProtobuf() (*TypePB, error) {
 	}, nil
 }
 
+// String returns a string representation of the primitive type.
 func (p *primitiveType) String() string {
 	if p == nil {
 		return "nil"
@@ -95,11 +94,6 @@ func (p *primitiveType) String() string {
 // Bool returns a Type representing a boolean primitive.
 func Bool() Type {
 	return &primitiveType{t: cty.Bool}
-}
-
-// Number returns a Type representing a number primitive.
-func Number() Type {
-	return &primitiveType{t: cty.Number}
 }
 
 // String returns a Type representing a string primitive.

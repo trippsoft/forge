@@ -25,8 +25,53 @@ func TestMapCtyType(t *testing.T) {
 			expected: cty.Map(cty.String),
 		},
 		{
-			name:     "map of numbers",
-			mapType:  Map(Number()),
+			name:     "map of 8-bit integers",
+			mapType:  Map(Int8()),
+			expected: cty.Map(cty.Number),
+		},
+		{
+			name:     "map of 16-bit integers",
+			mapType:  Map(Int16()),
+			expected: cty.Map(cty.Number),
+		},
+		{
+			name:     "map of 32-bit integers",
+			mapType:  Map(Int32()),
+			expected: cty.Map(cty.Number),
+		},
+		{
+			name:     "map of 64-bit integers",
+			mapType:  Map(Int64()),
+			expected: cty.Map(cty.Number),
+		},
+		{
+			name:     "map of 8-bit unsigned integers",
+			mapType:  Map(UInt8()),
+			expected: cty.Map(cty.Number),
+		},
+		{
+			name:     "map of 16-bit unsigned integers",
+			mapType:  Map(UInt16()),
+			expected: cty.Map(cty.Number),
+		},
+		{
+			name:     "map of 32-bit unsigned integers",
+			mapType:  Map(UInt32()),
+			expected: cty.Map(cty.Number),
+		},
+		{
+			name:     "map of 64-bit unsigned integers",
+			mapType:  Map(UInt64()),
+			expected: cty.Map(cty.Number),
+		},
+		{
+			name:     "map of 32-bit floating-point numbers",
+			mapType:  Map(Float32()),
+			expected: cty.Map(cty.Number),
+		},
+		{
+			name:     "map of 64-bit floating-point numbers",
+			mapType:  Map(Float64()),
 			expected: cty.Map(cty.Number),
 		},
 		{
@@ -136,7 +181,7 @@ func TestMapConvert_Success(t *testing.T) {
 		},
 		{
 			name:    "map of numbers",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input: cty.MapVal(map[string]cty.Value{
 				"key1": cty.NumberIntVal(1),
 				"key2": cty.NumberFloatVal(2.5),
@@ -148,25 +193,25 @@ func TestMapConvert_Success(t *testing.T) {
 		},
 		{
 			name:     "empty map of numbers",
-			mapType:  Map(Number()),
+			mapType:  Map(Float32()),
 			input:    cty.MapValEmpty(cty.Number),
 			expected: cty.MapValEmpty(cty.Number),
 		},
 		{
 			name:     "null map of numbers",
-			mapType:  Map(Number()),
+			mapType:  Map(Float32()),
 			input:    cty.NullVal(cty.Map(cty.Number)),
 			expected: cty.NullVal(cty.Map(cty.Number)),
 		},
 		{
 			name:     "null number to map of numbers",
-			mapType:  Map(Number()),
+			mapType:  Map(Float32()),
 			input:    cty.NullVal(cty.Number),
 			expected: cty.NullVal(cty.Map(cty.Number)),
 		},
 		{
 			name:    "map with null values",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input: cty.MapVal(map[string]cty.Value{
 				"key1": cty.NumberIntVal(1),
 				"key2": cty.NullVal(cty.Number),
@@ -178,7 +223,7 @@ func TestMapConvert_Success(t *testing.T) {
 		},
 		{
 			name:    "map of strings to map of numbers",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input: cty.MapVal(map[string]cty.Value{
 				"key1": cty.StringVal("3.14"),
 				"key2": cty.StringVal("42"),
@@ -190,7 +235,7 @@ func TestMapConvert_Success(t *testing.T) {
 		},
 		{
 			name:    "object to map of numbers",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"key1": cty.StringVal("3.14"),
 				"key2": cty.NumberIntVal(42),
@@ -261,32 +306,32 @@ func TestMapConvert_UnknownValue(t *testing.T) {
 		},
 		{
 			name:    "unknown map of numbers",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input:   cty.UnknownVal(cty.Map(cty.Number)),
 		},
 		{
 			name:    "unknown tuple of number",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input:   cty.UnknownVal(cty.Tuple([]cty.Type{cty.Number})),
 		},
 		{
 			name:    "unknown number",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input:   cty.UnknownVal(cty.Number),
 		},
 		{
 			name:    "unknown object with number",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input:   cty.UnknownVal(cty.Object(map[string]cty.Type{"key": cty.Number})),
 		},
 		{
 			name:    "map with unknown numbers",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input:   cty.MapVal(map[string]cty.Value{"key1": cty.UnknownVal(cty.Number), "key2": cty.UnknownVal(cty.Number)}),
 		},
 		{
 			name:    "tuple with unknown numbers",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input:   cty.TupleVal([]cty.Value{cty.UnknownVal(cty.Number), cty.UnknownVal(cty.Number)}),
 		},
 		{
@@ -355,7 +400,7 @@ func TestMapConvert_InvalidValues(t *testing.T) {
 		},
 		{
 			name: "nested map of numbers to map of numbers",
-			list: Map(Number()),
+			list: Map(Float32()),
 			input: cty.MapVal(map[string]cty.Value{
 				"key1": cty.MapVal(map[string]cty.Value{
 					"nestedKey": cty.NumberIntVal(42),
@@ -372,7 +417,7 @@ func TestMapConvert_InvalidValues(t *testing.T) {
 		},
 		{
 			name: "map with non-number strings to map of numbers",
-			list: Map(Number()),
+			list: Map(Float32()),
 			input: cty.MapVal(map[string]cty.Value{
 				"key1": cty.StringVal("hello"),
 				"key2": cty.StringVal("42"),
@@ -500,7 +545,7 @@ func TestMapValidate_Pass(t *testing.T) {
 		},
 		{
 			name:    "map of numbers",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input: cty.MapVal(map[string]cty.Value{
 				"key1": cty.NumberIntVal(1),
 				"key2": cty.NumberFloatVal(2.5),
@@ -508,22 +553,22 @@ func TestMapValidate_Pass(t *testing.T) {
 		},
 		{
 			name:    "empty map of numbers",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input:   cty.MapValEmpty(cty.Number),
 		},
 		{
 			name:    "null map of numbers",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input:   cty.NullVal(cty.Map(cty.Number)),
 		},
 		{
 			name:    "null number to map of numbers",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input:   cty.NullVal(cty.Number),
 		},
 		{
 			name:    "map with null values",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input: cty.MapVal(map[string]cty.Value{
 				"key1": cty.NumberIntVal(1),
 				"key2": cty.NullVal(cty.Number),
@@ -531,7 +576,7 @@ func TestMapValidate_Pass(t *testing.T) {
 		},
 		{
 			name:    "map of strings to map of numbers",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input: cty.MapVal(map[string]cty.Value{
 				"key1": cty.StringVal("3.14"),
 				"key2": cty.StringVal("42"),
@@ -539,7 +584,7 @@ func TestMapValidate_Pass(t *testing.T) {
 		},
 		{
 			name:    "object to map of numbers",
-			mapType: Map(Number()),
+			mapType: Map(Float32()),
 			input: cty.ObjectVal(map[string]cty.Value{
 				"key1": cty.StringVal("3.14"),
 				"key2": cty.NumberIntVal(42),

@@ -47,6 +47,10 @@ func (t *TypePB) ToType() (Type, error) {
 		return typ.Raw.ToType()
 	case *TypePB_Simple:
 		return typ.Simple.ToType()
+	case *TypePB_Integer:
+		return typ.Integer.ToType()
+	case *TypePB_Float:
+		return typ.Float.ToType()
 	case *TypePB_Set:
 		return typ.Set.ToType()
 	case *TypePB_List:

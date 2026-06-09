@@ -22,7 +22,7 @@ func TestObjectFieldValidate_Pass(t *testing.T) {
 		},
 		{
 			name:  "valid number",
-			field: RequiredField("test", Number()),
+			field: RequiredField("test", Float32()),
 			value: cty.NumberIntVal(123),
 		},
 		{

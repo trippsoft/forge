@@ -25,8 +25,53 @@ func TestSetCtyType(t *testing.T) {
 			expected: cty.Set(cty.String),
 		},
 		{
-			name:     "set of numbers",
-			set:      Set(Number()),
+			name:     "set of 8-bit integers",
+			set:      Set(Int8()),
+			expected: cty.Set(cty.Number),
+		},
+		{
+			name:     "set of 16-bit integers",
+			set:      Set(Int16()),
+			expected: cty.Set(cty.Number),
+		},
+		{
+			name:     "set of 32-bit integers",
+			set:      Set(Int32()),
+			expected: cty.Set(cty.Number),
+		},
+		{
+			name:     "set of 64-bit integers",
+			set:      Set(Int64()),
+			expected: cty.Set(cty.Number),
+		},
+		{
+			name:     "set of 8-bit unsigned integers",
+			set:      Set(UInt8()),
+			expected: cty.Set(cty.Number),
+		},
+		{
+			name:     "set of 16-bit unsigned integers",
+			set:      Set(UInt16()),
+			expected: cty.Set(cty.Number),
+		},
+		{
+			name:     "set of 32-bit unsigned integers",
+			set:      Set(UInt32()),
+			expected: cty.Set(cty.Number),
+		},
+		{
+			name:     "set of 64-bit unsigned integers",
+			set:      Set(UInt64()),
+			expected: cty.Set(cty.Number),
+		},
+		{
+			name:     "set of 32-bit floating-point numbers",
+			set:      Set(Float32()),
+			expected: cty.Set(cty.Number),
+		},
+		{
+			name:     "set of 64-bit floating-point numbers",
+			set:      Set(Float64()),
 			expected: cty.Set(cty.Number),
 		},
 		{
@@ -109,43 +154,43 @@ func TestSetConvert_Success(t *testing.T) {
 		},
 		{
 			name:     "set of numbers",
-			set:      Set(Number()),
+			set:      Set(Float32()),
 			input:    cty.SetVal([]cty.Value{cty.NumberIntVal(1), cty.NumberFloatVal(2.5)}),
 			expected: cty.SetVal([]cty.Value{cty.NumberIntVal(1), cty.NumberFloatVal(2.5)}),
 		},
 		{
 			name:     "empty set of numbers",
-			set:      Set(Number()),
+			set:      Set(Float32()),
 			input:    cty.SetValEmpty(cty.Number),
 			expected: cty.SetValEmpty(cty.Number),
 		},
 		{
 			name:     "null set of numbers",
-			set:      Set(Number()),
+			set:      Set(Float32()),
 			input:    cty.NullVal(cty.Set(cty.Number)),
 			expected: cty.NullVal(cty.Set(cty.Number)),
 		},
 		{
 			name:     "set of numbers with null values",
-			set:      Set(Number()),
+			set:      Set(Float32()),
 			input:    cty.SetVal([]cty.Value{cty.NumberIntVal(1), cty.NullVal(cty.Number)}),
 			expected: cty.SetVal([]cty.Value{cty.NumberIntVal(1)}),
 		},
 		{
 			name:     "single number to set of numbers",
-			set:      Set(Number()),
+			set:      Set(Float32()),
 			input:    cty.NumberIntVal(1),
 			expected: cty.SetVal([]cty.Value{cty.NumberIntVal(1)}),
 		},
 		{
 			name:     "list of numbers to set of numbers",
-			set:      Set(Number()),
+			set:      Set(Float32()),
 			input:    cty.ListVal([]cty.Value{cty.NumberIntVal(1), cty.NumberFloatVal(2.5)}),
 			expected: cty.SetVal([]cty.Value{cty.NumberIntVal(1), cty.NumberFloatVal(2.5)}),
 		},
 		{
 			name:     "set of number-strings to set of numbers",
-			set:      Set(Number()),
+			set:      Set(Float32()),
 			input:    cty.SetVal([]cty.Value{cty.StringVal("1"), cty.StringVal("2.5")}),
 			expected: cty.SetVal([]cty.Value{cty.NumberIntVal(1), cty.NumberFloatVal(2.5)}),
 		},
@@ -251,32 +296,32 @@ func TestSetConvert_UnknownValue(t *testing.T) {
 		},
 		{
 			name:  "unknown set of numbers",
-			set:   Set(Number()),
+			set:   Set(Float32()),
 			input: cty.UnknownVal(cty.Set(cty.Number)),
 		},
 		{
 			name:  "unknown tuple of number",
-			set:   Set(Number()),
+			set:   Set(Float32()),
 			input: cty.UnknownVal(cty.Tuple([]cty.Type{cty.Number})),
 		},
 		{
 			name:  "unknown number",
-			set:   Set(Number()),
+			set:   Set(Float32()),
 			input: cty.UnknownVal(cty.Number),
 		},
 		{
 			name:  "unknown object with number",
-			set:   Set(Number()),
+			set:   Set(Float32()),
 			input: cty.UnknownVal(cty.Object(map[string]cty.Type{"key": cty.Number})),
 		},
 		{
 			name:  "set with unknown numbers",
-			set:   Set(Number()),
+			set:   Set(Float32()),
 			input: cty.SetVal([]cty.Value{cty.UnknownVal(cty.Number), cty.UnknownVal(cty.Number)}),
 		},
 		{
 			name:  "tuple with unknown numbers",
-			set:   Set(Number()),
+			set:   Set(Float32()),
 			input: cty.TupleVal([]cty.Value{cty.UnknownVal(cty.Number), cty.UnknownVal(cty.Number)}),
 		},
 		{
@@ -340,12 +385,12 @@ func TestSetConvert_InvalidValues(t *testing.T) {
 		},
 		{
 			name:  "nested set of numbers to set of numbers",
-			set:   Set(Number()),
+			set:   Set(Float32()),
 			input: cty.SetVal([]cty.Value{cty.SetVal([]cty.Value{cty.NumberIntVal(42)})}),
 		},
 		{
 			name: "tuple with strings and sets to set of strings",
-			set:  Set(Number()),
+			set:  Set(Float32()),
 			input: cty.TupleVal([]cty.Value{
 				cty.NumberIntVal(42),
 				cty.SetVal([]cty.Value{cty.NumberFloatVal(3.14)}),
@@ -353,7 +398,7 @@ func TestSetConvert_InvalidValues(t *testing.T) {
 		},
 		{
 			name:            "set with non-number strings to set of numbers",
-			set:             Set(Number()),
+			set:             Set(Float32()),
 			input:           cty.SetVal([]cty.Value{cty.StringVal("hello"), cty.StringVal("42")}),
 			conversionError: "a number is required",
 		},
@@ -460,37 +505,37 @@ func TestSetValidate_Pass(t *testing.T) {
 		},
 		{
 			name:  "set of numbers",
-			set:   Set(Number()),
+			set:   Set(Float32()),
 			input: cty.SetVal([]cty.Value{cty.NumberIntVal(1), cty.NumberFloatVal(2.5)}),
 		},
 		{
 			name:  "empty set of numbers",
-			set:   Set(Number()),
+			set:   Set(Float32()),
 			input: cty.SetValEmpty(cty.Number),
 		},
 		{
 			name:  "null set of numbers",
-			set:   Set(Number()),
+			set:   Set(Float32()),
 			input: cty.NullVal(cty.Set(cty.Number)),
 		},
 		{
 			name:  "set of numbers with null values",
-			set:   Set(Number()),
+			set:   Set(Float32()),
 			input: cty.SetVal([]cty.Value{cty.NumberIntVal(1), cty.NullVal(cty.Number)}),
 		},
 		{
 			name:  "single number to set of numbers",
-			set:   Set(Number()),
+			set:   Set(Float32()),
 			input: cty.NumberIntVal(1),
 		},
 		{
 			name:  "list of numbers to set of numbers",
-			set:   Set(Number()),
+			set:   Set(Float32()),
 			input: cty.ListVal([]cty.Value{cty.NumberIntVal(1), cty.NumberFloatVal(2.5)}),
 		},
 		{
 			name:  "set of number-strings to set of numbers",
-			set:   Set(Number()),
+			set:   Set(Float32()),
 			input: cty.SetVal([]cty.Value{cty.StringVal("1"), cty.StringVal("2.5")}),
 		},
 		{

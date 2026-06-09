@@ -9,9 +9,8 @@ message RawTypePB {}
 enum SimpleTypeDataPB {
     UNSPECIFIED = 0;
     BOOL = 1;
-    NUMBER = 2;
-    STRING = 3;
-    SENSITIVE_STRING = 4;
+    STRING = 2;
+    SENSITIVE_STRING = 3;
 }
 
 message AllowedValuesConstraintPB {
@@ -77,6 +76,17 @@ message SimpleTypePB {
     repeated TypeConstraintPB constraints = 2;
 }
 
+message IntegerTypePB {
+    bool signed = 1;
+    int32 bit_size = 2;
+    repeated TypeConstraintPB constraints = 3;
+}
+
+message FloatTypePB {
+    int32 bit_size = 1;
+    repeated TypeConstraintPB constraints = 2;
+}
+
 message SetTypePB {
     TypePB element_type = 1;
     repeated TypeConstraintPB constraints = 2;
@@ -108,10 +118,12 @@ message TypePB {
     oneof type {
         RawTypePB raw = 1;
         SimpleTypePB simple = 2;
-        SetTypePB set = 3;
-        ListTypePB list = 4;
-        MapTypePB map = 5;
-        ObjectTypePB object = 6;
+        IntegerTypePB integer = 3;
+        FloatTypePB float = 4;
+        SetTypePB set = 5;
+        ListTypePB list = 6;
+        MapTypePB map = 7;
+        ObjectTypePB object = 8;
     }
 }
 
